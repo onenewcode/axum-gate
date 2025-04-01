@@ -1,7 +1,5 @@
-//! Available roles for your application.
-
-/// Hierarchy of roles. Used for walking up and down the hierarchy of roles
-/// for authorization.
+/// Hierarchy of roles. Used to check whether a user is authorized to access specific
+/// resources.
 pub trait RoleHierarchy
 where
     Self: Copy,

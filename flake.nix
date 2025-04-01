@@ -46,6 +46,7 @@
           strictDeps = true;
 
           nativeBuildInputs = with pkgs; [
+            rustup
             nil
             nixfmt-rfc-style
           ];
