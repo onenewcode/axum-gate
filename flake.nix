@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    crane.url = "github:ipetkov/crane";
+    crane.url = "github:ipetkov/crane?ref=master";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -20,8 +20,18 @@
     };
   };
 
-  outputs = { self, nixpkgs, crane, fenix, flake-utils, advisory-db, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      crane,
+      fenix,
+      flake-utils,
+      advisory-db,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -35,23 +45,31 @@
           inherit src;
           strictDeps = true;
 
-          buildInputs = [
-            # Add additional build inputs here
-          ] ++ lib.optionals pkgs.stdenv.isDarwin [
-            # Additional darwin specific inputs can be set here
-            pkgs.libiconv
+          nativeBuildInputs = with pkgs; [
+            nil
+            nixfmt-rfc-style
           ];
+
+          buildInputs =
+            [
+              # Add additional build inputs here
+            ]
+            ++ lib.optionals pkgs.stdenv.isDarwin [
+              # Additional darwin specific inputs can be set here
+              pkgs.libiconv
+            ];
 
           # Additional environment variables can be set directly
           # MY_CUSTOM_VAR = "some value";
         };
 
-        craneLibLLvmTools = craneLib.overrideToolchain
-          (fenix.packages.${system}.complete.withComponents [
+        craneLibLLvmTools = craneLib.overrideToolchain (
+          fenix.packages.${system}.complete.withComponents [
             "cargo"
             "llvm-tools"
             "rustc"
-          ]);
+          ]
+        );
 
         # Build *just* the cargo dependencies, so we can reuse
         # all of that work (e.g. via cachix) when running in CI
@@ -59,29 +77,38 @@
 
         # Build the actuaxum-gate itself, reusing the dependency
         # artifacts from above.
-        axum-gate = craneLib.buildPackage (commonArgs // {
-          inherit cargoArtifacts;
-        });
+        axum-gate = craneLib.buildPackage (
+          commonArgs
+          // {
+            inherit cargoArtifacts;
+          }
+        );
       in
       {
         checks = {
-            # Build taxum-gate as part of `nix flake check` for convenience
-            inherit axum-gate;
+          # Build taxum-gate as part of `nix flake check` for convenience
+          inherit axum-gate;
 
-            # Run clippy (and deny all warnings) on taxum-gate source,
+          # Run clippy (and deny all warnings) on taxum-gate source,
           # again, reusing the dependency artifacts from above.
           #
           # Note that this is done as a separate derivation so that
           # we can block the CI if there are issues here, but not
           # prevent downstream consumers from building oaxum-gate by itself.
-          axum-gate-clippy = craneLib.cargoClippy (commonArgs // {
-            inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--all-targets -- --deny warnings";
-          });
+          axum-gate-clippy = craneLib.cargoClippy (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+            }
+          );
 
-          axum-gate-doc = craneLib.cargoDoc (commonArgs // {
-            inherit cargoArtifacts;
-          });
+          axum-gate-doc = craneLib.cargoDoc (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+            }
+          );
 
           # Check formatting
           axum-gate-fmt = craneLib.cargoFmt {
@@ -107,21 +134,29 @@
           # Run tests with cargo-nextest
           # Consider setting `doCheck = false` on `axum-gate` if you do not want
           # the tests to run twice
-          axum-gate-nextest = craneLib.cargoNextest (commonArgs // {
-            inherit cargoArtifacts;
-            partitions = 1;
-            partitionType = "count";
-            cargoNextestPartitionsExtraArgs = "--no-tests=pass";
-          });
+          axum-gate-nextest = craneLib.cargoNextest (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+              partitions = 1;
+              partitionType = "count";
+              cargoNextestPartitionsExtraArgs = "--no-tests=pass";
+            }
+          );
         };
 
-        packages = {
-          default = axum-gate;
-        } // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
-          axum-gate-llvm-coverage = craneLibLLvmTools.cargoLlvmCov (commonArgs // {
-            inherit cargoArtifacts;
-          });
-        };
+        packages =
+          {
+            default = axum-gate;
+          }
+          // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
+            axum-gate-llvm-coverage = craneLibLLvmTools.cargoLlvmCov (
+              commonArgs
+              // {
+                inherit cargoArtifacts;
+              }
+            );
+          };
 
         apps.default = flake-utils.lib.mkApp {
           drv = axum-gate;
@@ -136,10 +171,10 @@
           # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
 
           # Extra inputs can be added here; cargo and rustc are provided by default.
-          packages = with pkgs; [
-            nil
+          packages = [
             # pkgs.ripgrep
           ];
         };
-      });
+      }
+    );
 }
