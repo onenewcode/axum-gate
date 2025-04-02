@@ -12,4 +12,8 @@ pub enum Error {
     /// [CodecService](crate::services::CodecService) operation.
     #[error("CodecService error: {0}")]
     Codec(String),
+    /// This error occurs in combination with a
+    /// [hashing](crate::hashing) operation.
+    #[error("Hashing error: {0}")]
+    Hashing(String),
 }

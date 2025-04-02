@@ -1,10 +1,13 @@
-//! Default implementation of a role.
-use crate::role_hierarchy::RoleHierarchy;
+//! Default implementation of roles and their relation.
+
+mod role_hierarchy;
+
+pub use self::role_hierarchy::RoleHierarchy;
 use serde::{Deserialize, Serialize};
 
 /// Available default roles.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum Role {
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
+pub enum BasicRole {
     /// The person having this type is considered an Administrator.
     Admin,
     /// The person having this type is considered a Moderator.
@@ -17,13 +20,13 @@ pub enum Role {
     Anonymous,
 }
 
-impl Default for Role {
+impl Default for BasicRole {
     fn default() -> Self {
         Self::Anonymous
     }
 }
 
-impl RoleHierarchy for Role {
+impl RoleHierarchy for BasicRole {
     fn subordinate(&self) -> Option<Self> {
         match self {
             Self::Admin => Some(Self::Moderator),
