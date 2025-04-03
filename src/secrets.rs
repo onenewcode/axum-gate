@@ -44,3 +44,17 @@ impl SecretsHashingService for Argon2Hasher {
             .is_ok())
     }
 }
+
+#[test]
+fn secrets_hasher_service() {
+    let secret = b"something";
+    let hasher = Argon2Hasher::default();
+    let hashed_secret = hasher.hash_secret(secret).unwrap();
+    assert_eq!(true, hasher.verify_secret(secret, &hashed_secret).unwrap());
+    assert_eq!(
+        false,
+        hasher
+            .verify_secret(b"somethingwrong", &hashed_secret)
+            .unwrap()
+    );
+}
