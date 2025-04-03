@@ -1,7 +1,7 @@
 //! Route handler for [axum].
-use crate::claims::{JwtClaims, RegisteredClaims};
 use crate::codecs::CodecService;
 use crate::credentials::{Credentials, CredentialsVerifierService};
+use crate::jwt::{JwtClaims, RegisteredClaims};
 use crate::passport::{Passport, PassportStorageService};
 use crate::secrets::SecretsHashingService;
 use axum::Json;

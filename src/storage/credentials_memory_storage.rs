@@ -18,10 +18,11 @@ use tokio::sync::RwLock;
 /// let hasher = Argon2Hasher::default();
 /// // Lets assume the user id is an email address and the user has a gooood password.
 /// let creds = Credentials::new_with_hasher("admin@example.com", "admin_password".as_bytes(), &hasher).unwrap();
+/// let creds_to_verify = Credentials::new("admin@example.com", "admin_password".as_bytes().to_vec());
 /// // In order to enable user verification we need to store a hashed version in our pre-defined
 /// // memory storage.
 /// let creds_storage = CredentialsMemoryStorage::from(vec![creds.clone()]);
-/// assert_eq!(true, creds_storage.verify_credentials(&creds, &hasher).await.unwrap());
+/// assert_eq!(true, creds_storage.verify_credentials(&creds_to_verify, &hasher).await.unwrap());
 /// let false_creds = Credentials::new_with_hasher("admin@example.com", "crazysecret".as_bytes(), &hasher).unwrap();
 /// assert_eq!(false, creds_storage.verify_credentials(&false_creds, &hasher).await.unwrap());
 /// # });
@@ -118,8 +119,45 @@ where
         let Some(stored_secret) = read.get(&credentials.id) else {
             return Ok(false);
         };
-        Ok(hasher
-            .verify_secret(&credentials.secret, &stored_secret)
-            .is_ok())
+        hasher.verify_secret(&credentials.secret, &stored_secret)
     }
+}
+
+#[test]
+fn credentials_memory_storage() {
+    tokio_test::block_on(async move {
+        use crate::secrets::Argon2Hasher;
+
+        let hasher = Argon2Hasher::default();
+        let creds = Credentials::new_with_hasher(
+            "admin@example.com".to_string(),
+            "admin_password".to_string().as_bytes(),
+            &hasher,
+        )
+        .unwrap();
+        let creds_to_verify = Credentials::new(
+            "admin@example.com".to_string(),
+            "admin_password".to_string().as_bytes().to_vec(),
+        );
+        let wrong_creds = Credentials::new(
+            "admin@example.com".to_string(),
+            "admin_passwordwrong".to_string().as_bytes().to_vec(),
+        );
+
+        let creds_storage = CredentialsMemoryStorage::from(vec![creds.clone()]);
+        assert_eq!(
+            false,
+            creds_storage
+                .verify_credentials(&wrong_creds, &hasher)
+                .await
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            creds_storage
+                .verify_credentials(&creds_to_verify, &hasher)
+                .await
+                .unwrap()
+        );
+    })
 }

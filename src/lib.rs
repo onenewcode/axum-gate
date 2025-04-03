@@ -9,11 +9,11 @@
 //! authentication can be found at [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
 #![deny(missing_docs)]
 
-pub mod claims;
 pub mod codecs;
 pub mod credentials;
 mod errors;
 pub mod gate;
+pub mod jwt;
 pub mod passport;
 pub mod roles;
 pub mod route_handlers;

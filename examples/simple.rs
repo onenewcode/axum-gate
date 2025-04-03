@@ -1,10 +1,10 @@
 use axum::extract::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
-use axum_gate::claims::RegisteredClaims;
 use axum_gate::codecs::JsonWebToken;
 use axum_gate::credentials::Credentials;
 use axum_gate::gate::Gate;
+use axum_gate::jwt::RegisteredClaims;
 use axum_gate::passport::BasicPassport;
 use axum_gate::roles::BasicRole;
 use axum_gate::secrets::Argon2Hasher;

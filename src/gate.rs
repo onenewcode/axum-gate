@@ -1,18 +1,16 @@
 //! Implementation for [axum]
-use crate::claims::JwtClaims;
 use crate::codecs::CodecService;
+use crate::jwt::JwtClaims;
 use crate::passport::Passport;
 use crate::roles::RoleHierarchy;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
 use pin_project::pin_project;
-use std::{
-    convert::Infallible,
-    future::{Future, Ready, ready},
-    pin::Pin,
-    task::Poll,
-};
+use std::convert::Infallible;
+use std::future::{Future, Ready, ready};
+use std::pin::Pin;
+use std::task::Poll;
 use tower::{Layer, Service};
 use tracing::{debug, error, trace};
 

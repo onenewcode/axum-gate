@@ -46,7 +46,7 @@ impl SecretsHashingService for Argon2Hasher {
 }
 
 #[test]
-fn secrets_hasher_service() {
+fn argon2hasher() {
     let secret = b"something";
     let hasher = Argon2Hasher::default();
     let hashed_secret = hasher.hash_secret(secret).unwrap();
