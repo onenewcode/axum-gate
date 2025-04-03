@@ -1,10 +1,9 @@
 //! Route handler for [axum].
 use crate::claims::{JwtClaims, RegisteredClaims};
-use crate::credentials::Credentials;
-use crate::passport::Passport;
-use crate::services::{
-    CodecService, CredentialsVerifierService, PassportStorageService, SecretsHashingService,
-};
+use crate::codecs::CodecService;
+use crate::credentials::{Credentials, CredentialsVerifierService};
+use crate::passport::{Passport, PassportStorageService};
+use crate::secrets::SecretsHashingService;
 use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::cookie::{Cookie, CookieJar};

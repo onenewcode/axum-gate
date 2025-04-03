@@ -1,7 +1,6 @@
 //! A [PassportRegister] is a data structure that has access to all the registered users ([Passport]s).
 use crate::Error;
-use crate::passport::Passport;
-use crate::services::PassportStorageService;
+use crate::passport::{Passport, PassportStorageService};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::hash::Hash;

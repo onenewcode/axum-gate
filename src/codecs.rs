@@ -1,9 +1,23 @@
 //! Implementors of the [CodecService] for en- and decoding payload.
 use crate::Error;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use crate::services::CodecService;
 use serde::{Serialize, de::DeserializeOwned};
 use std::marker::PhantomData;
+
+/// Methods for encoding and decoding payload.
+pub trait CodecService
+where
+    Self: Clone,
+    Self::Payload: Serialize + DeserializeOwned,
+{
+    /// The payload that can be encoded.
+    type Payload;
+
+    /// Encodes the given payload.
+    fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>, Error>;
+    /// Decodoes the given payload.
+    fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload, Error>;
+}
 
 /// Options to configure the [JsonWebToken] codec.
 pub struct JsonWebTokenOptions {

@@ -3,6 +3,7 @@
 mod basic_passport;
 
 pub use self::basic_passport::BasicPassport;
+use crate::Error;
 use crate::roles::RoleHierarchy;
 use serde::{Serialize, de::DeserializeOwned};
 use std::collections::HashSet;
@@ -27,4 +28,23 @@ pub trait Passport {
 
     /// Returns the groups this passport belongs to.
     fn groups(&self) -> &HashSet<Self::Group>;
+}
+
+/// A passport storage service contains a collection of passports that are
+/// known to your application.
+///
+/// This is explicitly separated from the authentication mechanism used in [CredentialsVerifierService] to enable [Passport] sharing over the wire without
+/// transferring the secret that authenticates the user.
+///
+/// `ID` is the unique identifier type for a [Passport].
+pub trait PassportStorageService<P>
+where
+    P: Passport + Clone,
+{
+    /// Returns the passport for the given `passport_id`.
+    fn passport(&self, passport_id: &P::Id) -> impl Future<Output = Result<Option<P>, Error>>;
+    /// Stores the given passport in the register returning its ID for further usage.
+    fn store_passport(&mut self, passport: P) -> impl Future<Output = Result<P::Id, Error>>;
+    /// Removes the passport with the given `passport_id`.
+    fn remove_passport(&self, passport_id: &P::Id) -> impl Future<Output = Result<bool, Error>>;
 }

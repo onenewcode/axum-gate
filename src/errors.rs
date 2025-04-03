@@ -16,4 +16,7 @@ pub enum Error {
     /// [hashing](crate::hashing) operation.
     #[error("Hashing error: {0}")]
     Hashing(String),
+    /// This error occurs in combination with authentication.
+    #[error("Authentication error: {0}")]
+    Authentication(String),
 }

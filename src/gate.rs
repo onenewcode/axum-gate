@@ -1,24 +1,19 @@
 //! Implementation for [axum]
-use crate::{
-    claims::JwtClaims,
-    codecs::{JsonWebToken, JsonWebTokenOptions},
-    passport::{BasicPassport, Passport},
-    roles::RoleHierarchy,
-    services::CodecService,
-};
-use axum::{BoxError, body::Body, extract::Request, http::Response};
+use crate::claims::JwtClaims;
+use crate::codecs::CodecService;
+use crate::passport::Passport;
+use crate::roles::RoleHierarchy;
+use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
 use pin_project::pin_project;
-use std::marker::PhantomData;
 use std::{
     convert::Infallible,
-    fmt::Display,
     future::{Future, Ready, ready},
     pin::Pin,
     task::Poll,
 };
-use tower::{Layer, Service, ServiceBuilder};
+use tower::{Layer, Service};
 use tracing::{debug, error, trace};
 
 /// The gate is protecting your application from unauthorized access.
@@ -264,57 +259,3 @@ where
         }
     }
 }
-
-/*
-impl<S, R> Default for Gate<S, R>
-where
-    R: Default + RoleHierarchy,
-{
-    fn default() -> Self {
-        Self {
-            required_role: R::default(),
-            allow_supervisor_access: false,
-        }
-    }
-} */
-
-/*
-impl<R, S> Layer<S> for Gate<S, R>
-where
-    R: Default + RoleHierarchy,
-{
-    type Service = GateService<S>;
-
-    fn layer(&self, inner: S) -> Self::Service {
-        Self::Service { inner }
-    }
-}
-
-/// Service implementation of a [Gate].
-pub struct GateService<S> {
-    inner: S,
-}
-
-impl<S> Service<Request> for GateService<S>
-where
-    S: Service<Request> + Clone + Send + 'static,
-    S::Future: Send + 'static,
-{
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = Pin<
-        Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>,
-    >;
-    fn poll_ready(
-        &mut self,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Result<(), Self::Error>> {
-        self.inner.poll_ready(cx)
-    }
-    fn call(&mut self, req: Request) -> Self::Future {
-        let clone = self.inner.clone();
-        let mut inner = std::mem::replace(&mut self.inner, clone);
-        Box::pin(async move { Ok(inner.call(req).await?) })
-    }
-}
- */

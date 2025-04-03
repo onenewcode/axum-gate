@@ -14,11 +14,10 @@ pub mod codecs;
 pub mod credentials;
 mod errors;
 pub mod gate;
-pub mod hashing;
 pub mod passport;
 pub mod roles;
 pub mod route_handlers;
-pub mod services;
+pub mod secrets;
 pub mod storage;
 
 pub use errors::Error;

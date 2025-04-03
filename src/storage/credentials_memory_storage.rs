@@ -1,10 +1,6 @@
 use crate::Error;
-use crate::services::CredentialsVerifierService;
-use crate::{
-    credentials::Credentials,
-    services::{CredentialsStorageService, SecretsHashingService},
-};
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use crate::credentials::{Credentials, CredentialsStorageService, CredentialsVerifierService};
+use crate::secrets::SecretsHashingService;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -15,24 +11,19 @@ use tokio::sync::RwLock;
 /// For simplicity, this storage does implement both [CredentialsStorageService] as well as [CredentialsVerifierService].
 /// # Create and use a credential storage for authentication
 /// ```rust
-/// # use axum_gate::credentials::Credentials<Id, Secret>;
-/// # use axum_gate::credentials::Credentials<Id, Secret>;
+/// # tokio_test::block_on(async move {
+/// # use axum_gate::credentials::{Credentials, CredentialsVerifierService};
+/// # use axum_gate::secrets::Argon2Hasher;
 /// # use axum_gate::storage::CredentialsMemoryStorage;
-/// # use axum_gate::services::CredentialsVerifierService;
+/// let hasher = Argon2Hasher::default();
 /// // Lets assume the user id is an email address and the user has a gooood password.
-/// let creds = Credentials<Id, Secret>::new("admin@example.com", "admin_password");
+/// let creds = Credentials::new_with_hasher("admin@example.com", "admin_password".as_bytes(), &hasher).unwrap();
 /// // In order to enable user verification we need to store a hashed version in our pre-defined
 /// // memory storage.
-/// let hashed_creds = Credentials<Id, Secret>::new_argon2(&creds.id, &creds.secret).unwrap();
-/// let creds_storage = CredentialsMemoryStorage::from(vec![hashed_creds.clone()]);
-/// # let creds_storage_1 = creds_storage.clone();
-/// # tokio_test::block_on(async move {
-/// # let creds_storage = creds_storage_1;
-/// assert_eq!(true, creds_storage.verify_credentials(&hashed_creds).await.unwrap());
-/// # });
-/// let hashed_creds = Credentials<Id, Secret>::new_argon2(&"admin@example.com", &"crazysecret").unwrap();
-/// # tokio_test::block_on(async move {
-/// assert_eq!(false, creds_storage.verify_credentials(&hashed_creds).await.unwrap());
+/// let creds_storage = CredentialsMemoryStorage::from(vec![creds.clone()]);
+/// assert_eq!(true, creds_storage.verify_credentials(&creds, &hasher).await.unwrap());
+/// let false_creds = Credentials::new_with_hasher("admin@example.com", "crazysecret".as_bytes(), &hasher).unwrap();
+/// assert_eq!(false, creds_storage.verify_credentials(&false_creds, &hasher).await.unwrap());
 /// # });
 /// ```
 #[derive(Clone)]
