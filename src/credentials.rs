@@ -21,43 +21,14 @@ impl<Id, Secret> Credentials<Id, Secret> {
     }
 }
 
-/// Defines credentials for a simple login based on an `id` and a `secret`.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct HashedCredentials {
-    /// The identification of the user, eg. a username.
-    pub id: Vec<u8>,
-    /// The secret of the user, eg. a password.
-    pub secret: Vec<u8>,
-}
-
-impl HashedCredentials {
-    /// Creates hashed credentials using [Argon2Hasher].
-    pub fn new_argon2<Id, Secret>(id: &Id, secret: &Secret) -> Result<Self, Error>
-    where
-        Id: Into<Vec<u8>> + Clone,
-        Secret: Into<Vec<u8>> + Clone,
-    {
-        let hasher = Argon2Hasher::default();
-        let id: Id = (*id).clone();
-        let id = hasher.hash_secret(&id.into())?;
-        let secret: Secret = (*secret).clone();
-        let secret = hasher.hash_secret(&secret.into())?;
-        Ok(Self { id, secret })
-    }
-
-    /// Creates hashed credentials using the given hasher.
-    pub fn new_with_hasher<Id, Secret, Hasher>(
-        id: Id,
-        secret: Secret,
-        hasher: &Hasher,
-    ) -> Result<Self, Error>
+impl<Id> Credentials<Id, Vec<u8>> {
+    /// Creates credentials using the given hasher.
+    pub fn new_with_hasher<Hasher>(id: Id, secret: &[u8], hasher: &Hasher) -> Result<Self, Error>
     where
         Id: Into<Vec<u8>>,
-        Secret: Into<Vec<u8>>,
         Hasher: SecretsHashingService,
     {
-        let id = hasher.hash_secret(&id.into())?;
-        let secret = hasher.hash_secret(&secret.into())?;
+        let secret = hasher.hash_secret(secret)?;
         Ok(Self { id, secret })
     }
 }

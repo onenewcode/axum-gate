@@ -1,8 +1,9 @@
 //! Different services available within `axum-gate`.
 use crate::Error;
-use crate::credentials::{Credentials, HashedCredentials};
+use crate::credentials::Credentials;
 use crate::passport::Passport;
 use serde::{Serialize, de::DeserializeOwned};
+use std::hash::Hash;
 
 /// Methods for encoding and decoding payload.
 pub trait CodecService
@@ -29,17 +30,15 @@ where
 /// # Why not integrated into [CredentialsStorageService]?
 ///
 /// See documentation of [CredentialsStorageService].
-pub trait CredentialsVerifierService {
+pub trait CredentialsVerifierService<Id, Secret> {
     /// Returns `true` if the given secret matches the one in your secret storage.
-    fn verify_credentials<Id, Secret, Hasher>(
+    fn verify_credentials<Hasher>(
         &self,
         credentials: &Credentials<Id, Secret>,
-        hasher: Hasher,
+        hasher: &Hasher,
     ) -> impl Future<Output = Result<bool, Error>>
     where
-        Hasher: SecretsHashingService,
-        Id: std::hash::Hash + Eq,
-        Secret: std::hash::Hash + Eq;
+        Hasher: SecretsHashingService;
 }
 
 /// Responsible for the storage of credentials.
@@ -52,25 +51,25 @@ pub trait CredentialsVerifierService {
 /// Verification of the credentials has been outsourced to [CredentialsVerifierService] in order to
 /// separate their concerns. A verification service does not necessarily require the
 /// functionality of storing/updating/removing them.
-pub trait CredentialsStorageService {
+pub trait CredentialsStorageService<Id, Secret> {
     /// Stores the credentials. Returns `true` on success, `false` if the [Credentials::id]
     /// already exists.
     fn store_credentials(
         &self,
-        credentials: HashedCredentials,
+        credentials: Credentials<Id, Secret>,
     ) -> impl Future<Output = Result<bool, Error>>;
 
     /// Updates the credentials.
     fn update_credentials(
         &self,
-        credentials: HashedCredentials,
+        credentials: Credentials<Id, Secret>,
     ) -> impl Future<Output = Result<(), Error>>;
 
     /// Removed the credentials. Returns `true` on success, `false` if the [Credentials::id]
     /// does NOT exists.
     fn remove_credentials(
         &self,
-        credentials: HashedCredentials,
+        credentials: Credentials<Id, Secret>,
     ) -> impl Future<Output = Result<bool, Error>>;
 }
 
@@ -78,7 +77,8 @@ pub trait CredentialsStorageService {
 pub trait SecretsHashingService {
     /// Hashes the given plain value.
     fn hash_secret(&self, plain_value: &[u8]) -> Result<Vec<u8>, Error>;
-    /// Compares the plain text to the hashed value, returns `true` if equal.
+    /// Verifies that `plain_value` matches the `hashed_value` by using the implementors hashing,
+    /// function. Returns `true` if equal.
     fn verify_secret(&self, plain_value: &[u8], hashed_value: &[u8]) -> Result<bool, Error>;
 }
 

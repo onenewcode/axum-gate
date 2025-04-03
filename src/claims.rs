@@ -1,4 +1,5 @@
 //! Payloads that can be used in combination with `axum-gate`.
+use chrono::{TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::HashSet;
@@ -33,12 +34,13 @@ pub struct RegisteredClaims {
 }
 
 impl Default for RegisteredClaims {
+    /// Initializes the claims with `expiration_time` set to 1 week.
     fn default() -> Self {
         Self {
             issuer: None,
             subject: None,
             audience: None,
-            expiration_time: None,
+            expiration_time: Some((Utc::now() + TimeDelta::weeks(1)).timestamp() as u64),
             not_before_time: None,
             issued_at_time: None,
             jwt_id: None,

@@ -2,16 +2,22 @@ use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use axum_gate::claims::RegisteredClaims;
 use axum_gate::codecs::JsonWebToken;
-use axum_gate::credentials::{Credentials, HashedCredentials};
+use axum_gate::credentials::Credentials;
+use axum_gate::gate::Gate;
 use axum_gate::hashing::Argon2Hasher;
 use axum_gate::passport::BasicPassport;
 use axum_gate::roles::BasicRole;
 use axum_gate::storage::{CredentialsMemoryStorage, PassportMemoryStorage};
 use std::sync::Arc;
+use tracing::debug;
 use tracing_subscriber::prelude::*;
 
 async fn index() -> Result<String, ()> {
     Ok("Hello axum!".to_string())
+}
+
+async fn user() -> Result<String, ()> {
+    Ok(format!("Hello user!"))
 }
 
 async fn admin() -> Result<String, ()> {
@@ -24,19 +30,25 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let creds = Credentials::new("admin@example.com", "admin_password");
     let hasher = Arc::new(Argon2Hasher::default());
-    let hashed_creds =
-        HashedCredentials::new_with_hasher(creds.id, creds.secret, &*hasher).unwrap();
-    let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![hashed_creds.clone()]));
+    let creds = Credentials::new_with_hasher(
+        "admin@example.com".to_string(),
+        "admin_password".to_string().as_bytes(),
+        &*hasher,
+    )
+    .unwrap();
+    let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![creds.clone()]));
 
-    let passport = BasicPassport::new(creds.id, &["admin"], &[BasicRole::Admin])
+    let passport = BasicPassport::new(&creds.id, &["admin"], &[BasicRole::Admin])
         .expect("Creating passport failed.");
     let passport_storage = Arc::new(PassportMemoryStorage::from(vec![passport]));
     let jwt_codec = Arc::new(JsonWebToken::default());
 
     let app = Router::new()
         .route("/admin", get(admin))
+        .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Admin))
+        .route("/user", get(user))
+        .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Admin))
         .route(
             "/login",
             post({
@@ -58,6 +70,7 @@ async fn main() {
                 }
             }),
         )
+        .route("/logout", get(axum_gate::route_handlers::logout))
         .route("/", get(index));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

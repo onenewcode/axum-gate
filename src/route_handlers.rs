@@ -1,6 +1,6 @@
 //! Route handler for [axum].
 use crate::claims::{JwtClaims, RegisteredClaims};
-use crate::credentials::{Credentials, HashedCredentials};
+use crate::credentials::Credentials;
 use crate::passport::Passport;
 use crate::services::{
     CodecService, CredentialsVerifierService, PassportStorageService, SecretsHashingService,
@@ -25,26 +25,18 @@ pub async fn login<Secret, CredVeri, PpStore, Pp, Hasher, Codec>(
 where
     Pp::Id: Into<Vec<u8>> + Clone + Display + std::fmt::Debug,
     Secret: Into<Vec<u8>> + std::fmt::Debug,
-    CredVeri: CredentialsVerifierService,
+    CredVeri: CredentialsVerifierService<Pp::Id, Vec<u8>>,
     PpStore: PassportStorageService<Pp>,
     Pp: Passport + Clone,
     Hasher: SecretsHashingService,
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
     let creds = request_credentials.0;
-    debug!("{creds:#?}");
-    let hashed_creds = match HashedCredentials::new_with_hasher(
-        creds.id.clone(),
-        creds.secret,
-        &*credentials_hasher,
-    ) {
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(c) => c,
-    };
-    match credentials_verifier.verify_credentials(&hashed_creds).await {
+    let creds_to_verify = Credentials::new(creds.id.clone(), creds.secret.into());
+    match credentials_verifier
+        .verify_credentials(&creds_to_verify, &*credentials_hasher)
+        .await
+    {
         Ok(true) => (),
         Ok(false) => {
             debug!("Hashed creds do not match.");
@@ -79,7 +71,7 @@ where
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
-    let json_string = match serde_json::to_string(&jwt) {
+    let json_string = match serde_json::to_string(&String::from_utf8(jwt).unwrap()) {
         Err(e) => {
             error!("{e}");
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -88,4 +80,9 @@ where
     };
     let cookie = Cookie::new("axum-gate", json_string);
     Ok(cookie_jar.add(cookie))
+}
+
+/// Removes the cookie that authenticates a user.
+pub async fn logout(cookie_jar: CookieJar) -> CookieJar {
+    cookie_jar.remove(Cookie::from("axum-gate"))
 }

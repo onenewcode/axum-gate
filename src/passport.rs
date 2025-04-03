@@ -5,11 +5,12 @@ mod basic_passport;
 pub use self::basic_passport::BasicPassport;
 use serde::{Serialize, de::DeserializeOwned};
 use std::collections::HashSet;
+use std::fmt::Display;
 
 /// A passport contains basic information about a user that can be used for authorization.
 pub trait Passport {
     /// The unique identifier type of the passport.
-    type Id;
+    type Id: Display;
     /// Roles that this passport belongs to. Serde is required to store them
     /// in JWT.
     type Role: Serialize + DeserializeOwned;

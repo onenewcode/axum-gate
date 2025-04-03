@@ -1,9 +1,16 @@
 //! Implementation for [axum]
-use crate::roles::RoleHierarchy;
+use crate::{
+    claims::JwtClaims,
+    codecs::{JsonWebToken, JsonWebTokenOptions},
+    passport::{BasicPassport, Passport},
+    roles::RoleHierarchy,
+    services::CodecService,
+};
 use axum::{BoxError, body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
 use pin_project::pin_project;
+use std::marker::PhantomData;
 use std::{
     convert::Infallible,
     fmt::Display,
@@ -16,23 +23,29 @@ use tracing::{debug, error, trace};
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Clone)]
-pub struct Gate<R>
+pub struct Gate<R, Pp, Codec>
 where
     R: Default + RoleHierarchy,
+    Codec: CodecService,
 {
     required_role: R,
     allow_supervisor_access: bool,
+    codec: Codec,
+    phantom_data: PhantomData<Pp>,
 }
 
-impl<R> Gate<R>
+impl<R, Pp, Codec> Gate<R, Pp, Codec>
 where
     R: Default + RoleHierarchy,
+    Codec: CodecService,
 {
     /// Creates a new instance of a gate.
-    pub fn new() -> Self {
+    pub fn new(codec: Codec) -> Self {
         Self {
             required_role: R::default(),
             allow_supervisor_access: false,
+            codec,
+            phantom_data: PhantomData,
         }
     }
     /// Configures the [Gate] so that only users that are logged in and have
@@ -52,58 +65,68 @@ where
     }
 }
 
-impl<R, S> Layer<S> for Gate<R>
+impl<R, Pp, Codec, S> Layer<S> for Gate<R, Pp, Codec>
 where
     R: Default + RoleHierarchy,
+    Codec: CodecService,
 {
-    type Service = GateService<S, R>;
+    type Service = GateService<R, Pp, Codec, S>;
 
     fn layer(&self, inner: S) -> Self::Service {
         Self::Service {
             inner,
             required_role: self.required_role,
             allow_supervisor_access: self.allow_supervisor_access,
+            codec: self.codec.clone(),
+            phantom_data: PhantomData,
         }
     }
 }
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Debug, Clone)]
-pub struct GateService<S, R>
+pub struct GateService<R, Pp, Codec, S>
 where
     R: Default + RoleHierarchy,
+    Codec: CodecService,
 {
     inner: S,
     required_role: R,
     allow_supervisor_access: bool,
+    codec: Codec,
+    phantom_data: PhantomData<Pp>,
 }
 
-impl<S, R> GateService<S, R>
+impl<R, Pp, Codec, S> GateService<R, Pp, Codec, S>
 where
     R: Default + RoleHierarchy,
+    Codec: CodecService,
 {
     /// Creates a new instance of a gate.
-    pub fn new(inner: S) -> Self {
+    pub fn new(inner: S, codec: Codec) -> Self {
         Self {
             inner,
             required_role: R::default(),
             allow_supervisor_access: false,
+            codec,
+            phantom_data: PhantomData,
         }
     }
 }
 
-impl<S, R> GateService<S, R>
+impl<R, Pp, Codec, S> GateService<R, Pp, Codec, S>
 where
     R: Default + RoleHierarchy,
+    Codec: CodecService,
 {
-    /// Queries the cosmodrome auth cookie from the request.
+    /// Queries the axum-gate auth cookie from the request.
     pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie> {
         let cookie_jar = CookieJar::from_headers(req.headers());
-        cookie_jar.get("cosmodrome").cloned()
+        cookie_jar.get("axum-gate").cloned()
     }
 }
 
-impl<S, R> Service<Request<Body>> for GateService<S, R>
+impl<R, Pp, Codec, S> Service<Request<Body>> for GateService<R, Pp, Codec, S>
 where
     S: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
         + Clone
@@ -112,6 +135,8 @@ where
     S::Error: Into<Infallible>,
     S::Future: Send + 'static,
     R: Default + RoleHierarchy,
+    Pp: Passport,
+    Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
     type Response = Response<Body>;
     type Error = Infallible;
@@ -125,10 +150,19 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let Some(cosmo) = self.auth_cookie(&req) else {
+        let Some(auth_cookie) = self.auth_cookie(&req) else {
             return AuthFuture::unauthorized();
         };
-        trace!("Cosmodrome cookie: {cosmo:#?}");
+        trace!("axum-gate cookie: {auth_cookie:#?}");
+        let cookie_value = auth_cookie.value_trimmed();
+        let jwt = match self.codec.decode(cookie_value.as_bytes()) {
+            Err(e) => {
+                debug!("Could not decode cookie value: {e}");
+                return AuthFuture::unauthorized();
+            }
+            Ok(j) => j,
+        };
+        debug!("{}", jwt.custom_claims.id());
         AuthFuture::authorized(self.inner.call(req))
     }
 }
