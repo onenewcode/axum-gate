@@ -1,3 +1,4 @@
+use axum::extract::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use axum_gate::claims::RegisteredClaims;
@@ -9,19 +10,30 @@ use axum_gate::passport::BasicPassport;
 use axum_gate::roles::BasicRole;
 use axum_gate::storage::{CredentialsMemoryStorage, PassportMemoryStorage};
 use std::sync::Arc;
-use tracing::debug;
-use tracing_subscriber::prelude::*;
 
 async fn index() -> Result<String, ()> {
     Ok("Hello axum!".to_string())
 }
 
-async fn user() -> Result<String, ()> {
-    Ok(format!("Hello user!"))
+async fn reporter(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {}, your roles are {:?} and you are member of groups {:?}!",
+        user.id, user.roles, user.groups
+    ))
 }
 
-async fn admin() -> Result<String, ()> {
-    Ok("Hello admin!".to_string())
+async fn user(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {}, your roles are {:?} and you are member of groups {:?}!",
+        user.id, user.roles, user.groups
+    ))
+}
+
+async fn admin(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {}, your roles are {:?} and you are member of groups {:?}!",
+        user.id, user.roles, user.groups
+    ))
 }
 
 #[tokio::main]
@@ -37,18 +49,47 @@ async fn main() {
         &*hasher,
     )
     .unwrap();
-    let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![creds.clone()]));
+    let reporter_creds = Credentials::new_with_hasher(
+        "reporter@example.com".to_string(),
+        "reporter_password".to_string().as_bytes(),
+        &*hasher,
+    )
+    .unwrap();
+    let user_creds = Credentials::new_with_hasher(
+        "user@example.com".to_string(),
+        "user_password".to_string().as_bytes(),
+        &*hasher,
+    )
+    .unwrap();
+    let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![
+        creds.clone(),
+        user_creds.clone(),
+        reporter_creds.clone(),
+    ]));
 
-    let passport = BasicPassport::new(&creds.id, &["admin"], &[BasicRole::Admin])
+    let admin_passport = BasicPassport::new(&creds.id, &["admin"], &[BasicRole::Admin])
         .expect("Creating passport failed.");
-    let passport_storage = Arc::new(PassportMemoryStorage::from(vec![passport]));
+    let reporter_passport =
+        BasicPassport::new(&reporter_creds.id, &["reporter"], &[BasicRole::Reporter])
+            .expect("Creating passport failed.");
+    let user_passport = BasicPassport::new(&user_creds.id, &["user"], &[BasicRole::User])
+        .expect("Creating passport failed.");
+    let passport_storage = Arc::new(PassportMemoryStorage::from(vec![
+        admin_passport,
+        user_passport,
+        reporter_passport,
+    ]));
     let jwt_codec = Arc::new(JsonWebToken::default());
 
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Admin))
-        .route("/user", get(user))
-        .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Admin))
+        .route("/reporter", get(reporter))
+        .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Reporter))
+        .route(
+            "/user",
+            get(user).layer(Gate::new((*jwt_codec).clone()).with_role(BasicRole::User)),
+        )
         .route(
             "/login",
             post({
