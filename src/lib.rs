@@ -4,7 +4,7 @@
 //!
 //! These examples aim to give you a basic overview about the possibilities that [axum-gate](crate) offers.
 //!
-//! ## Required preparations to protect your application
+//! ## Prerequisites to protect your application
 //!
 //! To protect your application with `axum-gate` you need to use storages that implement
 //! [CredentialsStorageService](crate::storage::CredentialsStorageService) and
@@ -52,13 +52,78 @@
 //!
 //! ## Protecting your application
 //!
-//! The actual protection of your application is pretty simple.
+//! The actual protection of your application is pretty simple. All possibilities presented below
+//! can also be combined so you are not limited to choosing one.
 //!
-//! You have two options:
-//! 1. Limit access a specific role,
-//! 2. Enable access to a specific role and all its
-//! [subordinates](crate::roles::AccessHierarchy::subordinate), or
-//! 3. Limit access to a specific group.
+//! ### Limit access to a specific role
+//!
+//! You can limit the access of a route to a specific role.
+//!
+//! ```
+//! # use axum::routing::{Router, get};
+//! # use axum_gate::Gate;
+//! # use axum_gate::roles::BasicRole;
+//! # use axum_gate::passport::BasicPassport;
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use std::sync::Arc;
+//! # async fn admin() -> () {}
+//! # let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+//! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
+//! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+//!     .route(
+//!         "/admin",
+//!         // Please note, that the layer is applied directly to the route handler.
+//!         get(admin).layer(
+//!             Gate::new(Arc::clone(&jwt_codec)).with_role(BasicRole::Admin)
+//!         )
+//!     );
+//! ```
+//!
+//! ### Grant access to a specific role and all its supervisors
+//!
+//! You can limit the access of a route to a specific role but opening it to all supervisor of this
+//! role.
+//!
+//! ```
+//! # use axum::routing::{Router, get};
+//! # use axum_gate::Gate;
+//! # use axum_gate::roles::BasicRole;
+//! # use axum_gate::passport::BasicPassport;
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use std::sync::Arc;
+//! # async fn user() -> () {}
+//! # let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+//! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
+//! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+//!     .route("/user", get(user))
+//!     // In contrast to granting access to user only, this layer is applied to the route.
+//!     .layer(
+//!         Gate::new(Arc::clone(&jwt_codec)).with_minimum_role(BasicRole::User)
+//!     );
+//! ```
+//!
+//! ### Grant access to a group of users
+//!
+//! You can limit the access of a route to a specific group.
+//!
+//! ```
+//! # use axum::routing::{Router, get};
+//! # use axum_gate::Gate;
+//! # use axum_gate::passport::BasicPassport;
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use std::sync::Arc;
+//! # async fn group_handler() -> () {}
+//! # let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+//! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
+//! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+//!     .route(
+//!         "/group-scope",
+//!         // Please note, that the layer is applied directly to the route handler.
+//!         get(group_handler).layer(
+//!             Gate::new(Arc::clone(&jwt_codec)).with_group("my-group".to_string())
+//!         )
+//!     );
+//! ```
 //!
 //! ## Using `Passport` details in your route handler
 //!
@@ -91,7 +156,7 @@ mod access_hierarchy;
 pub mod codecs;
 pub mod credentials;
 mod errors;
-pub mod gate;
+mod gate;
 pub mod jwt;
 pub mod passport;
 pub mod roles;
@@ -101,4 +166,5 @@ pub mod storage;
 
 pub use access_hierarchy::AccessHierarchy;
 pub use errors::Error;
+pub use gate::Gate;
 pub use jsonwebtoken;

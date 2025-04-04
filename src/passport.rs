@@ -17,7 +17,7 @@ pub trait Passport {
     type Role: Debug + Default + Eq + AccessHierarchy + Serialize + DeserializeOwned;
     /// The groups that this passport belongs to. Serde is required to store them
     /// in JWT.
-    type Group: Eq + Serialize + DeserializeOwned;
+    type Group: Debug + Eq + Serialize + DeserializeOwned;
 
     /// Returns the unique identifier of the passport.
     fn id(&self) -> &Self::Id;

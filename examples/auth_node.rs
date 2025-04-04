@@ -1,8 +1,8 @@
 use axum::extract::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
+use axum_gate::Gate;
 use axum_gate::credentials::Credentials;
-use axum_gate::gate::Gate;
 use axum_gate::jwt::JsonWebToken;
 use axum_gate::jwt::RegisteredClaims;
 use axum_gate::passport::BasicPassport;
@@ -83,12 +83,12 @@ async fn main() {
 
     let app = Router::new()
         .route("/admin", get(admin))
-        .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Admin))
+        .layer(Gate::new(Arc::clone(&jwt_codec)).with_minimum_role(BasicRole::Admin))
         .route("/reporter", get(reporter))
-        .layer(Gate::new((*jwt_codec).clone()).with_minimum_role(BasicRole::Reporter))
+        .layer(Gate::new(Arc::clone(&jwt_codec)).with_minimum_role(BasicRole::Reporter))
         .route(
             "/user",
-            get(user).layer(Gate::new((*jwt_codec).clone()).with_role(BasicRole::User)),
+            get(user).layer(Gate::new(Arc::clone(&jwt_codec)).with_role(BasicRole::User)),
         )
         .route(
             "/login",

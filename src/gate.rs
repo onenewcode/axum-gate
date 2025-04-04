@@ -10,6 +10,7 @@ use pin_project::pin_project;
 use std::convert::Infallible;
 use std::future::{Future, Ready, ready};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::Poll;
 use tower::{Layer, Service};
 use tracing::{debug, error, trace};
@@ -22,8 +23,9 @@ where
     Pp: Passport,
 {
     required_role: Pp::Role,
+    required_group: Option<Pp::Group>,
     allow_supervisor_access: bool,
-    codec: Codec,
+    codec: Arc<Codec>,
 }
 
 impl<Pp, Codec> Gate<Pp, Codec>
@@ -32,9 +34,10 @@ where
     Pp: Passport,
 {
     /// Creates a new instance of a gate.
-    pub fn new(codec: Codec) -> Self {
+    pub fn new(codec: Arc<Codec>) -> Self {
         Self {
             required_role: Pp::Role::default(),
+            required_group: None,
             allow_supervisor_access: false,
             codec,
         }
@@ -54,12 +57,20 @@ where
         self.allow_supervisor_access = true;
         self
     }
+
+    /// Configures the [Gate] so that only users that are logged in and are
+    /// member of the given groupe are granted access.
+    pub fn with_group(mut self, group: Pp::Group) -> Self {
+        self.required_group = Some(group);
+        self
+    }
 }
 
 impl<Pp, Codec, S> Layer<S> for Gate<Pp, Codec>
 where
     Codec: CodecService,
     Pp: Passport,
+    Pp::Group: Clone,
 {
     type Service = GateService<Pp, Codec, S>;
 
@@ -67,8 +78,9 @@ where
         Self::Service {
             inner,
             required_role: self.required_role,
+            required_group: self.required_group.clone(),
             allow_supervisor_access: self.allow_supervisor_access,
-            codec: self.codec.clone(),
+            codec: Arc::clone(&self.codec),
         }
     }
 }
@@ -82,8 +94,9 @@ where
 {
     inner: S,
     required_role: Pp::Role,
+    required_group: Option<Pp::Group>,
     allow_supervisor_access: bool,
-    codec: Codec,
+    codec: Arc<Codec>,
 }
 
 impl<Pp, Codec, S> GateService<Pp, Codec, S>
@@ -92,10 +105,11 @@ where
     Pp: Passport,
 {
     /// Creates a new instance of a gate.
-    pub fn new(inner: S, codec: Codec) -> Self {
+    pub fn new(inner: S, codec: Arc<Codec>) -> Self {
         Self {
             inner,
             required_role: Pp::Role::default(),
+            required_group: None,
             allow_supervisor_access: false,
             codec,
         }
@@ -132,6 +146,21 @@ where
             }
             false
         })
+    }
+
+    fn authorized_by_group(&self, passport: &Pp) -> bool {
+        if passport.groups().iter().any(|r| {
+            let Some(ref g) = self.required_group else {
+                return false;
+            };
+            r.eq(g)
+        }) {
+            debug!(
+                "The logged in user is a member of the required group. The user is always authorized for access. In this case."
+            );
+            return true;
+        };
+        false
     }
 }
 
@@ -184,7 +213,8 @@ where
         };
         debug!("Logged in with id: {}", jwt.custom_claims.id());
 
-        if self.authorized_by_role(&jwt.custom_claims) {
+        let passport = &jwt.custom_claims;
+        if self.authorized_by_role(passport) || self.authorized_by_group(passport) {
             req.extensions_mut().insert(jwt.custom_claims);
             req.extensions_mut().insert(jwt.registered_claims);
             return AuthFuture::authorized(self.inner.call(req));
