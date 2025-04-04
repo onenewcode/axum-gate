@@ -178,7 +178,6 @@ dependencies = [
  "tokio-test",
  "tower",
  "tracing",
- "tracing-attributes",
  "tracing-subscriber",
 ]
 
