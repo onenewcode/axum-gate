@@ -87,6 +87,7 @@
 //! authentication can be found at [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
 #![deny(missing_docs)]
 
+mod access_hierarchy;
 pub mod codecs;
 pub mod credentials;
 mod errors;
@@ -98,5 +99,6 @@ pub mod route_handlers;
 pub mod secrets;
 pub mod storage;
 
+pub use access_hierarchy::AccessHierarchy;
 pub use errors::Error;
 pub use jsonwebtoken;

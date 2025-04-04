@@ -2,7 +2,7 @@
 use crate::codecs::CodecService;
 use crate::jwt::JwtClaims;
 use crate::passport::Passport;
-use crate::roles::RoleHierarchy;
+use crate::roles::AccessHierarchy;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
@@ -47,7 +47,7 @@ where
     }
 
     /// Configures the [Gate] so that users that are logged in and have
-    /// the given role, or all [supervisor](RoleHierarchy::supervisor)
+    /// the given role, or all [supervisor](AccessHierarchy::supervisor)
     /// roles are granted access.
     pub fn with_minimum_role(mut self, role: Pp::Role) -> Self {
         self.required_role = role;
@@ -186,6 +186,7 @@ where
 
         if self.authorized_by_role(&jwt.custom_claims) {
             req.extensions_mut().insert(jwt.custom_claims);
+            req.extensions_mut().insert(jwt.registered_claims);
             return AuthFuture::authorized(self.inner.call(req));
         }
         AuthFuture::unauthorized()

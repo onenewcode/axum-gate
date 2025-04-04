@@ -3,7 +3,7 @@
 mod basic_passport;
 
 pub use self::basic_passport::BasicPassport;
-use crate::roles::RoleHierarchy;
+use crate::roles::AccessHierarchy;
 use serde::{Serialize, de::DeserializeOwned};
 use std::collections::HashSet;
 use std::fmt::{Debug, Display};
@@ -14,7 +14,7 @@ pub trait Passport {
     type Id: Display;
     /// Roles that this passport belongs to. Serde is required to store them
     /// in JWT.
-    type Role: Debug + Default + Eq + RoleHierarchy + Serialize + DeserializeOwned;
+    type Role: Debug + Default + Eq + AccessHierarchy + Serialize + DeserializeOwned;
     /// The groups that this passport belongs to. Serde is required to store them
     /// in JWT.
     type Group: Eq + Serialize + DeserializeOwned;

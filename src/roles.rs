@@ -1,8 +1,6 @@
 //! Default implementation of roles and their relation.
 
-mod role_hierarchy;
-
-pub use self::role_hierarchy::RoleHierarchy;
+pub use crate::AccessHierarchy;
 use serde::{Deserialize, Serialize};
 
 /// Available default roles.
@@ -26,7 +24,7 @@ impl Default for BasicRole {
     }
 }
 
-impl RoleHierarchy for BasicRole {
+impl AccessHierarchy for BasicRole {
     fn subordinate(&self) -> Option<Self> {
         match self {
             Self::Admin => Some(Self::Moderator),
