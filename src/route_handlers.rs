@@ -2,8 +2,9 @@
 use crate::codecs::CodecService;
 use crate::credentials::{Credentials, CredentialsVerifierService};
 use crate::jwt::{JwtClaims, RegisteredClaims};
-use crate::passport::{Passport, PassportStorageService};
+use crate::passport::Passport;
 use crate::secrets::SecretsHashingService;
+use crate::storage::PassportStorageService;
 use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::cookie::{Cookie, CookieJar};

@@ -5,15 +5,15 @@ pub enum Error {
     #[error("Passport error: {0}")]
     Passport(String),
     /// This error occurs in combination with a
-    /// [PassportRegister](crate::passport_register::PassportRegister) operation.
-    #[error("PassportRegister error: {0}")]
-    PassportRegister(String),
+    /// [PassportStorageService](crate::storage::PassportStorageService) operation.
+    #[error("PassportStorage error: {0}")]
+    PassportStorage(String),
     /// This error occurs in combination with a
-    /// [CodecService](crate::services::CodecService) operation.
+    /// [CodecService](crate::codecs::CodecService) operation.
     #[error("CodecService error: {0}")]
     Codec(String),
     /// This error occurs in combination with a
-    /// [hashing](crate::hashing) operation.
+    /// [secrets](crate::secrets) operation.
     #[error("Hashing error: {0}")]
     Hashing(String),
     /// This error occurs in combination with authentication.

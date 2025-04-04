@@ -52,7 +52,7 @@ impl Default for RegisteredClaims {
     }
 }
 
-/// Default claims for the use with `axum-gate`s [JsonWebToken](crate::codecs::JsonWebToken) codec.
+/// Default claims for the use with `axum-gate`s [JsonWebToken] codec.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct JwtClaims<CustomClaims> {
     /// The registered claims of a JWT.

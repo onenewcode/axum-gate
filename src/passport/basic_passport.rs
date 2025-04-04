@@ -24,7 +24,7 @@ pub struct BasicPassport {
 }
 
 impl BasicPassport {
-    /// Creates a new passport with [BasicPassport::disabled] and [BasicPassport::confirmed] set to `false`.
+    /// Creates a new passport with [BasicPassport::disabled] and [BasicPassport::email_verified] set to `false`. The [expires_at](BasicPassport::expires_at) is set to 104 weeks.
     pub fn new(id: &str, groups: &[&str], roles: &[BasicRole]) -> Result<Self, Error> {
         Ok(Self {
             id: id.to_string(),

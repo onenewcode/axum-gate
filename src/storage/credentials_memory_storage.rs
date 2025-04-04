@@ -1,6 +1,7 @@
 use crate::Error;
-use crate::credentials::{Credentials, CredentialsStorageService, CredentialsVerifierService};
+use crate::credentials::{Credentials, CredentialsVerifierService};
 use crate::secrets::SecretsHashingService;
+use crate::storage::CredentialsStorageService;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
@@ -106,13 +107,14 @@ where
     }
 }
 
-impl<Id> CredentialsVerifierService<Id, Vec<u8>> for CredentialsMemoryStorage<Id, Vec<u8>>
+impl<Id, Secret> CredentialsVerifierService<Id, Secret> for CredentialsMemoryStorage<Id, Vec<u8>>
 where
     Id: Hash + Eq,
+    Secret: Into<Vec<u8>> + Clone,
 {
     async fn verify_credentials<Hasher>(
         &self,
-        credentials: &Credentials<Id, Vec<u8>>,
+        credentials: &Credentials<Id, Secret>,
         hasher: &Hasher,
     ) -> Result<bool, Error>
     where
@@ -122,7 +124,8 @@ where
         let Some(stored_secret) = read.get(&credentials.id) else {
             return Ok(false);
         };
-        hasher.verify_secret(&credentials.secret, &stored_secret)
+        let secret = credentials.secret.clone();
+        hasher.verify_secret(&secret.into(), &stored_secret)
     }
 }
 
