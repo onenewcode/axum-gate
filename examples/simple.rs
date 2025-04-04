@@ -1,9 +1,9 @@
 use axum::extract::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
-use axum_gate::codecs::JsonWebToken;
 use axum_gate::credentials::Credentials;
 use axum_gate::gate::Gate;
+use axum_gate::jwt::JsonWebToken;
 use axum_gate::jwt::RegisteredClaims;
 use axum_gate::passport::BasicPassport;
 use axum_gate::roles::BasicRole;
@@ -43,23 +43,23 @@ async fn main() {
         .init();
 
     let hasher = Arc::new(Argon2Hasher::default());
-    let creds = Credentials::new_with_hasher(
+    let creds = Credentials::new(
         "admin@example.com".to_string(),
         "admin_password".to_string().as_bytes(),
-        &*hasher,
     )
+    .hash_secret(&*hasher)
     .unwrap();
-    let reporter_creds = Credentials::new_with_hasher(
+    let reporter_creds = Credentials::new(
         "reporter@example.com".to_string(),
         "reporter_password".to_string().as_bytes(),
-        &*hasher,
     )
+    .hash_secret(&*hasher)
     .unwrap();
-    let user_creds = Credentials::new_with_hasher(
+    let user_creds = Credentials::new(
         "user@example.com".to_string(),
         "user_password".to_string().as_bytes(),
-        &*hasher,
     )
+    .hash_secret(&*hasher)
     .unwrap();
     let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![
         creds.clone(),

@@ -17,13 +17,16 @@ use tokio::sync::RwLock;
 /// # use axum_gate::storage::CredentialsMemoryStorage;
 /// let hasher = Argon2Hasher::default();
 /// // Lets assume the user id is an email address and the user has a gooood password.
-/// let creds = Credentials::new_with_hasher("admin@example.com", "admin_password".as_bytes(), &hasher).unwrap();
+/// let creds = Credentials::new("admin@example.com", "admin_password".as_bytes())
+///     .hash_secret(&hasher)
+///     .unwrap();
 /// let creds_to_verify = Credentials::new("admin@example.com", "admin_password".as_bytes().to_vec());
 /// // In order to enable user verification we need to store a hashed version in our pre-defined
 /// // memory storage.
 /// let creds_storage = CredentialsMemoryStorage::from(vec![creds.clone()]);
 /// assert_eq!(true, creds_storage.verify_credentials(&creds_to_verify, &hasher).await.unwrap());
-/// let false_creds = Credentials::new_with_hasher("admin@example.com", "crazysecret".as_bytes(), &hasher).unwrap();
+/// let false_creds = Credentials::new("admin@example.com", "crazysecret".as_bytes())
+///     .hash_secret(&hasher).unwrap();
 /// assert_eq!(false, creds_storage.verify_credentials(&false_creds, &hasher).await.unwrap());
 /// # });
 /// ```
@@ -129,11 +132,11 @@ fn credentials_memory_storage() {
         use crate::secrets::Argon2Hasher;
 
         let hasher = Argon2Hasher::default();
-        let creds = Credentials::new_with_hasher(
+        let creds = Credentials::new(
             "admin@example.com".to_string(),
-            "admin_password".to_string().as_bytes(),
-            &hasher,
+            "admin_password".to_string().as_bytes().to_vec(),
         )
+        .hash_secret(&hasher)
         .unwrap();
         let creds_to_verify = Credentials::new(
             "admin@example.com".to_string(),

@@ -72,16 +72,17 @@ impl<Id, Secret> Credentials<Id, Secret> {
     pub fn new(id: Id, secret: Secret) -> Self {
         Self { id, secret }
     }
-}
 
-impl<Id> Credentials<Id, Vec<u8>> {
-    /// Creates credentials using the given hasher.
-    pub fn new_with_hasher<Hasher>(id: Id, secret: &[u8], hasher: &Hasher) -> Result<Self, Error>
+    /// Hashes the secret with the given [SecretsHashingService].
+    pub fn hash_secret<Hasher>(self, hasher: &Hasher) -> Result<Credentials<Id, Vec<u8>>, Error>
     where
-        Id: Into<Vec<u8>>,
+        Secret: Into<Vec<u8>>,
         Hasher: SecretsHashingService,
     {
-        let secret = hasher.hash_secret(secret)?;
-        Ok(Self { id, secret })
+        let secret = hasher.hash_secret(&self.secret.into())?;
+        Ok(Credentials {
+            id: self.id,
+            secret,
+        })
     }
 }
