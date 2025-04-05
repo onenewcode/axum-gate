@@ -29,6 +29,13 @@ async fn user(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
     ))
 }
 
+async fn admin_group(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+    Ok(format!(
+        "Hi {} and welcome to the secret admin-group site, your roles are {:?} and you are member of groups {:?}!",
+        user.id, user.roles, user.groups
+    ))
+}
+
 async fn admin(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
     Ok(format!(
         "Hello {}, your roles are {:?} and you are member of groups {:?}!",
@@ -84,6 +91,14 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::Admin))
+        .route(
+            "/secret-admin-group",
+            get(admin_group).layer(
+                Gate::new(Arc::clone(&jwt_codec))
+                    // to_string required, because BasicPassport::Group is a String
+                    .grant_group("admin".to_string()),
+            ),
+        )
         .route("/reporter", get(reporter))
         .layer(Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::Reporter))
         .route(
