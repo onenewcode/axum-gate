@@ -30,7 +30,7 @@ where
 
 impl<Role> AccessScope<Role>
 where
-    Role: Eq,
+    Role: AccessHierarchy + Eq + Debug,
 {
     /// Creates a new scope with the given role.
     pub fn new(role: Role) -> Self {
@@ -43,6 +43,27 @@ where
     /// Returns `true` if the given role matches the scope.
     pub fn grants_role(&self, role: &Role) -> bool {
         self.role.eq(role)
+    }
+
+    /// Returns `true` if one of the supervisor of the given role is allowed to access.
+    pub fn grants_supervisor(&self, role: &Role) -> bool {
+        if !self.allow_supervisor_access {
+            debug!("Scope {self:?} does not allow supervisor access.");
+            return false;
+        }
+        debug!(
+            "Checking user role {role:?} if it is a supervisor of the required role {:?}.",
+            self.role
+        );
+        let mut subordinate_traveller_role = role.subordinate();
+        while let Some(ref r) = subordinate_traveller_role {
+            debug!("Logged in Role: {role:?}, Current subordinate to check: {r:?}");
+            if self.grants_role(r) {
+                return true;
+            }
+            subordinate_traveller_role = r.subordinate();
+        }
+        false
     }
 
     /// Allows access to all supervisor of the role of the scope.
@@ -61,7 +82,6 @@ where
 {
     role_scopes: Vec<AccessScope<Pp::Role>>,
     group_scope: Vec<Pp::Group>,
-    allow_supervisor_access: bool,
     codec: Arc<Codec>,
 }
 
@@ -75,7 +95,6 @@ where
         Self {
             role_scopes: vec![],
             group_scope: vec![],
-            allow_supervisor_access: false,
             codec,
         }
     }
@@ -113,7 +132,6 @@ where
             inner,
             role_scopes: self.role_scopes.clone(),
             group_scope: self.group_scope.clone(),
-            allow_supervisor_access: self.allow_supervisor_access,
             codec: Arc::clone(&self.codec),
         }
     }
@@ -130,7 +148,6 @@ where
     inner: S,
     role_scopes: Vec<AccessScope<Pp::Role>>,
     group_scope: Vec<Pp::Group>,
-    allow_supervisor_access: bool,
     codec: Arc<Codec>,
 }
 
@@ -146,45 +163,23 @@ where
             inner,
             role_scopes: vec![],
             group_scope: vec![],
-            allow_supervisor_access: false,
             codec,
         }
     }
 
     fn authorized_by_role(&self, passport: &Pp) -> bool {
-        if passport
+        passport
             .roles()
             .iter()
             .any(|r| self.role_scopes.iter().any(|scope| scope.grants_role(r)))
-        {
-            debug!(
-                "The logged in role matches directly with the required role. The user is always authorized for access. In this case."
-            );
-            return true;
-        };
-
-        if self.allow_supervisor_access {
-            return self.authorized_by_minimum_role(passport);
-        }
-        false
     }
 
     fn authorized_by_minimum_role(&self, passport: &Pp) -> bool {
         debug!("Checking if any subordinate role matches the required one.");
         passport.roles().iter().any(|ur| {
-            let mut subordinate_traveller_role = Some(*ur);
-            debug!(
-                "Checking user role {ur:?} if it is a supervisor of the required role {:?}.",
-                self.role_scopes
-            );
-            while let Some(ref r) = subordinate_traveller_role {
-                debug!("Logged in Role: {ur:?}, Current subordinate to check: {r:?}");
-                if self.role_scopes.iter().any(|scope| scope.grants_role(r)) {
-                    return true;
-                }
-                subordinate_traveller_role = r.subordinate();
-            }
-            false
+            self.role_scopes
+                .iter()
+                .any(|scope| scope.grants_supervisor(ur))
         })
     }
 
@@ -246,7 +241,10 @@ where
         debug!("Logged in with id: {}", jwt.custom_claims.id());
 
         let passport = &jwt.custom_claims;
-        if self.authorized_by_role(passport) || self.authorized_by_group(passport) {
+        if self.authorized_by_role(passport)
+            || self.authorized_by_minimum_role(passport)
+            || self.authorized_by_group(passport)
+        {
             req.extensions_mut().insert(jwt.custom_claims);
             req.extensions_mut().insert(jwt.registered_claims);
             return AuthFuture::authorized(self.inner.call(req));
