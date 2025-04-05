@@ -37,16 +37,12 @@
 //! .hash_secret(&*hasher) // The secret should always be hashed when persisting.
 //! .unwrap();
 //! // Then a credentials storage is created.
-//! let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![
-//!     user_creds.clone(),
-//! ]));
+//! let creds_storage = CredentialsMemoryStorage::from(vec![user_creds.clone()]);
 //! // Same for the passport which provides details about the user.
 //! // The ID is used to create a connection between the storage entries.
 //! let user_passport = BasicPassport::new(&user_creds.id, &["user"], &[BasicRole::User])
 //!     .expect("Creating passport failed.");
-//! let passport_storage = Arc::new(PassportMemoryStorage::from(vec![
-//!     user_passport,
-//! ]));
+//! let passport_storage = PassportMemoryStorage::from(vec![user_passport]);
 //! # }
 //! ```
 //!
@@ -74,15 +70,15 @@
 //!         "/admin",
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(admin).layer(
-//!             Gate::new(Arc::clone(&jwt_codec)).with_role(BasicRole::Admin)
+//!             Gate::new(Arc::clone(&jwt_codec)).grant_role(BasicRole::Admin)
 //!         )
 //!     );
 //! ```
 //!
 //! ### Grant access to a specific role and all its supervisors
 //!
-//! You can limit the access of a route to a specific role but opening it to all supervisor of this
-//! role.
+//! You can limit the access of a route to a specific role but at the same time allow it to
+//! all supervisor of this role.
 //!
 //! ```
 //! # use axum::routing::{Router, get};
@@ -98,7 +94,7 @@
 //!     .route("/user", get(user))
 //!     // In contrast to granting access to user only, this layer is applied to the route.
 //!     .layer(
-//!         Gate::new(Arc::clone(&jwt_codec)).with_minimum_role(BasicRole::User)
+//!         Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::User)
 //!     );
 //! ```
 //!
@@ -120,7 +116,7 @@
 //!         "/group-scope",
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(group_handler).layer(
-//!             Gate::new(Arc::clone(&jwt_codec)).with_group("my-group".to_string())
+//!             Gate::new(Arc::clone(&jwt_codec)).grant_group("my-group".to_string())
 //!         )
 //!     );
 //! ```

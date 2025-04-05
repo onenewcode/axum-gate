@@ -8,12 +8,49 @@ use axum_extra::extract::cookie::{Cookie, CookieJar};
 use http::StatusCode;
 use pin_project::pin_project;
 use std::convert::Infallible;
+use std::fmt::Debug;
 use std::future::{Future, Ready, ready};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 use tower::{Layer, Service};
 use tracing::{debug, error, trace};
+
+/// Contains information about the granted access scope.
+#[derive(Debug, Clone)]
+struct AccessScope<Role>
+where
+    Role: Eq,
+{
+    /// The role attached to the scope.
+    pub role: Role,
+    /// Whether all supervisors are granted access.
+    pub allow_supervisor_access: bool,
+}
+
+impl<Role> AccessScope<Role>
+where
+    Role: Eq,
+{
+    /// Creates a new scope with the given role.
+    pub fn new(role: Role) -> Self {
+        Self {
+            role,
+            allow_supervisor_access: false,
+        }
+    }
+
+    /// Returns `true` if the given role matches the scope.
+    pub fn grants_role(&self, role: &Role) -> bool {
+        self.role.eq(role)
+    }
+
+    /// Allows access to all supervisor of the role of the scope.
+    pub fn allow_supervisor(mut self) -> Self {
+        self.allow_supervisor_access = true;
+        self
+    }
+}
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Clone)]
@@ -22,8 +59,8 @@ where
     Codec: CodecService,
     Pp: Passport,
 {
-    required_role: Pp::Role,
-    required_group: Option<Pp::Group>,
+    role_scopes: Vec<AccessScope<Pp::Role>>,
+    group_scope: Vec<Pp::Group>,
     allow_supervisor_access: bool,
     codec: Arc<Codec>,
 }
@@ -36,32 +73,29 @@ where
     /// Creates a new instance of a gate.
     pub fn new(codec: Arc<Codec>) -> Self {
         Self {
-            required_role: Pp::Role::default(),
-            required_group: None,
+            role_scopes: vec![],
+            group_scope: vec![],
             allow_supervisor_access: false,
             codec,
         }
     }
-    /// Configures the [Gate] so that only users that are logged in and have
-    /// the given role are granted access.
-    pub fn with_role(mut self, role: Pp::Role) -> Self {
-        self.required_role = role;
+    /// Users with the given role are granted access.
+    pub fn grant_role(mut self, role: Pp::Role) -> Self {
+        self.role_scopes.push(AccessScope::new(role));
         self
     }
 
-    /// Configures the [Gate] so that users that are logged in and have
-    /// the given role, or all [supervisor](AccessHierarchy::supervisor)
+    /// Users with the given role and all [supervisor](AccessHierarchy::supervisor)
     /// roles are granted access.
-    pub fn with_minimum_role(mut self, role: Pp::Role) -> Self {
-        self.required_role = role;
-        self.allow_supervisor_access = true;
+    pub fn grant_role_and_supervisor(mut self, role: Pp::Role) -> Self {
+        self.role_scopes
+            .push(AccessScope::new(role).allow_supervisor());
         self
     }
 
-    /// Configures the [Gate] so that only users that are logged in and are
-    /// member of the given groupe are granted access.
-    pub fn with_group(mut self, group: Pp::Group) -> Self {
-        self.required_group = Some(group);
+    /// Users that are member of the given groupe are granted access.
+    pub fn grant_group(mut self, group: Pp::Group) -> Self {
+        self.group_scope.push(group);
         self
     }
 }
@@ -77,8 +111,8 @@ where
     fn layer(&self, inner: S) -> Self::Service {
         Self::Service {
             inner,
-            required_role: self.required_role,
-            required_group: self.required_group.clone(),
+            role_scopes: self.role_scopes.clone(),
+            group_scope: self.group_scope.clone(),
             allow_supervisor_access: self.allow_supervisor_access,
             codec: Arc::clone(&self.codec),
         }
@@ -91,10 +125,11 @@ pub struct GateService<Pp, Codec, S>
 where
     Codec: CodecService,
     Pp: Passport,
+    Pp::Role: Debug,
 {
     inner: S,
-    required_role: Pp::Role,
-    required_group: Option<Pp::Group>,
+    role_scopes: Vec<AccessScope<Pp::Role>>,
+    group_scope: Vec<Pp::Group>,
     allow_supervisor_access: bool,
     codec: Arc<Codec>,
 }
@@ -103,20 +138,25 @@ impl<Pp, Codec, S> GateService<Pp, Codec, S>
 where
     Codec: CodecService,
     Pp: Passport,
+    Pp::Role: Debug,
 {
     /// Creates a new instance of a gate.
     pub fn new(inner: S, codec: Arc<Codec>) -> Self {
         Self {
             inner,
-            required_role: Pp::Role::default(),
-            required_group: None,
+            role_scopes: vec![],
+            group_scope: vec![],
             allow_supervisor_access: false,
             codec,
         }
     }
 
     fn authorized_by_role(&self, passport: &Pp) -> bool {
-        if passport.roles().iter().any(|r| self.required_role.eq(r)) {
+        if passport
+            .roles()
+            .iter()
+            .any(|r| self.role_scopes.iter().any(|scope| scope.grants_role(r)))
+        {
             debug!(
                 "The logged in role matches directly with the required role. The user is always authorized for access. In this case."
             );
@@ -135,11 +175,11 @@ where
             let mut subordinate_traveller_role = Some(*ur);
             debug!(
                 "Checking user role {ur:?} if it is a supervisor of the required role {:?}.",
-                self.required_role
+                self.role_scopes
             );
             while let Some(ref r) = subordinate_traveller_role {
                 debug!("Logged in Role: {ur:?}, Current subordinate to check: {r:?}");
-                if r.eq(&self.required_role) {
+                if self.role_scopes.iter().any(|scope| scope.grants_role(r)) {
                     return true;
                 }
                 subordinate_traveller_role = r.subordinate();
@@ -149,18 +189,10 @@ where
     }
 
     fn authorized_by_group(&self, passport: &Pp) -> bool {
-        if passport.groups().iter().any(|r| {
-            let Some(ref g) = self.required_group else {
-                return false;
-            };
-            r.eq(g)
-        }) {
-            debug!(
-                "The logged in user is a member of the required group. The user is always authorized for access. In this case."
-            );
-            return true;
-        };
-        false
+        passport
+            .groups()
+            .iter()
+            .any(|r| self.group_scope.iter().any(|g_scope| g_scope.eq(r)))
     }
 }
 

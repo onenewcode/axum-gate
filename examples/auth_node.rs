@@ -83,12 +83,12 @@ async fn main() {
 
     let app = Router::new()
         .route("/admin", get(admin))
-        .layer(Gate::new(Arc::clone(&jwt_codec)).with_minimum_role(BasicRole::Admin))
+        .layer(Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::Admin))
         .route("/reporter", get(reporter))
-        .layer(Gate::new(Arc::clone(&jwt_codec)).with_minimum_role(BasicRole::Reporter))
+        .layer(Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::Reporter))
         .route(
             "/user",
-            get(user).layer(Gate::new(Arc::clone(&jwt_codec)).with_role(BasicRole::User)),
+            get(user).layer(Gate::new(Arc::clone(&jwt_codec)).grant_role(BasicRole::User)),
         )
         .route(
             "/login",
