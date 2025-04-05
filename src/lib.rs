@@ -39,7 +39,7 @@
 //! // credentials.
 //! let user_creds = Credentials::new(
 //!     "user@example.com".to_string(),
-//!     "user_password".to_string().as_bytes(),
+//!     "user_password".to_string(),
 //! )
 //! // The secret should always be hashed when persisting. For maximum control, this is not done
 //! // automatically.
