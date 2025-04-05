@@ -5,6 +5,11 @@ edition = "2024"
 license = "Apache-2.0"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Role based access for axum using JWT cookies. For both, single nodes and distributed systems."
+homepage = "https://github.com/emirror-de/axum-gate"
+repository = "https://github.com/emirror-de/axum-gate"
+readme = "README.md"
+keywords = ["auth", "distributed", "JWT", "axum", "login"]
+categories = ["authentication", "web-programming"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
