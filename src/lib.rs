@@ -1,5 +1,8 @@
 //! Fully customizable role based JWT auth for axum.
 //!
+//! `axum-gate` is based on the composition of different services to enable maximum flexibility
+//! for any specific use case.
+//!
 //! # Examples
 //!
 //! These examples aim to give you a basic overview about the possibilities that [axum-gate](crate) offers.
