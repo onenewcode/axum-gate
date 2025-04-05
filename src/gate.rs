@@ -5,6 +5,7 @@ use crate::passport::Passport;
 use crate::roles::AccessHierarchy;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
+use cookie::CookieBuilder;
 use http::StatusCode;
 use pin_project::pin_project;
 use std::convert::Infallible;
@@ -83,6 +84,7 @@ where
     role_scopes: Vec<AccessScope<Pp::Role>>,
     group_scope: Vec<Pp::Group>,
     codec: Arc<Codec>,
+    cookie_template: CookieBuilder<'static>,
 }
 
 impl<Pp, Codec> Gate<Pp, Codec>
@@ -96,8 +98,16 @@ where
             role_scopes: vec![],
             group_scope: vec![],
             codec,
+            cookie_template: CookieBuilder::new("axum-gate", ""),
         }
     }
+
+    /// Adds the cookie builder as a template for the cookie used for auth.
+    pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
+        self.cookie_template = template;
+        self
+    }
+
     /// Users with the given role are granted access.
     pub fn grant_role(mut self, role: Pp::Role) -> Self {
         self.role_scopes.push(AccessScope::new(role));
@@ -133,6 +143,7 @@ where
             role_scopes: self.role_scopes.clone(),
             group_scope: self.group_scope.clone(),
             codec: Arc::clone(&self.codec),
+            cookie_template: self.cookie_template.clone(),
         }
     }
 }
@@ -149,6 +160,7 @@ where
     role_scopes: Vec<AccessScope<Pp::Role>>,
     group_scope: Vec<Pp::Group>,
     codec: Arc<Codec>,
+    cookie_template: CookieBuilder<'static>,
 }
 
 impl<Pp, Codec, S> GateService<Pp, Codec, S>
@@ -158,12 +170,13 @@ where
     Pp::Role: Debug,
 {
     /// Creates a new instance of a gate.
-    pub fn new(inner: S, codec: Arc<Codec>) -> Self {
+    pub fn new(inner: S, codec: Arc<Codec>, cookie_template: CookieBuilder<'static>) -> Self {
         Self {
             inner,
             role_scopes: vec![],
             group_scope: vec![],
             codec,
+            cookie_template,
         }
     }
 
@@ -199,7 +212,8 @@ where
     /// Queries the axum-gate auth cookie from the request.
     pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie> {
         let cookie_jar = CookieJar::from_headers(req.headers());
-        cookie_jar.get("axum-gate").cloned()
+        let cookie = self.cookie_template.clone().build();
+        cookie_jar.get(cookie.name()).cloned()
     }
 }
 

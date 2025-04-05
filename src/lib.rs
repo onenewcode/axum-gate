@@ -73,6 +73,7 @@
 //! # use std::sync::Arc;
 //! # async fn admin() -> () {}
 //! # let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+//! let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 //! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
 //! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
 //!     .route(
@@ -80,6 +81,7 @@
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(admin).layer(
 //!             Gate::new(Arc::clone(&jwt_codec))
+//!                 .with_cookie_template(cookie_template)
 //!                 .grant_role(BasicRole::Admin)
 //!                 .grant_role(BasicRole::User)
 //!         )
@@ -101,12 +103,15 @@
 //! # use std::sync::Arc;
 //! # async fn user() -> () {}
 //! # let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+//! let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 //! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
 //! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
 //!     .route("/user", get(user))
 //!     // In contrast to granting access to user only, this layer is applied to the route.
 //!     .layer(
-//!         Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::User)
+//!         Gate::new(Arc::clone(&jwt_codec))
+//!             .with_cookie_template(cookie_template)
+//!             .grant_role_and_supervisor(BasicRole::User)
 //!     );
 //! ```
 //!
@@ -123,6 +128,7 @@
 //! # use std::sync::Arc;
 //! # async fn group_handler() -> () {}
 //! # let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+//! let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 //! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
 //! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
 //!     .route(
@@ -130,6 +136,7 @@
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(group_handler).layer(
 //!             Gate::new(Arc::clone(&jwt_codec))
+//!                 .with_cookie_template(cookie_template)
 //!                 .grant_group(BasicGroup::new("my-group"))
 //!                 .grant_group(BasicGroup::new("another-group"))
 //!         )
