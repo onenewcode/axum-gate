@@ -53,22 +53,19 @@ async fn main() {
     let hasher = Arc::new(Argon2Hasher::default());
     let creds = Credentials::new(
         "admin@example.com".to_string(),
-        "admin_password".to_string().as_bytes(),
+        "admin_password".to_string(),
     )
     .hash_secret(&*hasher)
     .unwrap();
     let reporter_creds = Credentials::new(
         "reporter@example.com".to_string(),
-        "reporter_password".to_string().as_bytes(),
+        "reporter_password".to_string(),
     )
     .hash_secret(&*hasher)
     .unwrap();
-    let user_creds = Credentials::new(
-        "user@example.com".to_string(),
-        "user_password".to_string().as_bytes(),
-    )
-    .hash_secret(&*hasher)
-    .unwrap();
+    let user_creds = Credentials::new("user@example.com".to_string(), "user_password".to_string())
+        .hash_secret(&*hasher)
+        .unwrap();
     let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![
         creds.clone(),
         user_creds.clone(),
