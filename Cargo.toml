@@ -2,9 +2,9 @@
 name = "axum-gate"
 version = "0.1.0"
 edition = "2024"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 authors = ["Lewin Probst <info@emirror.de>"]
-description = "JWT auth with role based access for axum"
+description = "Role based access for axum using JWT cookies. For both, single nodes and distributed systems."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
