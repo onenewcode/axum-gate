@@ -1,6 +1,6 @@
 //! Fully customizable role based JWT auth for axum.
 //!
-//! `axum-gate` is based on the composition of different services to enable maximum flexibility
+//! `axum-gate` uses composition of different services to enable maximum flexibility
 //! for any specific use case.
 //!
 //! # Examples
@@ -10,17 +10,19 @@
 //! ## Prerequisites to protect your application
 //!
 //! To protect your application with `axum-gate` you need to use storages that implement
-//! [CredentialsStorageService](crate::storage::CredentialsStorageService) and
-//! [PassportStorageService](crate::storage::PassportStorageService). For modularity and separation
-//! of concerns they have been
-//! split into two. It is still possible to implement both on the same storage if it is responsible
+//! [CredentialsStorageService](crate::storage::CredentialsStorageService),
+//! [CredentialsVerifierService](crate::credentials::CredentialsVerifierService) and
+//! [PassportStorageService](crate::storage::PassportStorageService). It is possible to implement
+//! all on the same storage if it is responsible
 //! for [`Passport`](crate::passport::Passport) as well as the
 //! [`Credentials`](crate::credentials::Credentials) of a user.
 //!
 //! In case of the pre-defined [PassportMemoryStorage](crate::storage::PassportMemoryStorage)
 //! and [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
-//! where both of them use the memory for storage, the following
-//! steps are required during the setup of your app.
+//! (implements both, [CredentialsStorageService](crate::storage::CredentialsStorageService) and
+//! [CredentialsVerifierService](crate::credentials::CredentialsVerifierService))
+//! , the following steps are required during the setup of your app. The pre-defined storages
+//! use the memory to store the information.
 //!
 //! ```
 //! # use axum_gate::credentials::Credentials;
@@ -32,12 +34,16 @@
 //! # async fn example_storage() {
 //! // We create a hasher that protects the secret in the persistent storage.
 //! let hasher = Arc::new(Argon2Hasher::default());
-//! // We first need to create the credentials. (Demonstration purpose only)
+//! // We first need to create the credentials.
+//! // For demonstration purpose only, your application should provide another way to add
+//! // credentials.
 //! let user_creds = Credentials::new(
 //!     "user@example.com".to_string(),
 //!     "user_password".to_string().as_bytes(),
 //! )
-//! .hash_secret(&*hasher) // The secret should always be hashed when persisting.
+//! // The secret should always be hashed when persisting. For maximum control, this is not done
+//! // automatically.
+//! .hash_secret(&*hasher)
 //! .unwrap();
 //! // Then a credentials storage is created.
 //! let creds_storage = CredentialsMemoryStorage::from(vec![user_creds.clone()]);
@@ -56,7 +62,7 @@
 //!
 //! ### Limit access to a specific role
 //!
-//! You can limit the access of a route to a specific role.
+//! You can limit the access of a route to one or multiple specific role(s).
 //!
 //! ```
 //! # use axum::routing::{Router, get};
@@ -73,15 +79,18 @@
 //!         "/admin",
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(admin).layer(
-//!             Gate::new(Arc::clone(&jwt_codec)).grant_role(BasicRole::Admin)
+//!             Gate::new(Arc::clone(&jwt_codec))
+//!                 .grant_role(BasicRole::Admin)
+//!                 .grant_role(BasicRole::User)
 //!         )
 //!     );
 //! ```
 //!
 //! ### Grant access to a specific role and all its supervisors
 //!
-//! You can limit the access of a route to a specific role but at the same time allow it to
-//! all supervisor of this role.
+//! If your role implements [AccessHierarchy], you can limit the access of a route to a specific role but at the same time allow it to
+//! all supervisor of this role. This is also possible for multiple roles, although this does not
+//! make much sense in a real world application.
 //!
 //! ```
 //! # use axum::routing::{Router, get};
@@ -103,7 +112,7 @@
 //!
 //! ### Grant access to a group of users
 //!
-//! You can limit the access of a route to a specific group.
+//! You can limit the access of a route to one or more specific group(s).
 //!
 //! ```
 //! # use axum::routing::{Router, get};
@@ -142,7 +151,7 @@
 //! }
 //! ```
 //!
-//! # Further examples
+//! # Internal examples
 //! - A pre-defined implementation of [SecretsHashingService](crate::secrets::SecretsHashingService)
 //! can be found at [Argon2Hasher](crate::secrets::Argon2Hasher) that is used to hash credentials
 //! before persisting it using [CredentialsStorageService](crate::storage::CredentialsStorageService)

@@ -14,14 +14,6 @@ pub enum BasicRole {
     Reporter,
     /// The person having this type is considered a User.
     User,
-    /// An anonymous user.
-    Anonymous,
-}
-
-impl Default for BasicRole {
-    fn default() -> Self {
-        Self::Anonymous
-    }
 }
 
 impl AccessHierarchy for BasicRole {
@@ -31,7 +23,6 @@ impl AccessHierarchy for BasicRole {
             Self::Moderator => Some(Self::Reporter),
             Self::Reporter => Some(Self::User),
             Self::User => None,
-            Self::Anonymous => None,
         }
     }
     fn supervisor(&self) -> Option<Self> {
@@ -40,7 +31,6 @@ impl AccessHierarchy for BasicRole {
             Self::Moderator => Some(Self::Admin),
             Self::Reporter => Some(Self::Moderator),
             Self::User => Some(Self::Reporter),
-            Self::Anonymous => None,
         }
     }
 }

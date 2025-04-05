@@ -14,7 +14,7 @@ pub trait Passport {
     type Id: Display;
     /// Roles that this passport belongs to. Serde is required to store them
     /// in JWT.
-    type Role: Debug + Default + Eq + AccessHierarchy + Serialize + DeserializeOwned;
+    type Role: Debug + Eq + AccessHierarchy + Serialize + DeserializeOwned;
     /// The groups that this passport belongs to. Serde is required to store them
     /// in JWT.
     type Group: Debug + Eq + Serialize + DeserializeOwned;
