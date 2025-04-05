@@ -166,6 +166,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "chrono",
+ "cookie",
  "http",
  "jsonwebtoken",
  "pin-project",

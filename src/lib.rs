@@ -1,4 +1,4 @@
-//! Fully customizable role based JWT auth for axum.
+//! Fully customizable role based JWT auth for axum, applicable for single nodes or distributed systems.
 //!
 //! `axum-gate` uses composition of different services to enable maximum flexibility
 //! for any specific use case.
@@ -154,6 +154,72 @@
 //! }
 //! ```
 //!
+//! ## Enable login and logout for your application
+//!
+//! `axum-gate` provides pre-defined [route_handler](crate::route_handlers) for login and logout
+//! using [Credentials](crate::credentials::Credentials).
+//!
+//! ### Login
+//!
+//! To enable a login, you only need to add a custom route with the
+//! [login](crate::route_handlers::login) handler.
+//!
+//! ```
+//! # use axum::extract::Json;
+//! # use axum::routing::{Router, post};
+//! # use axum_gate::credentials::Credentials;
+//! # use axum_gate::jwt::{JsonWebToken, RegisteredClaims};
+//! # use axum_gate::Gate;
+//! # use axum_gate::passport::BasicPassport;
+//! # use axum_gate::secrets::Argon2Hasher;
+//! # use axum_gate::storage::{CredentialsMemoryStorage, PassportMemoryStorage};
+//! # use std::sync::Arc;
+//! # let hasher = Arc::new(Argon2Hasher::default());
+//! # let creds_storage = Arc::new(CredentialsMemoryStorage::<String, Vec<u8>>::from(vec![]));
+//! # let passport_storage = Arc::new(PassportMemoryStorage::<BasicPassport>::from(vec![]));
+//! # let jwt_codec = Arc::new(JsonWebToken::default());
+//! let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
+//! // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
+//! let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+//!     .route(
+//!         "/login",
+//!         post({
+//!             let registered_claims = RegisteredClaims::default();
+//!             let credentials_verifier = Arc::clone(&creds_storage);
+//!             let credentials_hasher = Arc::clone(&hasher);
+//!             let passport_storage = Arc::clone(&passport_storage);
+//!             let jwt_codec = Arc::clone(&jwt_codec);
+//!             let cookie_template = cookie_template.clone();
+//!             move |cookie_jar, request_credentials: Json<Credentials<String, String>>| {
+//!                 axum_gate::route_handlers::login(
+//!                     cookie_jar,
+//!                     request_credentials,
+//!                     registered_claims,
+//!                     credentials_verifier,
+//!                     credentials_hasher,
+//!                     passport_storage,
+//!                     jwt_codec,
+//!                     cookie_template,
+//!                 )
+//!             }
+//!         }),
+//!     );
+//! ```
+//!
+//! ### Logout
+//!
+//! Because `axum-gate` is using a cookie to store the information, you can easily create a logout
+//! route:
+//! ```ignore
+//! let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
+//! let app = Router::new()
+//!     .get({
+//!         move |cookie_jar| {
+//!             axum_gate::route_handlers::logout(cookie_jar, cookie_template)
+//!         }
+//!     });
+//! ```
+//!
 //! # Internal examples
 //! - A pre-defined implementation of [SecretsHashingService](crate::secrets::SecretsHashingService)
 //! can be found at [Argon2Hasher](crate::secrets::Argon2Hasher) that is used to hash credentials
@@ -177,6 +243,7 @@ pub mod secrets;
 pub mod storage;
 
 pub use access_hierarchy::AccessHierarchy;
+pub use cookie;
 pub use errors::Error;
 pub use gate::Gate;
 pub use groups::BasicGroup;

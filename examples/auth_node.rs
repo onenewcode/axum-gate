@@ -3,9 +3,9 @@ use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use axum_gate::BasicGroup;
 use axum_gate::Gate;
+use axum_gate::cookie;
 use axum_gate::credentials::Credentials;
-use axum_gate::jwt::JsonWebToken;
-use axum_gate::jwt::RegisteredClaims;
+use axum_gate::jwt::{JsonWebToken, RegisteredClaims};
 use axum_gate::passport::BasicPassport;
 use axum_gate::roles::BasicRole;
 use axum_gate::secrets::Argon2Hasher;
@@ -86,6 +86,8 @@ async fn main() {
     ]));
     let jwt_codec = Arc::new(JsonWebToken::default());
 
+    let cookie_template = cookie::CookieBuilder::new("axum-gate", "").secure(true);
+
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(Gate::new(Arc::clone(&jwt_codec)).grant_role_and_supervisor(BasicRole::Admin))
@@ -111,6 +113,7 @@ async fn main() {
                 let credentials_hasher = Arc::clone(&hasher);
                 let passport_storage = Arc::clone(&passport_storage);
                 let jwt_codec = Arc::clone(&jwt_codec);
+                let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String, String>>| {
                     axum_gate::route_handlers::login(
                         cookie_jar,
@@ -120,11 +123,17 @@ async fn main() {
                         credentials_hasher,
                         passport_storage,
                         jwt_codec,
+                        cookie_template,
                     )
                 }
             }),
         )
-        .route("/logout", get(axum_gate::route_handlers::logout))
+        .route(
+            "/logout",
+            get({
+                move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)
+            }),
+        )
         .route("/", get(index));
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

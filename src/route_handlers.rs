@@ -1,5 +1,6 @@
 //! Route handler for [axum].
 use crate::codecs::CodecService;
+use crate::cookie::CookieBuilder;
 use crate::credentials::{Credentials, CredentialsVerifierService};
 use crate::jwt::{JwtClaims, RegisteredClaims};
 use crate::passport::Passport;
@@ -7,7 +8,7 @@ use crate::secrets::SecretsHashingService;
 use crate::storage::PassportStorageService;
 use axum::Json;
 use axum::http::StatusCode;
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::CookieJar;
 use std::fmt::Display;
 use std::sync::Arc;
 use tracing::{debug, error, warn};
@@ -21,6 +22,7 @@ pub async fn login<Secret, CredVeri, PpStore, Pp, Hasher, Codec>(
     credentials_hasher: Arc<Hasher>,
     passport_storage: Arc<PpStore>,
     codec: Arc<Codec>,
+    cookie_template: CookieBuilder<'static>,
 ) -> Result<CookieJar, StatusCode>
 where
     Pp::Id: Into<Vec<u8>> + Clone + Display + std::fmt::Debug,
@@ -78,11 +80,13 @@ where
         }
         Ok(enc) => enc,
     };
-    let cookie = Cookie::new("axum-gate", json_string);
+    let mut cookie = cookie_template.build();
+    cookie.set_value(json_string);
     Ok(cookie_jar.add(cookie))
 }
 
 /// Removes the cookie that authenticates a user.
-pub async fn logout(cookie_jar: CookieJar) -> CookieJar {
-    cookie_jar.remove(Cookie::from("axum-gate"))
+pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'static>) -> CookieJar {
+    let cookie = cookie_template.build();
+    cookie_jar.remove(cookie)
 }
