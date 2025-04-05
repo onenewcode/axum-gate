@@ -128,7 +128,9 @@
 //!         "/group-scope",
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(group_handler).layer(
-//!             Gate::new(Arc::clone(&jwt_codec)).grant_group("my-group".to_string())
+//!             Gate::new(Arc::clone(&jwt_codec))
+//!                 .grant_group("my-group".to_string())
+//!                 .grant_group("another-group".to_string())
 //!         )
 //!     );
 //! ```
