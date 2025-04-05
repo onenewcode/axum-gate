@@ -118,6 +118,7 @@
 //! # use axum::routing::{Router, get};
 //! # use axum_gate::Gate;
 //! # use axum_gate::passport::BasicPassport;
+//! # use axum_gate::BasicGroup;
 //! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 //! # use std::sync::Arc;
 //! # async fn group_handler() -> () {}
@@ -129,8 +130,8 @@
 //!         // Please note, that the layer is applied directly to the route handler.
 //!         get(group_handler).layer(
 //!             Gate::new(Arc::clone(&jwt_codec))
-//!                 .grant_group("my-group".to_string())
-//!                 .grant_group("another-group".to_string())
+//!                 .grant_group(BasicGroup::new("my-group"))
+//!                 .grant_group(BasicGroup::new("another-group"))
 //!         )
 //!     );
 //! ```
@@ -167,6 +168,7 @@ pub mod codecs;
 pub mod credentials;
 mod errors;
 mod gate;
+mod groups;
 pub mod jwt;
 pub mod passport;
 pub mod roles;
@@ -177,4 +179,5 @@ pub mod storage;
 pub use access_hierarchy::AccessHierarchy;
 pub use errors::Error;
 pub use gate::Gate;
+pub use groups::BasicGroup;
 pub use jsonwebtoken;

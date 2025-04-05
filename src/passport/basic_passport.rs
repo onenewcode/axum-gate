@@ -1,7 +1,7 @@
 //! Passports are the identification card for a user. Traditionally known as `Account`.
 use super::Passport;
-use crate::Error;
 use crate::roles::BasicRole;
+use crate::{BasicGroup, Error};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -12,7 +12,7 @@ pub struct BasicPassport {
     /// The unique id of the passport. For example username, email or some string of your choice.
     pub id: String,
     /// A list of scopes that the user can access.
-    pub groups: HashSet<String>,
+    pub groups: HashSet<BasicGroup>,
     /// Type of this passport.
     pub roles: HashSet<BasicRole>,
     /// Wether the passport is disabled.
@@ -28,7 +28,7 @@ impl BasicPassport {
     pub fn new(id: &str, groups: &[&str], roles: &[BasicRole]) -> Result<Self, Error> {
         Ok(Self {
             id: id.to_string(),
-            groups: HashSet::from_iter(groups.into_iter().map(|i| i.to_string())),
+            groups: HashSet::from_iter(groups.into_iter().map(|i| BasicGroup::new(i))),
             roles: HashSet::from_iter(roles.into_iter().map(|i| i.to_owned())),
             disabled: false,
             email_verified: false, // always require user to confirm it
@@ -43,7 +43,7 @@ impl BasicPassport {
 
 impl Passport for BasicPassport {
     type Id = String;
-    type Group = String;
+    type Group = BasicGroup;
     type Role = BasicRole;
 
     fn id(&self) -> &Self::Id {
@@ -54,7 +54,7 @@ impl Passport for BasicPassport {
         &self.roles
     }
 
-    fn groups(&self) -> &HashSet<String> {
+    fn groups(&self) -> &HashSet<BasicGroup> {
         &self.groups
     }
 }

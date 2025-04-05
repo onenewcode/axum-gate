@@ -1,6 +1,7 @@
 use axum::extract::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
+use axum_gate::BasicGroup;
 use axum_gate::Gate;
 use axum_gate::credentials::Credentials;
 use axum_gate::jwt::JsonWebToken;
@@ -96,7 +97,7 @@ async fn main() {
             get(admin_group).layer(
                 Gate::new(Arc::clone(&jwt_codec))
                     // to_string required, because BasicPassport::Group is a String
-                    .grant_group("admin".to_string()),
+                    .grant_group(BasicGroup::new("admin")),
             ),
         )
         .route("/reporter", get(reporter))
