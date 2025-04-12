@@ -225,7 +225,7 @@ let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
 
 Because `axum-gate` is using a cookie to store the information, you can easily create a logout
 route:
-```ignore
+```rust,ignore
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 let app = Router::new()
     .get({
