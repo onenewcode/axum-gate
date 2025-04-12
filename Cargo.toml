@@ -11,8 +11,6 @@ readme = "README.md"
 keywords = ["auth", "distributed", "JWT", "axum", "login"]
 categories = ["authentication", "web-programming"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 argon2 = { version = "0.5.3", features = ["std"] }
 axum = "0.8.3"
