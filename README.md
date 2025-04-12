@@ -234,3 +234,9 @@ before persisting it using [CredentialsStorageService](crate::storage::Credentia
 - An example for a [CredentialsStorageService](crate::storage::CredentialsStorageService) /
 [CredentialsVerifierService](crate::credentials::CredentialsVerifierService) used for
 authentication can be found at [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
+
+# License
+This project is licensed under the [MIT](LICENSE) license.
+
+# Contribution
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in axum-gate by you, shall be licensed as MIT, without any additional terms or conditions.
