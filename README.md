@@ -3,6 +3,12 @@ Fully customizable role based JWT cookie auth for axum, applicable for single no
 `axum-gate` uses composition of different services to enable maximum flexibility
 for any specific use case.
 
+# Security considerations
+
+This crate has not been audited by third party security experts. This software MAY have security
+issues that have not been detected yet. The authors do not guarantee the security nor are liable for
+any type of issues within the use of this software.
+
 # Examples
 
 These examples aim to give you a basic overview about the possibilities that [axum-gate](crate) offers.
