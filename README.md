@@ -24,7 +24,7 @@ and [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
 , the following steps are required during the setup of your app. The pre-defined storages
 use the memory to store the information.
 
-```
+```rust
 # use axum_gate::credentials::Credentials;
 # use axum_gate::passport::BasicPassport;
 # use axum_gate::roles::BasicRole;
@@ -64,7 +64,7 @@ can also be combined so you are not limited to choosing one.
 
 You can limit the access of a route to one or multiple specific role(s).
 
-```
+```rust
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
 # use axum_gate::roles::BasicRole;
@@ -94,7 +94,7 @@ If your role implements [AccessHierarchy], you can limit the access of a route t
 all supervisor of this role. This is also possible for multiple roles, although this does not
 make much sense in a real world application.
 
-```
+```rust
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
 # use axum_gate::roles::BasicRole;
@@ -119,7 +119,7 @@ let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
 
 You can limit the access of a route to one or more specific group(s).
 
-```
+```rust
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
 # use axum_gate::passport::BasicPassport;
@@ -150,7 +150,7 @@ The first one contains the [RegisteredClaims](crate::jwt::RegisteredClaims), the
 your custom claims. In this pre-defined case it is the
 [`BasicPassport`](crate::passport::BasicPassport).
 You can use them like any other extension:
-```
+```rust
 # use axum::extract::Extension;
 # use axum_gate::passport::BasicPassport;
 async fn reporter(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
@@ -171,7 +171,7 @@ using [Credentials](crate::credentials::Credentials).
 To enable a login, you only need to add a custom route with the
 [login](crate::route_handlers::login) handler.
 
-```
+```rust
 # use axum::extract::Json;
 # use axum::routing::{Router, post};
 # use axum_gate::credentials::Credentials;
