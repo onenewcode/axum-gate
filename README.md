@@ -25,9 +25,9 @@ all on the same storage if it is responsible
 for [`Passport`](crate::passport::Passport) as well as the
 [`Credentials`](crate::credentials::Credentials) of a user.
 
-In case of the pre-defined [PassportMemoryStorage](crate::storage::PassportMemoryStorage)
-and [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
-(implements both, [CredentialsStorageService](crate::storage::CredentialsStorageService) and
+In case of the pre-defined [MemoryPassportStorage](crate::storage::memory::MemoryPassportStorage)
+and [CredentialsMemoryStorage](crate::storage::memory::CredentialsMemoryStorage)
+(implements both, [CredentialsStorageService](crate::storage::memory::CredentialsStorageService) and
 [CredentialsVerifierService](crate::credentials::CredentialsVerifierService))
 , the following steps are required during the setup of your app. The pre-defined storages
 use the memory to store the information.
@@ -37,29 +37,23 @@ use the memory to store the information.
 # use axum_gate::passport::BasicPassport;
 # use axum_gate::roles::BasicRole;
 # use axum_gate::secrets::Argon2Hasher;
-# use axum_gate::storage::{CredentialsMemoryStorage, PassportMemoryStorage};
+# use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
 # use std::sync::Arc;
 # async fn example_storage() {
-// We create a hasher that protects the secret in the persistent storage.
-let hasher = Arc::new(Argon2Hasher::default());
 // We first need to create the credentials.
 // For demonstration purpose only, your application should provide another way to add
 // credentials.
 let user_creds = Credentials::new(
-    "user@example.com".to_string(),
-    "user_password".to_string(),
-)
-// The secret should always be hashed when persisting. For maximum control, this is not done
-// automatically.
-.hash_secret(&*hasher)
-.unwrap();
+    "user@example.com",
+    "user_password",
+);
 // Then a credentials storage is created.
-let creds_storage = CredentialsMemoryStorage::from(vec![user_creds.clone()]);
+let creds_storage = MemoryCredentialsStorage::try_from(vec![user_creds.clone()]).unwrap();
 // Same for the passport which provides details about the user.
 // The ID is used to create a connection between the storage entries.
 let user_passport = BasicPassport::new(&user_creds.id, &["user"], &[BasicRole::User])
     .expect("Creating passport failed.");
-let passport_storage = PassportMemoryStorage::from(vec![user_passport]);
+let passport_storage = MemoryPassportStorage::from(vec![user_passport]);
 # }
 ```
 
@@ -187,11 +181,10 @@ To enable a login, you only need to add a custom route with the
 # use axum_gate::Gate;
 # use axum_gate::passport::BasicPassport;
 # use axum_gate::secrets::Argon2Hasher;
-# use axum_gate::storage::{CredentialsMemoryStorage, PassportMemoryStorage};
+# use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
 # use std::sync::Arc;
-# let hasher = Arc::new(Argon2Hasher::default());
-# let creds_storage = Arc::new(CredentialsMemoryStorage::<String, Vec<u8>>::from(vec![]));
-# let passport_storage = Arc::new(PassportMemoryStorage::<BasicPassport<String>>::from(vec![]));
+# let creds_storage = Arc::new(MemoryCredentialsStorage::<String, Argon2Hasher>::try_from(vec![]).unwrap());
+# let passport_storage = Arc::new(MemoryPassportStorage::<BasicPassport<String>>::from(vec![]));
 # let jwt_codec = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
@@ -201,17 +194,15 @@ let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String
         post({
             let registered_claims = RegisteredClaims::default();
             let credentials_verifier = Arc::clone(&creds_storage);
-            let credentials_hasher = Arc::clone(&hasher);
             let passport_storage = Arc::clone(&passport_storage);
             let jwt_codec = Arc::clone(&jwt_codec);
             let cookie_template = cookie_template.clone();
-            move |cookie_jar, request_credentials: Json<Credentials<String, String>>| {
+            move |cookie_jar, request_credentials: Json<Credentials<String>>| {
                 axum_gate::route_handlers::login(
                     cookie_jar,
                     request_credentials,
                     registered_claims,
                     credentials_verifier,
-                    credentials_hasher,
                     passport_storage,
                     jwt_codec,
                     cookie_template,

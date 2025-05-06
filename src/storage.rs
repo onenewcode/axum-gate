@@ -1,13 +1,12 @@
 //! Storage implementations.
 
-mod credentials_memory_storage;
-mod passport_storage;
+pub mod memory;
+#[cfg(feature = "storage-surrealdb")]
+pub mod surrealdb;
 
 use crate::Error;
 use crate::credentials::Credentials;
 use crate::passport::Passport;
-pub use credentials_memory_storage::CredentialsMemoryStorage;
-pub use passport_storage::PassportMemoryStorage;
 
 /// A passport storage service contains a collection of passports that are
 /// known to your application.
@@ -23,7 +22,7 @@ where
     /// Returns the passport for the given `passport_id`.
     fn passport(&self, passport_id: &P::Id) -> impl Future<Output = Result<Option<P>, Error>>;
     /// Stores the given passport in the register returning its ID for further usage.
-    fn store_passport(&mut self, passport: P) -> impl Future<Output = Result<P::Id, Error>>;
+    fn store_passport(&self, passport: &P) -> impl Future<Output = Result<Option<P::Id>, Error>>;
     /// Removes the passport with the given `passport_id`.
     fn remove_passport(&self, passport_id: &P::Id) -> impl Future<Output = Result<bool, Error>>;
 }
@@ -38,24 +37,21 @@ where
 /// Verification of the credentials has been outsourced to [CredentialsVerifierService](crate::credentials::CredentialsVerifierService) in order to
 /// separate their concerns. A verification service does not necessarily require the
 /// functionality of storing/updating/removing them.
-pub trait CredentialsStorageService<Id, Secret> {
+pub trait CredentialsStorageService<Id> {
     /// Stores the credentials. Returns `true` on success, `false` if the [Credentials::id]
     /// already exists.
     fn store_credentials(
         &self,
-        credentials: Credentials<Id, Secret>,
+        credentials: Credentials<Id>,
     ) -> impl Future<Output = Result<bool, Error>>;
 
     /// Updates the credentials.
     fn update_credentials(
         &self,
-        credentials: Credentials<Id, Secret>,
+        credentials: Credentials<Id>,
     ) -> impl Future<Output = Result<(), Error>>;
 
-    /// Removed the credentials. Returns `true` on success, `false` if the [Credentials::id]
+    /// Removes the credentials with the given id. Returns `true` on success, `false` if the [Credentials::id]
     /// does NOT exists.
-    fn remove_credentials(
-        &self,
-        credentials: Credentials<Id, Secret>,
-    ) -> impl Future<Output = Result<bool, Error>>;
+    fn remove_credentials(&self, id: &Id) -> impl Future<Output = Result<bool, Error>>;
 }

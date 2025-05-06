@@ -4,7 +4,6 @@ use crate::cookie::CookieBuilder;
 use crate::credentials::{Credentials, CredentialsVerifierService};
 use crate::jwt::{JwtClaims, RegisteredClaims};
 use crate::passport::Passport;
-use crate::secrets::SecretsHashingService;
 use crate::storage::PassportStorageService;
 use axum::Json;
 use axum::http::StatusCode;
@@ -14,29 +13,26 @@ use std::sync::Arc;
 use tracing::{debug, error, warn};
 
 /// Can be used to log a user in.
-pub async fn login<Secret, CredVeri, PpStore, Pp, Hasher, Codec>(
+pub async fn login<CredVeri, PpStore, Pp, Codec>(
     cookie_jar: CookieJar,
-    request_credentials: Json<Credentials<Pp::Id, Secret>>,
+    request_credentials: Json<Credentials<Pp::Id>>,
     registered_claims: RegisteredClaims,
     credentials_verifier: Arc<CredVeri>,
-    credentials_hasher: Arc<Hasher>,
     passport_storage: Arc<PpStore>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
 ) -> Result<CookieJar, StatusCode>
 where
     Pp::Id: Into<Vec<u8>> + Clone + Display + std::fmt::Debug,
-    Secret: Into<Vec<u8>> + std::fmt::Debug,
-    CredVeri: CredentialsVerifierService<Pp::Id, Vec<u8>>,
+    CredVeri: CredentialsVerifierService<Pp::Id>,
     PpStore: PassportStorageService<Pp>,
     Pp: Passport + Clone,
-    Hasher: SecretsHashingService,
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
     let creds = request_credentials.0;
-    let creds_to_verify = Credentials::new(creds.id.clone(), creds.secret.into());
+    let creds_to_verify = Credentials::new(creds.id.clone(), &creds.secret);
     match credentials_verifier
-        .verify_credentials(&creds_to_verify, &*credentials_hasher)
+        .verify_credentials(&creds_to_verify)
         .await
     {
         Ok(true) => (),

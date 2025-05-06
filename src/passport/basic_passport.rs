@@ -2,9 +2,11 @@
 use super::Passport;
 use crate::roles::BasicRole;
 use crate::{BasicGroup, Error};
+
+use std::collections::HashSet;
+
 use chrono::{DateTime, TimeDelta, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
 /// A passport contains basic information about a user.
 #[derive(Serialize, Deserialize, Clone, Debug)]
