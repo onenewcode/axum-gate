@@ -52,12 +52,12 @@ async fn main() {
         reporter_creds.clone(),
     ]));
 
-    let admin_passport = BasicPassport::new(&creds.id, &["admin"], &[BasicRole::Admin])
+    let admin_passport = BasicPassport::<String>::new(&creds.id, &["admin"], &[BasicRole::Admin])
         .expect("Creating passport failed.");
     let reporter_passport =
-        BasicPassport::new(&reporter_creds.id, &["reporter"], &[BasicRole::Reporter])
+        BasicPassport::<String>::new(&reporter_creds.id, &["reporter"], &[BasicRole::Reporter])
             .expect("Creating passport failed.");
-    let user_passport = BasicPassport::new(&user_creds.id, &["user"], &[BasicRole::User])
+    let user_passport = BasicPassport::<String>::new(&user_creds.id, &["user"], &[BasicRole::User])
         .expect("Creating passport failed.");
     let passport_storage = Arc::new(PassportMemoryStorage::from(vec![
         admin_passport,

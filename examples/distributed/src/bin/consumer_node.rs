@@ -17,28 +17,28 @@ async fn index() -> Result<String, ()> {
     Ok("Hello consumer!".to_string())
 }
 
-async fn reporter(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+async fn reporter(Extension(user): Extension<BasicPassport<String>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
         user.id, user.roles, user.groups
     ))
 }
 
-async fn user(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+async fn user(Extension(user): Extension<BasicPassport<String>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
         user.id, user.roles, user.groups
     ))
 }
 
-async fn admin_group(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+async fn admin_group(Extension(user): Extension<BasicPassport<String>>) -> Result<String, ()> {
     Ok(format!(
         "Hi {} and welcome to the secret admin-group site on the consumer node, your roles are {:?} and you are member of groups {:?}!",
         user.id, user.roles, user.groups
     ))
 }
 
-async fn admin(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+async fn admin(Extension(user): Extension<BasicPassport<String>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
         user.id, user.roles, user.groups
@@ -54,14 +54,14 @@ async fn main() {
     dotenv::dotenv().expect("Could not read .env file.");
     let shared_secret =
         dotenv::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
-    let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<BasicPassport>>::new_with_options(
-        JsonWebTokenOptions {
+    let jwt_codec = Arc::new(
+        JsonWebToken::<JwtClaims<BasicPassport<String>>>::new_with_options(JsonWebTokenOptions {
             enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
             dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
             header: Some(Header::default()),
             validation: Some(Validation::default()),
-        },
-    ));
+        }),
+    );
     let cookie_template = cookie::CookieBuilder::new("axum-gate", "").secure(true);
 
     let app = Router::new()

@@ -8,9 +8,9 @@ use std::collections::HashSet;
 
 /// A passport contains basic information about a user.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BasicPassport {
+pub struct BasicPassport<Id> {
     /// The unique id of the passport. For example username, email or some string of your choice.
-    pub id: String,
+    pub id: Id,
     /// A list of scopes that the user can access.
     pub groups: HashSet<BasicGroup>,
     /// Type of this passport.
@@ -23,11 +23,14 @@ pub struct BasicPassport {
     pub expires_at: DateTime<Utc>,
 }
 
-impl BasicPassport {
+impl<Id> BasicPassport<Id>
+where
+    Id: ToOwned<Owned = Id>,
+{
     /// Creates a new passport with [BasicPassport::disabled] and [BasicPassport::email_verified] set to `false`. The [expires_at](BasicPassport::expires_at) is set to 104 weeks.
-    pub fn new(id: &str, groups: &[&str], roles: &[BasicRole]) -> Result<Self, Error> {
+    pub fn new(id: &Id, groups: &[&str], roles: &[BasicRole]) -> Result<Self, Error> {
         Ok(Self {
-            id: id.to_string(),
+            id: id.to_owned(),
             groups: HashSet::from_iter(groups.into_iter().map(|i| BasicGroup::new(i))),
             roles: HashSet::from_iter(roles.into_iter().map(|i| i.to_owned())),
             disabled: false,
@@ -41,8 +44,11 @@ impl BasicPassport {
     }
 }
 
-impl Passport for BasicPassport {
-    type Id = String;
+impl<Id> Passport for BasicPassport<Id>
+where
+    Id: std::fmt::Display,
+{
+    type Id = Id;
     type Group = BasicGroup;
     type Role = BasicRole;
 

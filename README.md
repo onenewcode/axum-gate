@@ -80,10 +80,10 @@ You can limit the access of a route to one or multiple specific role(s).
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn admin() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport<String>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
     .route(
         "/admin",
         // Please note, that the layer is applied directly to the route handler.
@@ -110,10 +110,10 @@ make much sense in a real world application.
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn user() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport<String>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
     .route("/user", get(user))
     // In contrast to granting access to user only, this layer is applied to the route.
     .layer(
@@ -135,10 +135,10 @@ You can limit the access of a route to one or more specific group(s).
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn group_handler() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport<String>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
     .route(
         "/group-scope",
         // Please note, that the layer is applied directly to the route handler.
@@ -161,7 +161,7 @@ You can use them like any other extension:
 ```rust
 # use axum::extract::Extension;
 # use axum_gate::passport::BasicPassport;
-async fn reporter(Extension(user): Extension<BasicPassport>) -> Result<String, ()> {
+async fn reporter(Extension(user): Extension<BasicPassport<String>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {}, your roles are {:?} and you are member of groups {:?}!",
         user.id, user.roles, user.groups
@@ -191,11 +191,11 @@ To enable a login, you only need to add a custom route with the
 # use std::sync::Arc;
 # let hasher = Arc::new(Argon2Hasher::default());
 # let creds_storage = Arc::new(CredentialsMemoryStorage::<String, Vec<u8>>::from(vec![]));
-# let passport_storage = Arc::new(PassportMemoryStorage::<BasicPassport>::from(vec![]));
+# let passport_storage = Arc::new(PassportMemoryStorage::<BasicPassport<String>>::from(vec![]));
 # let jwt_codec = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport, JsonWebToken<BasicPassport>>>::new()
+let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
     .route(
         "/login",
         post({
