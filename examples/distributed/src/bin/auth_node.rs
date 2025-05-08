@@ -9,8 +9,7 @@ use axum_gate::jsonwebtoken::Validation;
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::passport::BasicPassport;
 use axum_gate::roles::BasicRole;
-use axum_gate::secrets::Argon2Hasher;
-use axum_gate::storage::{CredentialsMemoryStorage, PassportMemoryStorage};
+use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
 use dotenv;
 use std::sync::Arc;
 
@@ -30,36 +29,30 @@ async fn main() {
         validation: Some(Validation::default()),
     }));
 
-    let hasher = Arc::new(Argon2Hasher::default());
-    let creds = Credentials::new(
-        "admin@example.com".to_string(),
-        "admin_password".to_string(),
-    )
-    .hash_secret(&*hasher)
-    .unwrap();
-    let reporter_creds = Credentials::new(
-        "reporter@example.com".to_string(),
-        "reporter_password".to_string(),
-    )
-    .hash_secret(&*hasher)
-    .unwrap();
-    let user_creds = Credentials::new("user@example.com".to_string(), "user_password".to_string())
-        .hash_secret(&*hasher)
-        .unwrap();
-    let creds_storage = Arc::new(CredentialsMemoryStorage::from(vec![
-        creds.clone(),
-        user_creds.clone(),
-        reporter_creds.clone(),
-    ]));
+    let creds = Credentials::new("admin@example.com".to_string(), "admin_password");
+    let reporter_creds = Credentials::new("reporter@example.com".to_string(), "reporter_password");
+    let user_creds = Credentials::new("user@example.com".to_string(), "user_password");
+    let creds_storage = Arc::new(
+        MemoryCredentialsStorage::try_from(vec![
+            creds.clone(),
+            user_creds.clone(),
+            reporter_creds.clone(),
+        ])
+        .unwrap(),
+    );
 
-    let admin_passport = BasicPassport::<String>::new(&creds.id, &["admin"], &[BasicRole::Admin])
+    let admin_passport = BasicPassport::new(&creds.id.to_string(), &["admin"], &[BasicRole::Admin])
         .expect("Creating passport failed.");
-    let reporter_passport =
-        BasicPassport::<String>::new(&reporter_creds.id, &["reporter"], &[BasicRole::Reporter])
+    let reporter_passport = BasicPassport::new(
+        &reporter_creds.id.to_string(),
+        &["reporter"],
+        &[BasicRole::Reporter],
+    )
+    .expect("Creating passport failed.");
+    let user_passport =
+        BasicPassport::new(&user_creds.id.to_string(), &["user"], &[BasicRole::User])
             .expect("Creating passport failed.");
-    let user_passport = BasicPassport::<String>::new(&user_creds.id, &["user"], &[BasicRole::User])
-        .expect("Creating passport failed.");
-    let passport_storage = Arc::new(PassportMemoryStorage::from(vec![
+    let passport_storage = Arc::new(MemoryPassportStorage::from(vec![
         admin_passport,
         user_passport,
         reporter_passport,
@@ -73,17 +66,15 @@ async fn main() {
             post({
                 let registered_claims = RegisteredClaims::default();
                 let credentials_verifier = Arc::clone(&creds_storage);
-                let credentials_hasher = Arc::clone(&hasher);
                 let passport_storage = Arc::clone(&passport_storage);
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
-                move |cookie_jar, request_credentials: Json<Credentials<String, String>>| {
+                move |cookie_jar, request_credentials: Json<Credentials<String>>| {
                     axum_gate::route_handlers::login(
                         cookie_jar,
                         request_credentials,
                         registered_claims,
                         credentials_verifier,
-                        credentials_hasher,
                         passport_storage,
                         jwt_codec,
                         cookie_template,
