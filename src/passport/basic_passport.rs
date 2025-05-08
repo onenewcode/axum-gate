@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// A passport contains basic information about a user.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BasicPassport<Id> {
-    /// The unique id of the passport. For example username, email or some string of your choice.
+    /// The unique id of the passport. For example username, email or something of your choice.
     pub id: Id,
     /// A list of scopes that the user can access.
     pub groups: HashSet<BasicGroup>,
@@ -19,6 +19,8 @@ pub struct BasicPassport<Id> {
     pub roles: HashSet<BasicRole>,
     /// Wether the passport is disabled.
     pub disabled: bool,
+    /// E-mail of the user.
+    pub email: Option<String>,
     /// Whether the used email for this passport has been verified.
     pub email_verified: bool,
     /// Determines when this passport expires.
@@ -36,6 +38,7 @@ where
             groups: HashSet::from_iter(groups.into_iter().map(|i| BasicGroup::new(i))),
             roles: HashSet::from_iter(roles.into_iter().map(|i| i.to_owned())),
             disabled: false,
+            email: None,
             email_verified: false, // always require user to confirm it
             expires_at: chrono::Utc::now()
                 + TimeDelta::try_weeks(104).ok_or(Error::Passport(format!(
@@ -43,6 +46,14 @@ where
                      two years."
                 )))?,
         })
+    }
+
+    /// Adds the email to the passport.
+    pub fn with_email(self, email: &str) -> Self {
+        Self {
+            email: Some(email.to_string()),
+            ..self
+        }
     }
 }
 
