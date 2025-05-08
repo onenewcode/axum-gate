@@ -120,6 +120,7 @@ where
             groups: db_passport.groups,
             roles: db_passport.roles,
             disabled: db_passport.disabled,
+            email: db_passport.email,
             email_verified: db_passport.email_verified,
             expires_at: db_passport.expires_at,
         }))
@@ -136,6 +137,7 @@ where
             groups: passport.groups.clone(),
             roles: passport.roles.clone(),
             disabled: passport.disabled,
+            email: passport.email.clone(),
             email_verified: passport.email_verified,
             expires_at: passport.expires_at,
         };
