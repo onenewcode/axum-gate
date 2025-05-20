@@ -251,16 +251,21 @@ where
             &self.scope_settings.table_names.credentials,
             &credentials.id.to_string(),
         );
-        let Some(db_credentials): Option<Credentials<RecordId>> =
-            self.db
-                .select(record_id)
-                .await
-                .map_err(|e| Error::CredentialsStorage(e.to_string()))?
-        else {
-            return Ok(false);
-        };
-        self.hasher
-            .verify_secret(&credentials.secret, &db_credentials.secret)
+        let query = format!(
+            "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))"
+        );
+
+        let mut response = self
+            .db
+            .query(query)
+            .bind(("record_id", record_id))
+            .bind(("request_secret", credentials.secret.clone()))
+            .await
+            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+        let result: Option<bool> = response
+            .take(0)
+            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+        Ok(result.unwrap_or(false))
     }
 }
 
