@@ -2,7 +2,7 @@
 name = "axum-gate"
 version = "0.1.0"
 edition = "2024"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Role based access for axum using JWT cookies. For both, single nodes and distributed systems."
 homepage = "https://github.com/emirror-de/axum-gate"
