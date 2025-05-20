@@ -55,6 +55,12 @@ where
             ..self
         }
     }
+
+    /// Sets the expiration time.
+    pub fn with_expires_at(mut self, expires_at: &DateTime<Utc>) -> Self {
+        self.expires_at = expires_at.to_owned();
+        self
+    }
 }
 
 impl<Id> Passport for BasicPassport<Id>
