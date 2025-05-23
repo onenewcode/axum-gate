@@ -38,3 +38,7 @@ surrealdb = { version = "2", features = ["kv-mem"] }
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 tokio-test = "0.4.4"
 uuid = "1"
+
+
+[profile.dev]
+debug = false
