@@ -1,9 +1,6 @@
 //! A [Passport] identifies a user.
 
-mod basic_passport;
-
-pub use self::basic_passport::BasicPassport;
-use crate::roles::AccessHierarchy;
+use crate::AccessHierarchy;
 use serde::{Serialize, de::DeserializeOwned};
 use std::collections::HashSet;
 use std::fmt::{Debug, Display};

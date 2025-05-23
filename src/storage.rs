@@ -1,12 +1,16 @@
 //! Storage implementations.
 
 pub mod memory;
+#[cfg(feature = "storage-seaorm")]
+pub mod sea_orm;
 #[cfg(feature = "storage-surrealdb")]
 pub mod surrealdb;
 
 use crate::Error;
 use crate::credentials::Credentials;
 use crate::passport::Passport;
+#[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
+pub use storage_additions::*;
 
 /// A passport storage service contains a collection of passports that are
 /// known to your application.
@@ -17,7 +21,7 @@ use crate::passport::Passport;
 /// `ID` is the unique identifier type for a [Passport].
 pub trait PassportStorageService<P>
 where
-    P: Passport + Clone,
+    P: Passport,
 {
     /// Returns the passport for the given `passport_id`.
     fn passport(&self, passport_id: &P::Id) -> impl Future<Output = Result<Option<P>, Error>>;
@@ -56,21 +60,23 @@ pub trait CredentialsStorageService<Id> {
     fn remove_credentials(&self, id: &Id) -> impl Future<Output = Result<bool, Error>>;
 }
 
-#[cfg(feature = "storage-surrealdb")]
-/// Table names that are used within the database.
-#[derive(Clone, Debug)]
-pub struct TableNames {
-    /// Where passports are being stored.
-    pub passports: String,
-    /// Where credentials are stored.
-    pub credentials: String,
-}
+#[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
+mod storage_additions {
+    /// Table names that are used within the database.
+    #[derive(Clone, Debug)]
+    pub struct TableNames {
+        /// Where accounts are being stored.
+        pub accounts: String,
+        /// Where credentials are stored.
+        pub credentials: String,
+    }
 
-impl Default for TableNames {
-    fn default() -> Self {
-        Self {
-            passports: "passports".to_string(),
-            credentials: "credentials".to_string(),
+    impl Default for TableNames {
+        fn default() -> Self {
+            Self {
+                accounts: "axum-gate-accounts".to_string(),
+                credentials: "axum-gate-credentials".to_string(),
+            }
         }
     }
 }

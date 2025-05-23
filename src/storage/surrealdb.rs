@@ -1,9 +1,9 @@
 //! Storage implementations that use surrealdb as backend.
 
 use super::TableNames;
+use crate::Account;
 use crate::Error;
 use crate::credentials::{Credentials, CredentialsVerifierService};
-use crate::passport::BasicPassport;
 use crate::secrets::SecretsHashingService;
 use crate::storage::CredentialsStorageService;
 use crate::storage::PassportStorageService;
@@ -73,19 +73,19 @@ where
     }
 }
 
-impl<Id, S, Hasher> PassportStorageService<BasicPassport<Id>> for SurrealDbStorage<S, Hasher>
+impl<Id, S, Hasher> PassportStorageService<Account<Id, String>> for SurrealDbStorage<S, Hasher>
 where
     Id: Clone + Display + FromStr,
     <Id as FromStr>::Err: Display,
     Hasher: SecretsHashingService,
     S: Connection,
 {
-    async fn passport(&self, passport_id: &Id) -> Result<Option<BasicPassport<Id>>, Error> {
+    async fn passport(&self, passport_id: &Id) -> Result<Option<Account<Id, String>>, Error> {
         self.use_ns_db().await?;
-        let Some(db_passport): Option<BasicPassport<RecordId>> = self
+        let Some(db_passport): Option<Account<RecordId, String>> = self
             .db
             .select(RecordId::from_table_key(
-                &self.scope_settings.table_names.passports,
+                &self.scope_settings.table_names.accounts,
                 passport_id.to_string(),
             ))
             .await
@@ -96,36 +96,34 @@ where
         };
         let id = db_passport.id.key().to_string();
         let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
-        Ok(Some(BasicPassport {
+        Ok(Some(Account {
             id: Id::from_str(id).map_err(|e| {
                 Error::Passport(format!("Could not convert id {id} from RecordId: {e}"))
             })?,
+            account_id: db_passport.account_id,
             groups: db_passport.groups,
             roles: db_passport.roles,
             disabled: db_passport.disabled,
-            email: db_passport.email,
-            email_verified: db_passport.email_verified,
             expires_at: db_passport.expires_at,
         }))
     }
 
-    async fn store_passport(&self, passport: &BasicPassport<Id>) -> Result<Option<Id>, Error> {
+    async fn store_passport(&self, passport: &Account<Id, String>) -> Result<Option<Id>, Error> {
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
-            &self.scope_settings.table_names.passports,
+            &self.scope_settings.table_names.accounts,
             passport.id.to_string(),
         );
-        let db_passport = BasicPassport {
+        let db_passport = Account {
             id: None::<()>,
+            account_id: passport.account_id.clone(),
             groups: passport.groups.clone(),
             roles: passport.roles.clone(),
             disabled: passport.disabled,
-            email: passport.email.clone(),
-            email_verified: passport.email_verified,
             expires_at: passport.expires_at,
         };
 
-        let Some(db_passport): Option<BasicPassport<RecordId>> = self
+        let Some(db_passport): Option<Account<RecordId, String>> = self
             .db
             .insert(record_id)
             .content(db_passport)
@@ -147,10 +145,10 @@ where
 
     async fn remove_passport(&self, passport_id: &Id) -> Result<bool, Error> {
         self.use_ns_db().await?;
-        let p: Option<BasicPassport<RecordId>> = self
+        let p: Option<Account<RecordId, String>> = self
             .db
             .delete(RecordId::from_table_key(
-                &self.scope_settings.table_names.passports,
+                &self.scope_settings.table_names.accounts,
                 passport_id.to_string(),
             ))
             .await
@@ -304,10 +302,18 @@ fn passport_storage() {
         let passport_storage = SurrealDbStorage::new(db, hasher, DatabaseScope::default());
 
         let id = Uuid::new_v4();
-        let passport = BasicPassport::new(&id, &["admin", "audio"], &[BasicRole::Admin]).unwrap();
+        let passport = Account::new(
+            &id,
+            &"mymail@accountid-example.com".to_string(),
+            &["admin", "audio"],
+            &[BasicRole::Admin],
+        )
+        .unwrap();
         passport_storage.store_passport(&passport).await.unwrap();
 
-        let Some(db_passport) = passport_storage.passport(&id).await.unwrap() else {
+        let Some(db_passport): Option<Account<Uuid, String>> =
+            passport_storage.passport(&id).await.unwrap()
+        else {
             panic!("Passport not found in storage.");
         };
 

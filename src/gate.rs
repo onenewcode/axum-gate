@@ -1,8 +1,8 @@
 //! Implementation for [axum]
+use crate::AccessHierarchy;
 use crate::codecs::CodecService;
 use crate::jwt::JwtClaims;
 use crate::passport::Passport;
-use crate::roles::AccessHierarchy;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use cookie::CookieBuilder;

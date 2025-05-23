@@ -1,5 +1,8 @@
 //! Credentials definitions used for API, or storage.
 use crate::Error;
+
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 /// Responsible for verification of a secret belonging to an identifier.
@@ -20,6 +23,12 @@ pub trait CredentialsVerifierService<Id> {
 }
 
 /// Defines credentials for a simple login based on an `id` and a `secret`.
+///
+/// This struct is also used to store the secret in a storage. For this, the `Id` is set
+/// to the [Account::id](crate::Account::id). This enables the possibility to separate secret
+/// storage from the account data. This enhances security if the secret storage is not equal to the
+/// account storage as the `id` is only a reference. The secret cannot directly combined with an
+/// account without compromising the account storage as well.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {
     /// The identification of the user, eg. a username.
@@ -35,5 +44,23 @@ impl<Id> Credentials<Id> {
             id,
             secret: secret.to_string(),
         }
+    }
+}
+
+#[cfg(feature = "storage-seaorm")]
+impl<Id> TryFrom<crate::storage::sea_orm::models::credentials::Model> for Credentials<Id>
+where
+    Id: FromStr,
+    <Id as FromStr>::Err: std::fmt::Display,
+{
+    type Error = String;
+
+    fn try_from(
+        value: crate::storage::sea_orm::models::credentials::Model,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: Id::from_str(&value.identifier).map_err(|e| e.to_string())?,
+            secret: value.secret,
+        })
     }
 }

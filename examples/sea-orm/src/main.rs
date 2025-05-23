@@ -41,27 +41,16 @@ async fn main() {
         .unwrap(),
     );
 
-    let admin_passport = Account::new(
-        &creds.id.to_string(),
-        &creds.id.to_string(),
-        &["admin"],
-        &[BasicRole::Admin],
-    )
-    .expect("Creating passport failed.");
+    let admin_passport = Account::new(&creds.id.to_string(), &["admin"], &[BasicRole::Admin])
+        .expect("Creating passport failed.");
     let reporter_passport = Account::new(
-        &reporter_creds.id.to_string(),
         &reporter_creds.id.to_string(),
         &["reporter"],
         &[BasicRole::Reporter],
     )
     .expect("Creating passport failed.");
-    let user_passport = Account::new(
-        &user_creds.id.to_string(),
-        &user_creds.id.to_string(),
-        &["user"],
-        &[BasicRole::User],
-    )
-    .expect("Creating passport failed.");
+    let user_passport = Account::new(&user_creds.id.to_string(), &["user"], &[BasicRole::User])
+        .expect("Creating passport failed.");
     let passport_storage = Arc::new(MemoryPassportStorage::from(vec![
         admin_passport,
         user_passport,

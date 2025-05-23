@@ -34,7 +34,7 @@ use the memory to store the information.
 
 ```rust
 # use axum_gate::credentials::Credentials;
-# use axum_gate::passport::BasicPassport;
+# use axum_gate::Account;
 # use axum_gate::roles::BasicRole;
 # use axum_gate::secrets::Argon2Hasher;
 # use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
@@ -51,7 +51,7 @@ let user_creds = Credentials::new(
 let creds_storage = MemoryCredentialsStorage::try_from(vec![user_creds.clone()]).unwrap();
 // Same for the passport which provides details about the user.
 // The ID is used to create a connection between the storage entries.
-let user_passport = BasicPassport::new(&user_creds.id, &["user"], &[BasicRole::User])
+let user_passport = Account::new(&user_creds.id, &["user"], &[BasicRole::User])
     .expect("Creating passport failed.");
 let passport_storage = MemoryPassportStorage::from(vec![user_passport]);
 # }
@@ -70,14 +70,14 @@ You can limit the access of a route to one or multiple specific role(s).
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
 # use axum_gate::roles::BasicRole;
-# use axum_gate::passport::BasicPassport;
+# use axum_gate::Account;
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn admin() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport<String>>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<String>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
+let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
     .route(
         "/admin",
         // Please note, that the layer is applied directly to the route handler.
@@ -100,14 +100,14 @@ make much sense in a real world application.
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
 # use axum_gate::roles::BasicRole;
-# use axum_gate::passport::BasicPassport;
+# use axum_gate::Account;
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn user() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport<String>>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<String>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
+let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
     .route("/user", get(user))
     // In contrast to granting access to user only, this layer is applied to the route.
     .layer(
@@ -124,15 +124,15 @@ You can limit the access of a route to one or more specific group(s).
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
-# use axum_gate::passport::BasicPassport;
+# use axum_gate::Account;
 # use axum_gate::BasicGroup;
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn group_handler() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<BasicPassport<String>>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<String>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
+let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
     .route(
         "/group-scope",
         // Please note, that the layer is applied directly to the route handler.
@@ -150,12 +150,12 @@ let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String
 `axum-gate` provides two [Extension](axum::extract::Extension)s to the handler.
 The first one contains the [RegisteredClaims](crate::jwt::RegisteredClaims), the second
 your custom claims. In this pre-defined case it is the
-[`BasicPassport`](crate::passport::BasicPassport).
+[`Account`](crate::Account).
 You can use them like any other extension:
 ```rust
 # use axum::extract::Extension;
-# use axum_gate::passport::BasicPassport;
-async fn reporter(Extension(user): Extension<BasicPassport<String>>) -> Result<String, ()> {
+# use axum_gate::Account;
+async fn reporter(Extension(user): Extension<Account<String>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {}, your roles are {:?} and you are member of groups {:?}!",
         user.id, user.roles, user.groups
@@ -179,16 +179,16 @@ To enable a login, you only need to add a custom route with the
 # use axum_gate::credentials::Credentials;
 # use axum_gate::jwt::{JsonWebToken, RegisteredClaims};
 # use axum_gate::Gate;
-# use axum_gate::passport::BasicPassport;
+# use axum_gate::Account;
 # use axum_gate::secrets::Argon2Hasher;
 # use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
 # use std::sync::Arc;
 # let creds_storage = Arc::new(MemoryCredentialsStorage::<String, Argon2Hasher>::try_from(vec![]).unwrap());
-# let passport_storage = Arc::new(MemoryPassportStorage::<BasicPassport<String>>::from(vec![]));
+# let passport_storage = Arc::new(MemoryPassportStorage::<Account<String>>::from(vec![]));
 # let jwt_codec = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<BasicPassport<String>, JsonWebToken<BasicPassport<String>>>>::new()
+let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
     .route(
         "/login",
         post({
