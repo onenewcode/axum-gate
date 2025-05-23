@@ -1,5 +1,6 @@
 //! Storage implementations that use surrealdb as backend.
 
+use super::TableNames;
 use crate::Error;
 use crate::credentials::{Credentials, CredentialsVerifierService};
 use crate::passport::BasicPassport;
@@ -14,24 +15,6 @@ use std::str::FromStr;
 use serde::Serialize;
 use surrealdb::{Connection, RecordId, Surreal};
 use tracing::debug;
-
-/// Table names that are used within the database.
-#[derive(Clone, Debug)]
-pub struct TableNames {
-    /// Where passports are being stored.
-    pub passports: String,
-    /// Where credentials are stored.
-    pub credentials: String,
-}
-
-impl Default for TableNames {
-    fn default() -> Self {
-        Self {
-            passports: "passports".to_string(),
-            credentials: "credentials".to_string(),
-        }
-    }
-}
 
 /// Configurations to use with the [surrealdb] database.
 #[derive(Clone, Debug)]

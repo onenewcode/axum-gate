@@ -55,3 +55,22 @@ pub trait CredentialsStorageService<Id> {
     /// does NOT exists.
     fn remove_credentials(&self, id: &Id) -> impl Future<Output = Result<bool, Error>>;
 }
+
+#[cfg(feature = "storage-surrealdb")]
+/// Table names that are used within the database.
+#[derive(Clone, Debug)]
+pub struct TableNames {
+    /// Where passports are being stored.
+    pub passports: String,
+    /// Where credentials are stored.
+    pub credentials: String,
+}
+
+impl Default for TableNames {
+    fn default() -> Self {
+        Self {
+            passports: "passports".to_string(),
+            credentials: "credentials".to_string(),
+        }
+    }
+}
