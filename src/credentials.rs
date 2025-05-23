@@ -20,9 +20,6 @@ pub trait CredentialsVerifierService<Id> {
 }
 
 /// Defines credentials for a simple login based on an `id` and a `secret`.
-///
-/// It can be used for API communication, or in a persisting storage like a database using a
-/// hasher, see [Credentials::hash_secret].
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {
     /// The identification of the user, eg. a username.

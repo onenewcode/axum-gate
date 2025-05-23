@@ -26,8 +26,8 @@ for [`Passport`](crate::passport::Passport) as well as the
 [`Credentials`](crate::credentials::Credentials) of a user.
 
 In case of the pre-defined [MemoryPassportStorage](crate::storage::memory::MemoryPassportStorage)
-and [CredentialsMemoryStorage](crate::storage::memory::CredentialsMemoryStorage)
-(implements both, [CredentialsStorageService](crate::storage::memory::CredentialsStorageService) and
+and [CredentialsMemoryStorage](crate::storage::memory::MemoryCredentialsStorage)
+(implements both, [CredentialsStorageService](crate::storage::CredentialsStorageService) and
 [CredentialsVerifierService](crate::credentials::CredentialsVerifierService))
 , the following steps are required during the setup of your app. The pre-defined storages
 use the memory to store the information.
@@ -232,10 +232,10 @@ can be found at [Argon2Hasher](crate::secrets::Argon2Hasher) that is used to has
 before persisting it using [CredentialsStorageService](crate::storage::CredentialsStorageService)
 - An example for a [CredentialsStorageService](crate::storage::CredentialsStorageService) /
 [CredentialsVerifierService](crate::credentials::CredentialsVerifierService) used for
-authentication can be found at [CredentialsMemoryStorage](crate::storage::CredentialsMemoryStorage)
+authentication can be found at [MemoryCredentialsStorage](crate::storage::memory::MemoryCredentialsStorage)
 
 # License
-This project is licensed under the [MIT](LICENSE) license.
+This project is licensed under the **MIT** license.
 
 # Contribution
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in axum-gate by you, shall be licensed as MIT, without any additional terms or conditions.
