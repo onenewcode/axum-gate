@@ -1,8 +1,8 @@
 use axum::extract::Extension;
 use axum::routing::{Router, get};
 use axum_gate::Account;
-use axum_gate::BasicGroup;
 use axum_gate::Gate;
+use axum_gate::Group;
 use axum_gate::cookie;
 use axum_gate::jsonwebtoken::DecodingKey;
 use axum_gate::jsonwebtoken::EncodingKey;
@@ -77,7 +77,7 @@ async fn main() {
                 Gate::new(Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     // to_string required, because Account::Group is a String
-                    .grant_group(BasicGroup::new("admin")),
+                    .grant_group(Group::new("admin")),
             ),
         )
         .route("/reporter", get(reporter))

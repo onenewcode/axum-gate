@@ -1,8 +1,8 @@
 //! Passports are the identification card for a user. Traditionally known as `Account`.
 use crate::CommaSeparatedValue;
+use crate::Group;
 use crate::passport::Passport;
 use crate::roles::BasicRole;
-use crate::{BasicGroup, Error};
 
 use std::collections::HashSet;
 
@@ -18,7 +18,7 @@ pub struct Account<Id, AccountId> {
     /// The unique id of the account. For example username, email or something of your choice.
     pub account_id: AccountId,
     /// A list of scopes that the user can access.
-    pub groups: HashSet<BasicGroup>,
+    pub groups: HashSet<Group>,
     /// Type of this passport.
     pub roles: HashSet<BasicRole>,
     /// Wether the passport is disabled.
@@ -42,7 +42,6 @@ where
         Ok(Self {
             id: id.to_owned(),
             account_id: account_id.to_owned(),
-            groups: HashSet::from_iter(groups.into_iter().map(|i| BasicGroup::new(i))),
             roles: HashSet::from_iter(roles.into_iter().map(|i| i.to_owned())),
             disabled: false,
             expires_at: chrono::Utc::now()
@@ -57,6 +56,7 @@ where
     pub fn with_expires_at(mut self, expires_at: &DateTime<Utc>) -> Self {
         self.expires_at = expires_at.to_owned();
         self
+            groups: HashSet::from_iter(groups.into_iter().map(|i| Group::new(i))),
     }
 }
 
@@ -65,8 +65,8 @@ where
     Id: std::fmt::Display,
 {
     type Id = Id;
-    type Group = BasicGroup;
     type Role = BasicRole;
+    type Group = Group;
 
     fn id(&self) -> &Id {
         &self.id
@@ -76,7 +76,7 @@ where
         &self.roles
     }
 
-    fn groups(&self) -> &HashSet<BasicGroup> {
+    fn groups(&self) -> &HashSet<Group> {
         &self.groups
     }
 }
@@ -91,10 +91,10 @@ impl TryFrom<crate::storage::sea_orm::models::account::Model> for Account<i32, S
         Ok(Self {
             id: value.id,
             account_id: value.account_id,
-            groups: HashSet::<BasicGroup>::from_csv(&value.groups)?,
             roles: HashSet::<BasicRole>::from_csv(&value.roles)?,
             disabled: value.disabled,
             expires_at: value.expires_at,
+            groups: HashSet::<Group>::from_csv(&value.groups)?,
         })
     }
 }

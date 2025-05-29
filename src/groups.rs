@@ -7,9 +7,9 @@ use crate::CommaSeparatedValue;
 /// Basic group definitions.
 #[derive(Hash, Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(transparent)]
-pub struct BasicGroup(String);
+pub struct Group(String);
 
-impl BasicGroup {
+impl Group {
     /// Creates a new instance with the given group name.
     pub fn new(group: &str) -> Self {
         Self(group.to_string())
@@ -21,12 +21,12 @@ impl BasicGroup {
     }
 }
 
-impl CommaSeparatedValue for HashSet<BasicGroup> {
+impl CommaSeparatedValue for HashSet<Group> {
     fn from_csv(value: &str) -> Result<Self, String> {
         let value: Vec<&str> = value.split(',').collect();
         let mut result = HashSet::new();
         for v in value {
-            result.insert(BasicGroup::new(v));
+            result.insert(Group::new(v));
         }
         Ok(result)
     }

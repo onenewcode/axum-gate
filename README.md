@@ -125,7 +125,7 @@ You can limit the access of a route to one or more specific group(s).
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
 # use axum_gate::Account;
-# use axum_gate::BasicGroup;
+# use axum_gate::Group;
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn group_handler() -> () {}
@@ -139,8 +139,8 @@ let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
         get(group_handler).layer(
             Gate::new(Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
-                .grant_group(BasicGroup::new("my-group"))
-                .grant_group(BasicGroup::new("another-group"))
+                .grant_group(Group::new("my-group"))
+                .grant_group(Group::new("another-group"))
         )
     );
 ```

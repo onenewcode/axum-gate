@@ -20,7 +20,7 @@ pub use account::Account;
 pub use cookie;
 pub use errors::Error;
 pub use gate::Gate;
-pub use groups::BasicGroup;
+pub use groups::Group;
 pub use jsonwebtoken;
 
 /// Conversion between a model and its CSV representation.
