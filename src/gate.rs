@@ -31,7 +31,7 @@ where
 
 impl<Role> AccessScope<Role>
 where
-    Role: AccessHierarchy + Eq + Debug,
+    Role: AccessHierarchy + Eq + std::fmt::Display,
 {
     /// Creates a new scope with the given role.
     pub fn new(role: Role) -> Self {
@@ -49,16 +49,19 @@ where
     /// Returns `true` if one of the supervisor of the given role is allowed to access.
     pub fn grants_supervisor(&self, role: &Role) -> bool {
         if !self.allow_supervisor_access {
-            debug!("Scope {self:?} does not allow supervisor access.");
+            debug!(
+                "Scope for role {} does not allow supervisor access.",
+                self.role
+            );
             return false;
         }
         debug!(
-            "Checking user role {role:?} if it is a supervisor of the required role {:?}.",
+            "Checking user role {role} if it is a supervisor of the required role {}.",
             self.role
         );
         let mut subordinate_traveller_role = role.subordinate();
         while let Some(ref r) = subordinate_traveller_role {
-            debug!("Logged in Role: {role:?}, Current subordinate to check: {r:?}");
+            debug!("Logged in Role: {role}, Current subordinate to check: {r}");
             if self.grants_role(r) {
                 return true;
             }
@@ -91,6 +94,7 @@ impl<Pp, Codec> Gate<Pp, Codec>
 where
     Codec: CodecService,
     Pp: Passport,
+    <Pp as Passport>::Role: std::fmt::Display,
 {
     /// Creates a new instance of a gate.
     pub fn new(codec: Arc<Codec>) -> Self {
@@ -154,7 +158,6 @@ pub struct GateService<Pp, Codec, S>
 where
     Codec: CodecService,
     Pp: Passport,
-    Pp::Role: Debug,
 {
     inner: S,
     role_scopes: Vec<AccessScope<Pp::Role>>,
@@ -167,7 +170,7 @@ impl<Pp, Codec, S> GateService<Pp, Codec, S>
 where
     Codec: CodecService,
     Pp: Passport,
-    Pp::Role: Debug,
+    <Pp as Passport>::Role: std::fmt::Display,
 {
     /// Creates a new instance of a gate.
     pub fn new(inner: S, codec: Arc<Codec>, cookie_template: CookieBuilder<'static>) -> Self {
@@ -226,6 +229,7 @@ where
     S::Error: Into<Infallible>,
     S::Future: Send + 'static,
     Pp: Passport + Clone + Send + Sync + 'static,
+    <Pp as Passport>::Role: std::fmt::Display,
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
     type Response = Response<Body>;

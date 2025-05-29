@@ -2,14 +2,17 @@
 
 use super::{CredentialsStorageService, PassportStorageService};
 use crate::{
-    Account, Error, secrets::SecretsHashingService,
+    AccessHierarchy, Account, CommaSeparatedValue, Error, secrets::SecretsHashingService,
     storage::sea_orm::models::account::Entity as AccountEntity,
 };
+
+use std::collections::HashSet;
 
 use sea_orm::{
     DatabaseConnection, EntityTrait,
     entity::{ActiveModelTrait, ActiveValue},
 };
+use serde::{Serialize, de::DeserializeOwned};
 
 pub mod models;
 
@@ -19,14 +22,19 @@ pub struct SeaOrmStorage<Hasher> {
     hasher: Hasher,
 }
 
-impl<Hasher> PassportStorageService<Account<i32, String>> for SeaOrmStorage<Hasher>
+impl<Hasher, R> PassportStorageService<Account<i32, R>> for SeaOrmStorage<Hasher>
 where
     Hasher: SecretsHashingService,
+    R: AccessHierarchy
+        + Eq
+        + std::hash::Hash
+        + Serialize
+        + DeserializeOwned
+        + std::fmt::Display
+        + Clone,
+    HashSet<R>: CommaSeparatedValue,
 {
-    async fn passport(
-        &self,
-        passport_id: &i32,
-    ) -> Result<Option<Account<i32, String>>, crate::Error> {
+    async fn passport(&self, passport_id: &i32) -> Result<Option<Account<i32, R>>, crate::Error> {
         let Some(model) = AccountEntity::find_by_id(*passport_id)
             .one(&self.db)
             .await
@@ -42,7 +50,7 @@ where
 
     async fn store_passport(
         &self,
-        passport: &Account<i32, String>,
+        passport: &Account<i32, R>,
     ) -> Result<Option<i32>, crate::Error> {
         let mut model = models::account::ActiveModel::from(passport.clone());
         model.id = ActiveValue::NotSet;

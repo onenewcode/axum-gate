@@ -3,6 +3,8 @@
 use crate::Account;
 use crate::CommaSeparatedValue;
 
+use std::collections::HashSet;
+
 use sea_orm::ActiveValue;
 use sea_orm::entity::prelude::*;
 
@@ -14,15 +16,11 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     /// The account id, eg an email address or a username.
-    pub account_id: String,
+    pub username: String,
     /// The groups this passport belongs to.
     pub groups: String,
     /// The roles this passport has.
     pub roles: String,
-    /// Whether the passport is disabled.
-    pub disabled: bool,
-    /// Expiration time of the passport.
-    pub expires_at: DateTimeUtc,
 }
 
 /// Relation definition for a [Passport](Model).
@@ -31,15 +29,17 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<Account<i32, String>> for ActiveModel {
-    fn from(value: Account<i32, String>) -> Self {
+impl<R> From<Account<i32, R>> for ActiveModel
+where
+    R: Eq + std::hash::Hash,
+    HashSet<R>: CommaSeparatedValue,
+{
+    fn from(value: Account<i32, R>) -> Self {
         Self {
             id: ActiveValue::Set(value.id),
-            account_id: ActiveValue::Set(value.account_id),
+            username: ActiveValue::Set(value.username),
             groups: ActiveValue::Set(value.groups.into_csv()),
             roles: ActiveValue::Set(value.roles.into_csv()),
-            disabled: ActiveValue::Set(value.disabled),
-            expires_at: ActiveValue::Set(value.expires_at),
         }
     }
 }

@@ -9,7 +9,7 @@ use axum_gate::jsonwebtoken::EncodingKey;
 use axum_gate::jsonwebtoken::Header;
 use axum_gate::jsonwebtoken::Validation;
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use axum_gate::roles::BasicRole;
+use axum_gate::roles::Role;
 use dotenv;
 use std::sync::Arc;
 
@@ -69,7 +69,7 @@ async fn main() {
         .layer(
             Gate::new(Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
-                .grant_role_and_supervisor(BasicRole::Admin),
+                .grant_role_and_supervisor(Role::Admin),
         )
         .route(
             "/secret-admin-group",
@@ -84,14 +84,14 @@ async fn main() {
         .layer(
             Gate::new(Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
-                .grant_role_and_supervisor(BasicRole::Reporter),
+                .grant_role_and_supervisor(Role::Reporter),
         )
         .route(
             "/user",
             get(user).layer(
                 Gate::new(Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_role(BasicRole::User),
+                    .grant_role(Role::User),
             ),
         )
         .route("/", get(index));

@@ -11,13 +11,17 @@ pub trait Passport {
     type Id: Display;
     /// Roles that this passport belongs to. Serde is required to store them
     /// in JWT.
-    type Role: Debug + Eq + AccessHierarchy + Serialize + DeserializeOwned;
+    type Role: Eq + AccessHierarchy + Serialize + DeserializeOwned;
     /// The groups that this passport belongs to. Serde is required to store them
     /// in JWT.
     type Group: Debug + Eq + Serialize + DeserializeOwned;
 
     /// Returns the unique identifier of the passport.
     fn id(&self) -> &Self::Id;
+
+    /// Returns the username of the owner of this passport. This is usually unique
+    /// for your application.
+    fn username(&self) -> &str;
 
     /// Returns the roles this passport belongs to.
     fn roles(&self) -> &HashSet<Self::Role>;

@@ -35,7 +35,7 @@ use the memory to store the information.
 ```rust
 # use axum_gate::credentials::Credentials;
 # use axum_gate::Account;
-# use axum_gate::roles::BasicRole;
+# use axum_gate::roles::Role;
 # use axum_gate::secrets::Argon2Hasher;
 # use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
 # use std::sync::Arc;
@@ -51,7 +51,7 @@ let user_creds = Credentials::new(
 let creds_storage = MemoryCredentialsStorage::try_from(vec![user_creds.clone()]).unwrap();
 // Same for the passport which provides details about the user.
 // The ID is used to create a connection between the storage entries.
-let user_passport = Account::new(&user_creds.id, &["user"], &[BasicRole::User])
+let user_passport = Account::new(&user_creds.id, &["user"], &[Role::User])
     .expect("Creating passport failed.");
 let passport_storage = MemoryPassportStorage::from(vec![user_passport]);
 # }
@@ -69,7 +69,7 @@ You can limit the access of a route to one or multiple specific role(s).
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
-# use axum_gate::roles::BasicRole;
+# use axum_gate::roles::Role;
 # use axum_gate::Account;
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
@@ -84,8 +84,8 @@ let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
         get(admin).layer(
             Gate::new(Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
-                .grant_role(BasicRole::Admin)
-                .grant_role(BasicRole::User)
+                .grant_role(Role::Admin)
+                .grant_role(Role::User)
         )
     );
 ```
@@ -99,7 +99,7 @@ make much sense in a real world application.
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::Gate;
-# use axum_gate::roles::BasicRole;
+# use axum_gate::roles::Role;
 # use axum_gate::Account;
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
@@ -113,7 +113,7 @@ let app = Router::<Gate<Account<String>, JsonWebToken<Account<String>>>>::new()
     .layer(
         Gate::new(Arc::clone(&jwt_codec))
             .with_cookie_template(cookie_template)
-            .grant_role_and_supervisor(BasicRole::User)
+            .grant_role_and_supervisor(Role::User)
     );
 ```
 

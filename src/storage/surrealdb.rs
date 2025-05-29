@@ -1,6 +1,7 @@
 //! Storage implementations that use surrealdb as backend.
 
 use super::TableNames;
+use crate::AccessHierarchy;
 use crate::Account;
 use crate::Error;
 use crate::credentials::{Credentials, CredentialsVerifierService};
@@ -13,6 +14,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use surrealdb::{Connection, RecordId, Surreal};
 use tracing::debug;
 
@@ -73,16 +75,17 @@ where
     }
 }
 
-impl<Id, S, Hasher> PassportStorageService<Account<Id, String>> for SurrealDbStorage<S, Hasher>
+impl<Id, R, S, Hasher> PassportStorageService<Account<Id, R>> for SurrealDbStorage<S, Hasher>
 where
     Id: Clone + Display + FromStr,
     <Id as FromStr>::Err: Display,
+    R: AccessHierarchy + std::hash::Hash + Eq + DeserializeOwned + Serialize + 'static,
     Hasher: SecretsHashingService,
     S: Connection,
 {
-    async fn passport(&self, passport_id: &Id) -> Result<Option<Account<Id, String>>, Error> {
+    async fn passport(&self, passport_id: &Id) -> Result<Option<Account<Id, R>>, Error> {
         self.use_ns_db().await?;
-        let Some(db_passport): Option<Account<RecordId, String>> = self
+        let Some(db_passport): Option<Account<RecordId, R>> = self
             .db
             .select(RecordId::from_table_key(
                 &self.scope_settings.table_names.accounts,
@@ -100,15 +103,13 @@ where
             id: Id::from_str(id).map_err(|e| {
                 Error::Passport(format!("Could not convert id {id} from RecordId: {e}"))
             })?,
-            account_id: db_passport.account_id,
+            username: db_passport.username,
             groups: db_passport.groups,
             roles: db_passport.roles,
-            disabled: db_passport.disabled,
-            expires_at: db_passport.expires_at,
         }))
     }
 
-    async fn store_passport(&self, passport: &Account<Id, String>) -> Result<Option<Id>, Error> {
+    async fn store_passport(&self, passport: &Account<Id, R>) -> Result<Option<Id>, Error> {
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.accounts,
@@ -116,14 +117,12 @@ where
         );
         let db_passport = Account {
             id: None::<()>,
-            account_id: passport.account_id.clone(),
+            username: passport.username.clone(),
             groups: passport.groups.clone(),
             roles: passport.roles.clone(),
-            disabled: passport.disabled,
-            expires_at: passport.expires_at,
         };
 
-        let Some(db_passport): Option<Account<RecordId, String>> = self
+        let Some(db_passport): Option<Account<RecordId, R>> = self
             .db
             .insert(record_id)
             .content(db_passport)
@@ -145,7 +144,7 @@ where
 
     async fn remove_passport(&self, passport_id: &Id) -> Result<bool, Error> {
         self.use_ns_db().await?;
-        let p: Option<Account<RecordId, String>> = self
+        let p: Option<Account<RecordId, R>> = self
             .db
             .delete(RecordId::from_table_key(
                 &self.scope_settings.table_names.accounts,
@@ -290,7 +289,7 @@ fn credentials_storage() {
 fn passport_storage() {
     tokio_test::block_on(async move {
         use crate::passport::Passport;
-        use crate::roles::BasicRole;
+        use crate::roles::Role;
         use crate::secrets::Argon2Hasher;
         use surrealdb::engine::local::Mem;
         use uuid::Uuid;
@@ -304,14 +303,13 @@ fn passport_storage() {
         let id = Uuid::new_v4();
         let passport = Account::new(
             &id,
-            &"mymail@accountid-example.com".to_string(),
+            "mymail@accountid-example.com",
             &["admin", "audio"],
-            &[BasicRole::Admin],
-        )
-        .unwrap();
+            &[Role::Admin],
+        );
         passport_storage.store_passport(&passport).await.unwrap();
 
-        let Some(db_passport): Option<Account<Uuid, String>> =
+        let Some(db_passport): Option<Account<Uuid, Role>> =
             passport_storage.passport(&id).await.unwrap()
         else {
             panic!("Passport not found in storage.");
@@ -319,16 +317,16 @@ fn passport_storage() {
 
         assert_eq!(passport.id(), db_passport.id());
 
-        if !passport_storage
-            .remove_passport(passport.id())
+        if !<SurrealDbStorage<surrealdb::engine::local::Db, Argon2Hasher> as PassportStorageService<Account<uuid::Uuid, Role>>>::
+            remove_passport(& passport_storage, passport.id())
             .await
             .unwrap()
         {
             panic!("Removing passport was not successful.");
         };
 
-        if passport_storage
-            .passport(passport.id())
+        if <SurrealDbStorage<surrealdb::engine::local::Db, Argon2Hasher> as PassportStorageService<Account<uuid::Uuid, Role>>>::
+            passport(&passport_storage, passport.id())
             .await
             .unwrap()
             .is_some()

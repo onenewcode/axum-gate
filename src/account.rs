@@ -1,78 +1,66 @@
 //! Passports are the identification card for a user. Traditionally known as `Account`.
+use crate::AccessHierarchy;
 use crate::CommaSeparatedValue;
 use crate::Group;
 use crate::passport::Passport;
-use crate::roles::BasicRole;
 
 use std::collections::HashSet;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 /// A passport contains basic information about a user.
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Account<Id, AccountId> {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Account<Id, R>
+where
+    R: std::hash::Hash + Eq,
+{
     /// A customizable unique identifier for the account. This is mainly used for working with a
     /// database.
     pub id: Id,
-    /// The unique id of the account. For example username, email or something of your choice.
-    pub account_id: AccountId,
+    /// The unique id of the account. For example username or email.
+    pub username: String,
     /// A list of scopes that the user can access.
     pub groups: HashSet<Group>,
     /// Type of this passport.
-    pub roles: HashSet<BasicRole>,
-    /// Wether the passport is disabled.
-    pub disabled: bool,
-    /// Determines when this passport expires.
-    pub expires_at: DateTime<Utc>,
+    pub roles: HashSet<R>,
 }
 
-impl<Id, AccountId> Account<Id, AccountId>
+impl<Id, R> Account<Id, R>
 where
     Id: ToOwned<Owned = Id>,
-    AccountId: ToOwned<Owned = AccountId>,
+    R: std::hash::Hash + Eq + Clone,
 {
     /// Creates a new passport with [Account::disabled] and [Account::email_verified] set to `false`. The [expires_at](Account::expires_at) is set to 104 weeks.
-    pub fn new(
-        id: &Id,
-        account_id: &AccountId,
-        groups: &[&str],
-        roles: &[BasicRole],
-    ) -> Result<Self, Error> {
-        Ok(Self {
+    pub fn new(id: &Id, username: &str, groups: &[&str], roles: &[R]) -> Self {
+        let roles = roles.to_vec();
+        Self {
             id: id.to_owned(),
-            account_id: account_id.to_owned(),
-            roles: HashSet::from_iter(roles.into_iter().map(|i| i.to_owned())),
-            disabled: false,
-            expires_at: chrono::Utc::now()
-                + TimeDelta::try_weeks(104).ok_or(Error::Passport(format!(
-                    "Internal server error. Could not create TimeDelta with \
-                     two years."
-                )))?,
-        })
-    }
-
-    /// Sets the expiration time.
-    pub fn with_expires_at(mut self, expires_at: &DateTime<Utc>) -> Self {
-        self.expires_at = expires_at.to_owned();
-        self
+            username: username.to_owned(),
             groups: HashSet::from_iter(groups.into_iter().map(|i| Group::new(i))),
+            roles: HashSet::from_iter(roles.into_iter()),
+        }
     }
 }
 
-impl<Id, AccountId> Passport for Account<Id, AccountId>
+impl<Id, R> Passport for Account<Id, R>
 where
     Id: std::fmt::Display,
+    R: AccessHierarchy + std::hash::Hash + Eq + Serialize + DeserializeOwned,
 {
     type Id = Id;
-    type Role = BasicRole;
     type Group = Group;
+    type Role = R;
 
     fn id(&self) -> &Id {
         &self.id
     }
 
-    fn roles(&self) -> &HashSet<BasicRole> {
+    fn username(&self) -> &str {
+        self.username.as_str()
+    }
+
+    fn roles(&self) -> &HashSet<R> {
         &self.roles
     }
 
@@ -82,7 +70,11 @@ where
 }
 
 #[cfg(feature = "storage-seaorm")]
-impl TryFrom<crate::storage::sea_orm::models::account::Model> for Account<i32, String> {
+impl<R> TryFrom<crate::storage::sea_orm::models::account::Model> for Account<i32, R>
+where
+    R: Eq + std::hash::Hash + std::fmt::Display + Clone,
+    HashSet<R>: CommaSeparatedValue,
+{
     type Error = String;
 
     fn try_from(
@@ -90,11 +82,9 @@ impl TryFrom<crate::storage::sea_orm::models::account::Model> for Account<i32, S
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             id: value.id,
-            account_id: value.account_id,
-            roles: HashSet::<BasicRole>::from_csv(&value.roles)?,
-            disabled: value.disabled,
-            expires_at: value.expires_at,
+            username: value.username,
             groups: HashSet::<Group>::from_csv(&value.groups)?,
+            roles: HashSet::<R>::from_csv(&value.roles)?,
         })
     }
 }

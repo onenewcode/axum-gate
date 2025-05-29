@@ -7,18 +7,9 @@ use std::str::FromStr;
 
 /// Available default roles.
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    PartialEq,
-    Serialize,
-    Deserialize,
-    Hash,
-    strum::EnumString,
-    strum::Display,
+    Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Hash, strum::Display, strum::EnumString,
 )]
-pub enum BasicRole {
+pub enum Role {
     /// The person having this type is considered an Administrator.
     Admin,
     /// The person having this type is considered a Moderator.
@@ -29,7 +20,7 @@ pub enum BasicRole {
     User,
 }
 
-impl AccessHierarchy for BasicRole {
+impl AccessHierarchy for Role {
     fn subordinate(&self) -> Option<Self> {
         match self {
             Self::Admin => Some(Self::Moderator),
@@ -48,12 +39,12 @@ impl AccessHierarchy for BasicRole {
     }
 }
 
-impl CommaSeparatedValue for HashSet<BasicRole> {
+impl CommaSeparatedValue for HashSet<Role> {
     fn from_csv(value: &str) -> Result<Self, String> {
         let value = value.split(',').collect::<Vec<&str>>();
         let mut result = HashSet::new();
         for v in value {
-            result.insert(BasicRole::from_str(v).map_err(|e| e.to_string())?);
+            result.insert(Role::from_str(v).map_err(|e| e.to_string())?);
         }
         Ok(result)
     }

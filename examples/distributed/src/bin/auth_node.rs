@@ -8,7 +8,7 @@ use axum_gate::jsonwebtoken::EncodingKey;
 use axum_gate::jsonwebtoken::Header;
 use axum_gate::jsonwebtoken::Validation;
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
-use axum_gate::roles::BasicRole;
+use axum_gate::roles::Role;
 use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
 use dotenv;
 use std::sync::Arc;
@@ -45,21 +45,21 @@ async fn main() {
         &creds.id.to_string(),
         &creds.id.to_string(),
         &["admin"],
-        &[BasicRole::Admin],
+        &[Role::Admin],
     )
     .expect("Creating passport failed.");
     let reporter_passport = Account::new(
         &reporter_creds.id.to_string(),
         &reporter_creds.id.to_string(),
         &["reporter"],
-        &[BasicRole::Reporter],
+        &[Role::Reporter],
     )
     .expect("Creating passport failed.");
     let user_passport = Account::new(
         &user_creds.id.to_string(),
         &user_creds.id.to_string(),
         &["user"],
-        &[BasicRole::User],
+        &[Role::User],
     )
     .expect("Creating passport failed.");
     let passport_storage = Arc::new(MemoryPassportStorage::from(vec![
