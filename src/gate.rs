@@ -15,7 +15,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
 use tower::{Layer, Service};
-use tracing::{debug, error, trace};
+use tracing::{debug, error, trace, warn};
 
 /// Contains information about the granted access scope.
 #[derive(Debug, Clone)]
@@ -84,6 +84,7 @@ where
     Codec: CodecService,
     Pp: Passport,
 {
+    issuer: String,
     role_scopes: Vec<AccessScope<Pp::Role>>,
     group_scope: Vec<Pp::Group>,
     codec: Arc<Codec>,
@@ -97,8 +98,9 @@ where
     <Pp as Passport>::Role: std::fmt::Display,
 {
     /// Creates a new instance of a gate.
-    pub fn new(codec: Arc<Codec>) -> Self {
+    pub fn new(issuer: &str, codec: Arc<Codec>) -> Self {
         Self {
+            issuer: issuer.to_string(),
             role_scopes: vec![],
             group_scope: vec![],
             codec,
@@ -144,6 +146,7 @@ where
     fn layer(&self, inner: S) -> Self::Service {
         Self::Service {
             inner,
+            issuer: self.issuer.clone(),
             role_scopes: self.role_scopes.clone(),
             group_scope: self.group_scope.clone(),
             codec: Arc::clone(&self.codec),
@@ -160,6 +163,7 @@ where
     Pp: Passport,
 {
     inner: S,
+    issuer: String,
     role_scopes: Vec<AccessScope<Pp::Role>>,
     group_scope: Vec<Pp::Group>,
     codec: Arc<Codec>,
@@ -173,9 +177,15 @@ where
     <Pp as Passport>::Role: std::fmt::Display,
 {
     /// Creates a new instance of a gate.
-    pub fn new(inner: S, codec: Arc<Codec>, cookie_template: CookieBuilder<'static>) -> Self {
+    pub fn new(
+        inner: S,
+        issuer: &str,
+        codec: Arc<Codec>,
+        cookie_template: CookieBuilder<'static>,
+    ) -> Self {
         Self {
             inner,
+            issuer: issuer.to_string(),
             role_scopes: vec![],
             group_scope: vec![],
             codec,
@@ -228,6 +238,7 @@ where
         + 'static,
     S::Error: Into<Infallible>,
     S::Future: Send + 'static,
+    Pp: Passport + Clone + Debug + Send + Sync + 'static,
     <Pp as Passport>::Role: std::fmt::Display,
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
@@ -256,6 +267,11 @@ where
             Ok(j) => j,
         };
         debug!("Logged in with id: {}", jwt.custom_claims.id());
+
+        if !jwt.has_issuer(&self.issuer) {
+            warn!("JWT claims tried to access, but issuer does not match:\n{jwt:?}");
+            return AuthFuture::unauthorized();
+        }
 
         let passport = &jwt.custom_claims;
         if self.authorized_by_role(passport)
