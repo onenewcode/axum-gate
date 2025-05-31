@@ -228,7 +228,6 @@ where
         + 'static,
     S::Error: Into<Infallible>,
     S::Future: Send + 'static,
-    Pp: Passport + Clone + Send + Sync + 'static,
     <Pp as Passport>::Role: std::fmt::Display,
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
