@@ -61,7 +61,7 @@ where
         }
     };
 
-    let claims = JwtClaims::new_with_registered(passport, registered_claims);
+    let claims = JwtClaims::new(passport, registered_claims);
     let jwt = match codec.encode(&claims) {
         Ok(jwt) => jwt,
         Err(e) => {
