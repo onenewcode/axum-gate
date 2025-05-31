@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 pub struct RegisteredClaims {
     /// Issuer of the JWT
     #[serde(rename = "iss")]
-    pub issuer: Option<HashSet<String>>,
+    pub issuer: Option<String>,
     /// Subject of the JWT (the user)
     #[serde(rename = "sub")]
     pub subject: Option<String>,
