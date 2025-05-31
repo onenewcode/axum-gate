@@ -2,7 +2,6 @@
 use crate::Error;
 use crate::codecs::CodecService;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use chrono::{TimeDelta, Utc};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
 use std::collections::HashSet;
@@ -37,14 +36,14 @@ pub struct RegisteredClaims {
     pub jwt_id: Option<String>,
 }
 
-impl Default for RegisteredClaims {
-    /// Initializes the claims with `expiration_time` set to 1 week.
-    fn default() -> Self {
+impl RegisteredClaims {
+    /// Initializes the claims.
+    pub fn new(issuer: &str, expiration_time: u64) -> Self {
         Self {
-            issuer: None,
+            issuer: Some(issuer.to_string()),
             subject: None,
             audience: None,
-            expiration_time: Some((Utc::now() + TimeDelta::weeks(1)).timestamp() as u64),
+            expiration_time: Some(expiration_time),
             not_before_time: None,
             issued_at_time: None,
             jwt_id: None,
@@ -64,19 +63,8 @@ pub struct JwtClaims<CustomClaims> {
 }
 
 impl<CustomClaims> JwtClaims<CustomClaims> {
-    /// Creates a new claim with default registered claims and the given custom claims.
-    pub fn new(custom_claims: CustomClaims) -> Self {
-        Self {
-            registered_claims: RegisteredClaims::default(),
-            custom_claims,
-        }
-    }
-
     /// Creates new claims with the given registered claims.
-    pub fn new_with_registered(
-        custom_claims: CustomClaims,
-        registered_claims: RegisteredClaims,
-    ) -> Self {
+    pub fn new(custom_claims: CustomClaims, registered_claims: RegisteredClaims) -> Self {
         Self {
             custom_claims,
             registered_claims,
