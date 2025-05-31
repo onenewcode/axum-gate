@@ -46,13 +46,15 @@ where
 /// functionality of storing/updating/removing them.
 pub trait CredentialsStorageService<Id> {
     /// Stores the credentials. Returns `true` on success, `false` if the [Credentials::id]
-    /// already exists.
+    /// already exists. The `secret` needs to be in plain text as hashing takes place in the
+    /// storage implementation.
     fn store_credentials(
         &self,
         credentials: Credentials<Id>,
     ) -> impl Future<Output = Result<bool, Error>>;
 
-    /// Updates the credentials.
+    /// Updates the credentials. The `secret` should be plain text, hashing is done by the
+    /// storage implementation.
     fn update_credentials(
         &self,
         credentials: Credentials<Id>,
