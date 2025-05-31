@@ -1,6 +1,7 @@
 use axum::extract::Extension;
 use axum::routing::{Router, get};
 use axum_gate::Account;
+use axum_gate::CommaSeparatedValue;
 use axum_gate::Gate;
 use axum_gate::Group;
 use axum_gate::cookie;
@@ -17,31 +18,39 @@ async fn index() -> Result<String, ()> {
     Ok("Hello consumer!".to_string())
 }
 
-async fn reporter(Extension(user): Extension<Account<String, String>>) -> Result<String, ()> {
+async fn reporter(Extension(user): Extension<Account<String, Role>>) -> Result<String, ()> {
     Ok(format!(
-        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
-        user.id, user.roles, user.groups
+        "Hello {} and welcome to the consumer node. Your roles are {} and you are member of groups {:?}!",
+        user.id,
+        user.roles.into_csv(),
+        user.groups
     ))
 }
 
-async fn user(Extension(user): Extension<Account<String, String>>) -> Result<String, ()> {
+async fn user(Extension(user): Extension<Account<String, Role>>) -> Result<String, ()> {
     Ok(format!(
-        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
-        user.id, user.roles, user.groups
+        "Hello {} and welcome to the consumer node. Your roles are {} and you are member of groups {:?}!",
+        user.id,
+        user.roles.into_csv(),
+        user.groups
     ))
 }
 
-async fn admin_group(Extension(user): Extension<Account<String, String>>) -> Result<String, ()> {
+async fn admin_group(Extension(user): Extension<Account<String, Role>>) -> Result<String, ()> {
     Ok(format!(
-        "Hi {} and welcome to the secret admin-group site on the consumer node, your roles are {:?} and you are member of groups {:?}!",
-        user.id, user.roles, user.groups
+        "Hi {} and welcome to the secret admin-group site on the consumer node, your roles are {} and you are member of groups {:?}!",
+        user.id,
+        user.roles.into_csv(),
+        user.groups
     ))
 }
 
-async fn admin(Extension(user): Extension<Account<String, String>>) -> Result<String, ()> {
+async fn admin(Extension(user): Extension<Account<String, Role>>) -> Result<String, ()> {
     Ok(format!(
-        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
-        user.id, user.roles, user.groups
+        "Hello {} and welcome to the consumer node. Your roles are {} and you are member of groups {:?}!",
+        user.id,
+        user.roles.into_csv(),
+        user.groups
     ))
 }
 
@@ -55,7 +64,7 @@ async fn main() {
     let shared_secret =
         dotenv::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(
-        JsonWebToken::<JwtClaims<Account<String, String>>>::new_with_options(JsonWebTokenOptions {
+        JsonWebToken::<JwtClaims<Account<String, Role>>>::new_with_options(JsonWebTokenOptions {
             enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
             dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
             header: Some(Header::default()),
