@@ -2,8 +2,8 @@
 
 use super::{CredentialsStorageService, PassportStorageService};
 use crate::{
-    AccessHierarchy, Account, CommaSeparatedValue, Error, secrets::SecretsHashingService,
-    storage::sea_orm::models::account::Entity as AccountEntity,
+    AccessHierarchy, Account, CommaSeparatedValue, Error, credentials::Credentials,
+    secrets::SecretsHashingService, storage::sea_orm::models::account::Entity as AccountEntity,
 };
 
 use std::collections::HashSet;
@@ -61,12 +61,16 @@ where
         Ok(Some(model.id))
     }
 
-    async fn remove_passport(&self, passport_id: &i32) -> Result<bool, crate::Error> {
+    async fn remove_passport(
+        &self,
+        passport_id: &i32,
+    ) -> Result<Option<Account<i32, R>>, crate::Error> {
+        let account: Option<Account<i32, R>> = self.passport(passport_id).await?;
         AccountEntity::delete_by_id(*passport_id)
             .exec(&self.db)
             .await
             .map_err(|e| Error::PassportStorage(e.to_string()))?;
-        Ok(true)
+        Ok(account)
     }
 }
 
