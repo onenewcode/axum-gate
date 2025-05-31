@@ -10,8 +10,11 @@ use axum_gate::jsonwebtoken::Validation;
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::roles::Role;
 use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
+use chrono::{TimeDelta, Utc};
 use dotenv;
 use std::sync::Arc;
+
+const ISSUER: &str = "auth-node";
 
 #[tokio::main]
 async fn main() {
@@ -71,7 +74,11 @@ async fn main() {
         .route(
             "/login",
             post({
-                let registered_claims = RegisteredClaims::default();
+                let mut registered_claims = RegisteredClaims::new(
+                    ISSUER,
+                    (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
+                );
+                registered_claims.issuer = Some(ISSUER.to_string());
                 let credentials_verifier = Arc::clone(&creds_storage);
                 let passport_storage = Arc::clone(&passport_storage);
                 let jwt_codec = Arc::clone(&jwt_codec);

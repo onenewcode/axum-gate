@@ -14,6 +14,8 @@ use axum_gate::roles::Role;
 use dotenv;
 use std::sync::Arc;
 
+const ISSUER: &str = "auth-node";
+
 async fn index() -> Result<String, ()> {
     Ok("Hello consumer!".to_string())
 }
@@ -76,14 +78,14 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(
-            Gate::new(Arc::clone(&jwt_codec))
+            Gate::new(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .grant_role_and_supervisor(Role::Admin),
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
-                Gate::new(Arc::clone(&jwt_codec))
+                Gate::new(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     // to_string required, because Account::Group is a String
                     .grant_group(Group::new("admin")),
@@ -91,14 +93,14 @@ async fn main() {
         )
         .route("/reporter", get(reporter))
         .layer(
-            Gate::new(Arc::clone(&jwt_codec))
+            Gate::new(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .grant_role_and_supervisor(Role::Reporter),
         )
         .route(
             "/user",
             get(user).layer(
-                Gate::new(Arc::clone(&jwt_codec))
+                Gate::new(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_role(Role::User),
             ),
