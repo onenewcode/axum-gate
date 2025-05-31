@@ -74,11 +74,17 @@ where
     }
 }
 
-impl<Hasher> CredentialsStorageService<i32> for SeaOrmStorage<Hasher> {
-    async fn store_credentials(
-        &self,
-        credentials: crate::credentials::Credentials<i32>,
-    ) -> Result<bool, Error> {
+impl<Hasher> CredentialsStorageService<i32> for SeaOrmStorage<Hasher>
+where
+    Hasher: SecretsHashingService,
+{
+    async fn store_credentials(&self, credentials: Credentials<i32>) -> Result<bool, Error> {
+        let secret = self
+            .hasher
+            .hash_secret(&credentials.secret)
+            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+        let credentials = Credentials::new(credentials.id, &secret);
+
         let model = models::credentials::ActiveModel::from(credentials);
         model
             .insert(&self.db)
@@ -96,10 +102,13 @@ impl<Hasher> CredentialsStorageService<i32> for SeaOrmStorage<Hasher> {
         Ok(true)
     }
 
-    async fn update_credentials(
-        &self,
-        credentials: crate::credentials::Credentials<i32>,
-    ) -> Result<(), Error> {
+    async fn update_credentials(&self, credentials: Credentials<i32>) -> Result<(), Error> {
+        let secret = self
+            .hasher
+            .hash_secret(&credentials.secret)
+            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+        let credentials = Credentials::new(credentials.id, &secret);
+
         let model = models::credentials::ActiveModel::from(credentials);
         model
             .update(&self.db)
