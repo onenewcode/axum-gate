@@ -70,6 +70,14 @@ impl<CustomClaims> JwtClaims<CustomClaims> {
             registered_claims,
         }
     }
+
+    /// Checks whether the issuer equals to the given value.
+    pub fn has_issuer(&self, issuer: &str) -> bool {
+        let Some(iss) = &self.registered_claims.issuer else {
+            return false;
+        };
+        iss.as_str() == issuer
+    }
 }
 
 /// Options to configure the [JsonWebToken] codec.
