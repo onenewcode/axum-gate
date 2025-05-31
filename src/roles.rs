@@ -7,7 +7,16 @@ use std::str::FromStr;
 
 /// Available default roles.
 #[derive(
-    Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Hash, strum::Display, strum::EnumString,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    Hash,
+    strum::Display,
+    strum::EnumString,
 )]
 pub enum Role {
     /// The person having this type is considered an Administrator.
