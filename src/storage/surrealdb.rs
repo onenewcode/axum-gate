@@ -323,12 +323,11 @@ fn passport_storage() {
 
         assert_eq!(passport.id(), db_passport.id());
 
-        if !passport_storage
+        let account: Option<Account<Uuid, Role>> = passport_storage
             .remove_passport(passport.id())
             .await
-            .unwrap()
-            .is_some()
-        {
+            .unwrap();
+        if !account.is_some() {
             panic!("Removing passport was not successful.");
         };
 
