@@ -142,7 +142,7 @@ where
         })?))
     }
 
-    async fn remove_passport(&self, passport_id: &Id) -> Result<bool, Error> {
+    async fn remove_passport(&self, passport_id: &Id) -> Result<Option<Account<Id, R>>, Error> {
         self.use_ns_db().await?;
         let p: Option<Account<RecordId, R>> = self
             .db
@@ -152,7 +152,13 @@ where
             ))
             .await
             .map_err(|e| Error::PassportStorage(e.to_string()))?;
-        Ok(p.is_some())
+        let p = p.map(|acc| Account {
+            id: passport_id.clone(),
+            username: acc.username,
+            roles: acc.roles,
+            groups: acc.groups,
+        });
+        Ok(p)
     }
 }
 
@@ -317,20 +323,18 @@ fn passport_storage() {
 
         assert_eq!(passport.id(), db_passport.id());
 
-        if !<SurrealDbStorage<surrealdb::engine::local::Db, Argon2Hasher> as PassportStorageService<Account<uuid::Uuid, Role>>>::
-            remove_passport(& passport_storage, passport.id())
-            .await
-            .unwrap()
-        {
-            panic!("Removing passport was not successful.");
-        };
-
-        if <SurrealDbStorage<surrealdb::engine::local::Db, Argon2Hasher> as PassportStorageService<Account<uuid::Uuid, Role>>>::
-            passport(&passport_storage, passport.id())
+        if !passport_storage
+            .remove_passport(passport.id())
             .await
             .unwrap()
             .is_some()
         {
+            panic!("Removing passport was not successful.");
+        };
+
+        let passport: Option<Account<Uuid, Role>> =
+            passport_storage.passport(passport.id()).await.unwrap();
+        if passport.is_some() {
             panic!("Passport is still available althoug it should not.");
         };
     })

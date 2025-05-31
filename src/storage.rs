@@ -28,7 +28,10 @@ where
     /// Stores the given passport in the register returning its ID for further usage.
     fn store_passport(&self, passport: &P) -> impl Future<Output = Result<Option<P::Id>, Error>>;
     /// Removes the passport with the given `passport_id`.
-    fn remove_passport(&self, passport_id: &P::Id) -> impl Future<Output = Result<bool, Error>>;
+    fn remove_passport(
+        &self,
+        passport_id: &P::Id,
+    ) -> impl Future<Output = Result<Option<P>, Error>>;
 }
 
 /// Responsible for the storage of credentials.

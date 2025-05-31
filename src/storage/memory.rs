@@ -53,12 +53,12 @@ where
         write.insert(id.clone(), passport.clone());
         Ok(Some(id))
     }
-    async fn remove_passport(&self, passport_id: &P::Id) -> Result<bool, Error> {
+    async fn remove_passport(&self, passport_id: &P::Id) -> Result<Option<P>, Error> {
         let mut write = self.passports.write().await;
         if !write.contains_key(passport_id) {
-            return Ok(false);
+            return Ok(None);
         }
-        Ok(write.remove(passport_id).is_some())
+        Ok(write.remove(passport_id))
     }
 }
 /// Stores credentials in memory for authentication.
