@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 ///
 /// Implementing this service enables the application to reduce the amount of times a correct secret
 /// is transferred. For example instead of querying the credentials and verify it on the client, it
-/// is recommended to send a query to the database and verify it on this
+/// is recommended to send a query to the database and verify it on the server. See
+/// [SurrealDbStorage](crate::storage::surrealdb::SurrealDbStorage) implementation for reference.
 ///
 /// # Why not integrated into CredentialsStorageService?
 ///

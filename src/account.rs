@@ -31,7 +31,7 @@ where
     Id: ToOwned<Owned = Id>,
     R: std::hash::Hash + Eq + Clone,
 {
-    /// Creates a new passport with [Account::disabled] and [Account::email_verified] set to `false`. The [expires_at](Account::expires_at) is set to 104 weeks.
+    /// Creates a new passport with the given id, username, groups and roles.
     pub fn new(id: &Id, username: &str, groups: &[&str], roles: &[R]) -> Self {
         let roles = roles.to_vec();
         Self {

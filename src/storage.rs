@@ -15,10 +15,9 @@ pub use storage_additions::*;
 /// A passport storage service contains a collection of passports that are
 /// known to your application.
 ///
-/// This is explicitly separated from the authentication mechanism used in [CredentialsVerifierService](crate::credentials::CredentialsVerifierService) to enable [Passport] sharing over the wire without
-/// transferring the secret that authenticates the user.
-///
-/// `ID` is the unique identifier type for a [Passport].
+/// This is explicitly separated from the authentication mechanism used in
+/// CredentialsVerifierService](crate::credentials::CredentialsVerifierService) to enable [Passport]
+/// sharing over the wire without transferring secrets.
 pub trait PassportStorageService<P>
 where
     P: Passport,
