@@ -10,7 +10,7 @@ mod gate;
 mod groups;
 pub mod jwt;
 pub mod passport;
-pub mod roles;
+mod roles;
 pub mod route_handlers;
 pub mod secrets;
 pub mod storage;
@@ -22,6 +22,7 @@ pub use errors::Error;
 pub use gate::Gate;
 pub use groups::Group;
 pub use jsonwebtoken;
+pub use roles::Role;
 
 /// Conversion between a model and its CSV representation.
 pub trait CommaSeparatedValue

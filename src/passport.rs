@@ -1,20 +1,18 @@
 //! A [Passport] identifies a user.
 
 use crate::AccessHierarchy;
-use serde::{Serialize, de::DeserializeOwned};
 use std::collections::HashSet;
-use std::fmt::{Debug, Display};
 
 /// A passport contains basic information about a user that can be used for authorization.
 pub trait Passport {
     /// The unique identifier type of the passport.
-    type Id: Display;
+    type Id;
     /// Roles that this passport belongs to. Serde is required to store them
     /// in JWT.
-    type Role: Eq + AccessHierarchy + Serialize + DeserializeOwned;
+    type Role: AccessHierarchy + Eq;
     /// The groups that this passport belongs to. Serde is required to store them
     /// in JWT.
-    type Group: Debug + Eq + Serialize + DeserializeOwned;
+    type Group: Eq;
 
     /// Returns the unique identifier of the passport.
     fn id(&self) -> &Self::Id;

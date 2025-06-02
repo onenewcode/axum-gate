@@ -19,10 +19,7 @@ use tracing::{debug, error, trace, warn};
 
 /// Contains information about the granted access scope.
 #[derive(Debug, Clone)]
-struct AccessScope<Role>
-where
-    Role: Eq,
-{
+struct AccessScope<Role> {
     /// The role attached to the scope.
     pub role: Role,
     /// Whether all supervisors are granted access.
@@ -239,6 +236,7 @@ where
     S::Error: Into<Infallible>,
     S::Future: Send + 'static,
     Pp: Passport + Clone + Debug + Send + Sync + 'static,
+    <Pp as Passport>::Id: std::fmt::Display,
     <Pp as Passport>::Role: std::fmt::Display,
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
