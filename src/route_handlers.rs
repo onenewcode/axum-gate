@@ -23,7 +23,7 @@ pub async fn login<CredVeri, PpStore, Pp, Codec>(
     cookie_template: CookieBuilder<'static>,
 ) -> Result<CookieJar, StatusCode>
 where
-    Pp::Id: Into<Vec<u8>> + Clone + Display + std::fmt::Debug,
+    Pp::Id: Clone + Display + std::fmt::Debug,
     CredVeri: CredentialsVerifierService<Pp::Id>,
     PpStore: PassportStorageService<Pp>,
     Pp: Passport + Clone,
