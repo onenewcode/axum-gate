@@ -22,6 +22,19 @@ pub struct SeaOrmStorage<Hasher> {
     hasher: Hasher,
 }
 
+impl<Hasher> SeaOrmStorage<Hasher> {
+    /// Creates a new instance from the given variables.
+    pub fn new(db: &DatabaseConnection, hasher: Hasher) -> Self
+    where
+        Hasher: SecretsHashingService,
+    {
+        Self {
+            db: db.clone(),
+            hasher,
+        }
+    }
+}
+
 impl<Hasher, R> PassportStorageService<Account<i32, R>> for SeaOrmStorage<Hasher>
 where
     Hasher: SecretsHashingService,
