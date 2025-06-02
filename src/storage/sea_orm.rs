@@ -50,8 +50,8 @@ where
         + Clone,
     HashSet<R>: CommaSeparatedValue,
 {
-    async fn passport(&self, passport_id: &i32) -> Result<Option<Account<i32, R>>, crate::Error> {
-        let Some(model) = AccountEntity::find_by_id(*passport_id)
+    async fn passport(&self, username: &str) -> Result<Option<Account<i32, R>>, crate::Error> {
+        let Some(model) = AccountEntity::find_by_id(*username)
             .one(&self.db)
             .await
             .map_err(|e| Error::PassportStorage(e.to_string()))?
@@ -79,10 +79,10 @@ where
 
     async fn remove_passport(
         &self,
-        passport_id: &i32,
+        username: &i32,
     ) -> Result<Option<Account<i32, R>>, crate::Error> {
-        let account: Option<Account<i32, R>> = self.passport(passport_id).await?;
-        AccountEntity::delete_by_id(*passport_id)
+        let account: Option<Account<i32, R>> = self.passport(username).await?;
+        AccountEntity::delete_by_id(*username)
             .exec(&self.db)
             .await
             .map_err(|e| Error::PassportStorage(e.to_string()))?;

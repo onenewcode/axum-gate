@@ -4,13 +4,13 @@ use axum_gate::Account;
 use axum_gate::CommaSeparatedValue;
 use axum_gate::Gate;
 use axum_gate::Group;
+use axum_gate::Role;
 use axum_gate::cookie;
 use axum_gate::jsonwebtoken::DecodingKey;
 use axum_gate::jsonwebtoken::EncodingKey;
 use axum_gate::jsonwebtoken::Header;
 use axum_gate::jsonwebtoken::Validation;
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use axum_gate::roles::Role;
 use dotenv;
 use std::sync::Arc;
 

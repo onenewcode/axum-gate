@@ -13,6 +13,7 @@ use std::default::Default;
 use std::fmt::Display;
 use std::str::FromStr;
 
+use sea_orm::Iden;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use surrealdb::{Connection, RecordId, Surreal};
@@ -83,26 +84,31 @@ where
     Hasher: SecretsHashingService,
     S: Connection,
 {
-    async fn passport(&self, passport_id: &Id) -> Result<Option<Account<Id, R>>, Error> {
+    async fn passport(&self, username: &str) -> Result<Option<Account<Id, R>>, Error> {
         self.use_ns_db().await?;
         let Some(db_passport): Option<Account<RecordId, R>> = self
             .db
             .select(RecordId::from_table_key(
                 &self.scope_settings.table_names.accounts,
-                passport_id.to_string(),
+                username.to_string(),
             ))
             .await
             .map_err(|e| Error::PassportStorage(e.to_string()))?
         else {
-            debug!("Could not find passport with id {passport_id} in database.");
+            debug!("Could not find passport with id {username} in database.");
             return Ok(None);
         };
-        let id = db_passport.id.key().to_string();
+        let Some(db_id) = db_passport.id else {
+            return Err(Error::PassportStorage(format!(
+                "SurrealDb instance returned id with value None which should never occur."
+            )));
+        };
+        let id = db_id.key().to_string();
         let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
         Ok(Some(Account {
-            id: Id::from_str(id).map_err(|e| {
+            id: Some(Id::from_str(id).map_err(|e| {
                 Error::Passport(format!("Could not convert id {id} from RecordId: {e}"))
-            })?,
+            })?),
             username: db_passport.username,
             groups: db_passport.groups,
             roles: db_passport.roles,
@@ -113,7 +119,7 @@ where
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.accounts,
-            passport.id.to_string(),
+            passport.username.to_string(),
         );
         let db_passport = Account {
             id: None::<()>,
@@ -131,29 +137,34 @@ where
         else {
             debug!(
                 "Inserting passport {} returned None. Maybe it is already available in the database?",
-                passport.id
+                passport.username
             );
             return Ok(None);
         };
-        let id = db_passport.id.key().to_string();
+        let Some(db_id) = db_passport.id else {
+            return Err(Error::PassportStorage(format!(
+                "SurrealDb instance returned id with value None which should never occur."
+            )));
+        };
+        let id = db_id.key().to_string();
         let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
         Ok(Some(Id::from_str(id).map_err(|e| {
             Error::PassportStorage(format!("Could not convert id {id} from_str: {e}"))
         })?))
     }
 
-    async fn remove_passport(&self, passport_id: &Id) -> Result<Option<Account<Id, R>>, Error> {
+    async fn remove_passport(&self, username: &Id) -> Result<Option<Account<Id, R>>, Error> {
         self.use_ns_db().await?;
         let p: Option<Account<RecordId, R>> = self
             .db
             .delete(RecordId::from_table_key(
                 &self.scope_settings.table_names.accounts,
-                passport_id.to_string(),
+                username.to_string(),
             ))
             .await
             .map_err(|e| Error::PassportStorage(e.to_string()))?;
         let p = p.map(|acc| Account {
-            id: passport_id.clone(),
+            id: Some(username.clone()),
             username: acc.username,
             roles: acc.roles,
             groups: acc.groups,
@@ -177,17 +188,17 @@ where
 
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            &credentials.id.to_string(),
+            &credentials.username.to_string(),
         );
         let secret = self
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let db_credentials = Credentials::new(&record_id, &secret);
+        let db_credentials = Credentials::<()>::new(&credentials.username, &secret);
 
         let Some(result): Option<Credentials<RecordId>> = self
             .db
-            .insert(&db_credentials.id)
+            .insert(&record_id)
             .content(db_credentials)
             .await
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?
@@ -196,10 +207,11 @@ where
                 "Insertion of credentials returned None due to an unknown reason.".to_string(),
             ));
         };
-        let id = result.id.key().to_string();
+        let id = record_id.key().to_string();
         let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
-        Ok(Credentials::new(
-            &Id::from_str(id).map_err(|e| Error::CredentialsStorage(e.to_string()))?,
+        Ok(Credentials::new_with_id(
+            Some(Id::from_str(id).map_err(|e| Error::CredentialsStorage(e.to_string()))?),
+            &credentials.username,
             &result.secret,
         ))
     }

@@ -51,11 +51,11 @@ impl<Id> Credentials<Id> {
     }
 }
 
+/*
 #[cfg(feature = "storage-seaorm")]
 impl<Id> TryFrom<crate::storage::sea_orm::models::credentials::Model> for Credentials<Id>
 where
-    Id: FromStr,
-    <Id as FromStr>::Err: std::fmt::Display,
+    Id: From<i32>,
 {
     type Error = String;
 
@@ -63,8 +63,10 @@ where
         value: crate::storage::sea_orm::models::credentials::Model,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: Id::from_str(&value.identifier).map_err(|e| e.to_string())?,
+            id: Some(Id::from(value.id)),
+            username: value.username,
             secret: value.secret,
         })
     }
 }
+ */

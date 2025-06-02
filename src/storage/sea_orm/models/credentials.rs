@@ -14,7 +14,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     /// The unique identifier, eg username.
-    pub identifier: String,
+    pub username: String,
     /// The actual secret.
     pub secret: String,
 }
@@ -32,7 +32,7 @@ where
     fn from(value: Credentials<Id>) -> Self {
         Self {
             id: ActiveValue::NotSet,
-            identifier: ActiveValue::Set(value.id.to_string()),
+            username: ActiveValue::Set(value.username),
             secret: ActiveValue::Set(value.secret),
         }
     }

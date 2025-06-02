@@ -1,5 +1,6 @@
 //! Passports are the identification card for a user. Traditionally known as `Account`.
 use crate::AccessHierarchy;
+#[cfg(feature = "storage-seaorm")]
 use crate::CommaSeparatedValue;
 use crate::Group;
 use crate::passport::Passport;
@@ -15,7 +16,7 @@ pub struct Account<Id, R>
 where
     R: std::hash::Hash + Eq,
 {
-    /// A customizable unique identifier for the account. This is mainly used for working with a
+    /// A unique identifier for the account. This is mainly used for working with a
     /// database.
     pub id: Id,
     /// The unique id of the account. For example username or email.
@@ -32,7 +33,10 @@ where
     R: std::hash::Hash + Eq + Clone,
 {
     /// Creates a new passport with the given id, username, groups and roles.
-    pub fn new(id: &Id, username: &str, groups: &[&str], roles: &[R]) -> Self {
+    pub fn new(id: &Id, username: &str, groups: &[&str], roles: &[R]) -> Self
+    where
+        Id: ToOwned<Owned = Id>,
+    {
         let roles = roles.to_vec();
         Self {
             id: id.to_owned(),
@@ -69,6 +73,7 @@ where
     }
 }
 
+/*
 #[cfg(feature = "storage-seaorm")]
 impl<R> TryFrom<crate::storage::sea_orm::models::account::Model> for Account<i32, R>
 where
@@ -88,3 +93,4 @@ where
         })
     }
 }
+ */
