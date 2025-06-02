@@ -118,7 +118,20 @@ where
     }
 }
 
-/*
-impl<Hasher> CredentialsVerifierService for SeaOrmStorage<Hasher> where Hasher: SecretsHashingService
-{}
- */
+impl<Hasher> CredentialsVerifierService<i32> for SeaOrmStorage<Hasher>
+where
+    Hasher: SecretsHashingService,
+{
+    async fn verify_credentials(&self, credentials: &Credentials<i32>) -> Result<bool, Error> {
+        let Some(model) = CredentialsEntity::find_by_id(credentials.id)
+            .one(&self.db)
+            .await
+            .map_err(|e| Error::CredentialsStorage(e.to_string()))?
+        else {
+            return Ok(false);
+        };
+
+        self.hasher
+            .verify_secret(&credentials.secret, &model.secret)
+    }
+}
