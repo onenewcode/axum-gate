@@ -70,13 +70,13 @@ where
 /// # use axum_gate::credentials::{Credentials, CredentialsVerifierService};
 /// # use axum_gate::storage::memory::MemoryCredentialsStorage;
 /// // Lets assume the user id is an email address and the user has a gooood password.
-/// let creds = Credentials::new("admin@example.com", "admin_password");
-/// let creds_to_verify = Credentials::new("admin@example.com", "admin_password");
+/// let creds = Credentials::new(&"admin@example.com", "admin_password");
+/// let creds_to_verify = Credentials::new(&"admin@example.com", "admin_password");
 /// // In order to enable user verification we need to store a hashed version in our pre-defined
 /// // memory storage.
 /// let creds_storage = MemoryCredentialsStorage::try_from(vec![creds.clone()]).unwrap();
 /// assert_eq!(true, creds_storage.verify_credentials(&creds_to_verify).await.unwrap());
-/// let false_creds = Credentials::new("admin@example.com", "crazysecret");
+/// let false_creds = Credentials::new(&"admin@example.com", "crazysecret");
 /// assert_eq!(false, creds_storage.verify_credentials(&false_creds).await.unwrap());
 /// # });
 /// ```
@@ -188,9 +188,9 @@ where
 #[test]
 fn credentials_memory_storage() {
     tokio_test::block_on(async move {
-        let creds = Credentials::new("admin@example.com", "admin_password");
-        let creds_to_verify = Credentials::new("admin@example.com", "admin_password");
-        let wrong_creds = Credentials::new("admin@example.com", "admin_passwordwrong");
+        let creds = Credentials::new(&"admin@example.com", "admin_password");
+        let creds_to_verify = Credentials::new(&"admin@example.com", "admin_password");
+        let wrong_creds = Credentials::new(&"admin@example.com", "admin_passwordwrong");
 
         let creds_storage = MemoryCredentialsStorage::try_from(vec![creds.clone()]).unwrap();
         assert_eq!(

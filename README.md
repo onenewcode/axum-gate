@@ -44,7 +44,7 @@ use the memory to store the information.
 // This is for demonstration purpose only, your application should provide another way to add
 // credentials.
 let user_creds = Credentials::new(
-    "user@example.com",
+    &"user@example.com",
     "user_password",
 );
 // Then a credentials storage is created.

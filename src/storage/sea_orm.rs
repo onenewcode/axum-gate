@@ -83,7 +83,7 @@ where
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let credentials = Credentials::new(credentials.id, &secret);
+        let credentials = Credentials::new(&credentials.id, &secret);
 
         let model = models::credentials::ActiveModel::from(credentials);
         model
@@ -107,7 +107,7 @@ where
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let credentials = Credentials::new(credentials.id, &secret);
+        let credentials = Credentials::new(&credentials.id, &secret);
 
         let model = models::credentials::ActiveModel::from(credentials);
         model

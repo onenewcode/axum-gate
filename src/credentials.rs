@@ -40,9 +40,12 @@ pub struct Credentials<Id> {
 
 impl<Id> Credentials<Id> {
     /// Creates a new instance with the given id and secret.
-    pub fn new(id: Id, secret: &str) -> Self {
+    pub fn new(id: &Id, secret: &str) -> Self
+    where
+        Id: ToOwned<Owned = Id>,
+    {
         Self {
-            id,
+            id: id.to_owned(),
             secret: secret.to_string(),
         }
     }

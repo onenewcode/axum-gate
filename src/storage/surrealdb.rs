@@ -179,7 +179,7 @@ where
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let db_credentials = Credentials::new(record_id, &secret);
+        let db_credentials = Credentials::new(&record_id, &secret);
 
         let result: Option<Credentials<RecordId>> = self
             .db
@@ -214,7 +214,7 @@ where
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let db_credentials = Credentials::new(record_id, &secret);
+        let db_credentials = Credentials::new(&record_id, &secret);
         let _: Option<Credentials<RecordId>> = self
             .db
             .update(&db_credentials.id)
@@ -268,12 +268,12 @@ fn credentials_storage() {
         let creds_storage =
             SurrealDbStorage::new(db, Argon2Hasher::default(), DatabaseScope::default());
 
-        let creds = Credentials::new("admin@example.com", "admin_password");
+        let creds = Credentials::new(&"admin@example.com", "admin_password");
 
         creds_storage.store_credentials(creds).await.unwrap();
 
-        let creds_to_verify = Credentials::new("admin@example.com", "admin_password");
-        let wrong_creds = Credentials::new("admin@example.com", "admin_passwordwrong");
+        let creds_to_verify = Credentials::new(&"admin@example.com", "admin_password");
+        let wrong_creds = Credentials::new(&"admin@example.com", "admin_passwordwrong");
         assert_eq!(
             false,
             creds_storage

@@ -30,7 +30,7 @@ where
     Codec: CodecService<Payload = JwtClaims<Pp>>,
 {
     let creds = request_credentials.0;
-    let creds_to_verify = Credentials::new(creds.id.clone(), &creds.secret);
+    let creds_to_verify = Credentials::new(&creds.id, &creds.secret);
     match credentials_verifier
         .verify_credentials(&creds_to_verify)
         .await
