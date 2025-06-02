@@ -164,11 +164,15 @@ where
 
 impl<Id, S, Hasher> CredentialsStorageService<Id> for SurrealDbStorage<S, Hasher>
 where
-    Id: Clone + Display + Serialize + 'static,
+    Id: Clone + Display + Serialize + FromStr + 'static,
+    <Id as FromStr>::Err: Display,
     Hasher: SecretsHashingService,
     S: Connection,
 {
-    async fn store_credentials(&self, credentials: Credentials<Id>) -> Result<bool, crate::Error> {
+    async fn store_credentials(
+        &self,
+        credentials: Credentials<Id>,
+    ) -> Result<Credentials<Id>, crate::Error> {
         self.use_ns_db().await?;
 
         let record_id = RecordId::from_table_key(
@@ -181,13 +185,23 @@ where
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
         let db_credentials = Credentials::new(&record_id, &secret);
 
-        let result: Option<Credentials<RecordId>> = self
+        let Some(result): Option<Credentials<RecordId>> = self
             .db
             .insert(&db_credentials.id)
             .content(db_credentials)
             .await
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        Ok(result.is_some())
+            .map_err(|e| Error::CredentialsStorage(e.to_string()))?
+        else {
+            return Err(Error::CredentialsStorage(
+                "Insertion of credentials returned None due to an unknown reason.".to_string(),
+            ));
+        };
+        let id = result.id.key().to_string();
+        let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
+        Ok(Credentials::new(
+            &Id::from_str(id).map_err(|e| Error::CredentialsStorage(e.to_string()))?,
+            &result.secret,
+        ))
     }
 
     async fn remove_credentials(&self, id: &Id) -> Result<bool, crate::Error> {
@@ -268,7 +282,7 @@ fn credentials_storage() {
         let creds_storage =
             SurrealDbStorage::new(db, Argon2Hasher::default(), DatabaseScope::default());
 
-        let creds = Credentials::new(&"admin@example.com", "admin_password");
+        let creds = Credentials::new(&"admin@example.com".to_string(), "admin_password");
 
         creds_storage.store_credentials(creds).await.unwrap();
 

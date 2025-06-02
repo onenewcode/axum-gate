@@ -94,19 +94,24 @@ impl<Hasher> CredentialsStorageService<i32> for SeaOrmStorage<Hasher>
 where
     Hasher: SecretsHashingService,
 {
-    async fn store_credentials(&self, credentials: Credentials<i32>) -> Result<bool, Error> {
+    async fn store_credentials(
+        &self,
+        credentials: Credentials<i32>,
+    ) -> Result<Credentials<i32>, Error> {
         let secret = self
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let credentials = Credentials::new(&credentials.id, &secret);
+        let credentials = Credentials::new(&0, &secret);
 
         let model = models::credentials::ActiveModel::from(credentials);
-        model
-            .insert(&self.db)
-            .await
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        Ok(true)
+        Credentials::try_from(
+            model
+                .insert(&self.db)
+                .await
+                .map_err(|e| Error::CredentialsStorage(e.to_string()))?,
+        )
+        .map_err(|e| Error::CredentialsStorage(e.to_string()))
     }
 
     /// The credentials `id` needs to be queried from the passport storage.

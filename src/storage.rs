@@ -50,7 +50,7 @@ pub trait CredentialsStorageService<Id> {
     fn store_credentials(
         &self,
         credentials: Credentials<Id>,
-    ) -> impl Future<Output = Result<bool, Error>>;
+    ) -> impl Future<Output = Result<Credentials<Id>, Error>>;
 
     /// Updates the credentials. The `secret` should be plain text, hashing is done by the
     /// storage implementation.

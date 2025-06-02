@@ -131,7 +131,10 @@ where
     Id: Hash + Eq + Clone,
     Hasher: SecretsHashingService,
 {
-    async fn store_credentials(&self, credentials: Credentials<Id>) -> Result<bool, crate::Error> {
+    async fn store_credentials(
+        &self,
+        credentials: Credentials<Id>,
+    ) -> Result<Credentials<Id>, crate::Error> {
         let mut write = self.store.write().await;
 
         let already_present = {
@@ -140,7 +143,9 @@ where
         };
 
         if already_present {
-            return Ok(false);
+            return Err(Error::CredentialsStorage(format!(
+                "Credentials ID is already present."
+            )));
         }
 
         let secret = self
@@ -148,7 +153,15 @@ where
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
 
-        Ok(write.insert(credentials.id, secret).is_none())
+        if write
+            .insert(credentials.id.clone(), secret.clone())
+            .is_none()
+        {
+            return Err(Error::CredentialsStorage(format!(
+                "This should never occur because it is checked if the key is already present a few lines earlier."
+            )));
+        };
+        Ok(Credentials::new(&credentials.id, &secret))
     }
 
     async fn remove_credentials(&self, id: &Id) -> Result<bool, crate::Error> {
