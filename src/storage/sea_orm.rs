@@ -2,8 +2,11 @@
 
 use super::{CredentialsStorageService, PassportStorageService};
 use crate::{
-    AccessHierarchy, Account, CommaSeparatedValue, Error, credentials::Credentials,
-    secrets::SecretsHashingService, storage::sea_orm::models::account::Entity as AccountEntity,
+    AccessHierarchy, Account, CommaSeparatedValue, Error,
+    credentials::{Credentials, CredentialsVerifierService},
+    secrets::SecretsHashingService,
+    storage::sea_orm::models::account::Entity as AccountEntity,
+    storage::sea_orm::models::credentials::Entity as CredentialsEntity,
 };
 
 use std::collections::HashSet;
