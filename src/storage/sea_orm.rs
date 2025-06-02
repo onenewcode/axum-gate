@@ -1,4 +1,4 @@
-//! Support for SQL database storage through [sea-orm].
+//! Support for SQL database storage through [sea-orm](sea_orm).
 
 use super::{CredentialsStorageService, PassportStorageService};
 use crate::{
@@ -16,7 +16,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 pub mod models;
 
-/// Storage implementation for [sea-orm].
+/// Storage implementation for [sea-orm](sea_orm).
 pub struct SeaOrmStorage<Hasher> {
     db: DatabaseConnection,
     hasher: Hasher,
