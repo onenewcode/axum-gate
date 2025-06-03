@@ -1,0 +1,50 @@
+use crate::services::{AccountStorageService, SecretStorageService};
+use crate::utils::AccessHierarchy;
+use crate::{Account, Error};
+
+use std::sync::Arc;
+
+use anyhow::{Result, anyhow};
+
+/// Removes the given account and the corresponding secret from storages.
+pub struct AccountDeleteService<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    account: Account<R, G>,
+}
+
+impl<R, G> AccountDeleteService<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    /// Removes the given account and the corresponding secret from the given storages.
+    pub async fn from_storages<AccStore, SecStore>(
+        self,
+        account_storage: Arc<AccStore>,
+        secret_storage: Arc<SecStore>,
+    ) -> Result<()>
+    where
+        AccStore: AccountStorageService<R, G>,
+        SecStore: SecretStorageService,
+    {
+        if !secret_storage.delete(&self.account.account_id).await? {
+            return Err(anyhow!(Error::SecretStorage(format!(
+                "Deleting secret in storage returned false."
+            ))));
+        };
+
+        if account_storage
+            .delete(&self.account.user_id)
+            .await?
+            .is_none()
+        {
+            return Err(anyhow!(Error::AccountStorage(format!(
+                "Account storage returned None on insertion."
+            ))));
+        };
+        Ok(())
+    }
+}

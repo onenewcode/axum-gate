@@ -13,15 +13,15 @@ where
     fn store(&self, account: Account<R, G>) -> impl Future<Output = Result<Option<Account<R, G>>>>;
 
     /// Deletes the account from the storage.
-    fn delete(&self, username: &str) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    fn delete(&self, user_id: &str) -> impl Future<Output = Result<Option<Account<R, G>>>>;
 
     /// Updates the given account in the storage returning it again on success.
     fn update(&self, account: Account<R, G>)
     -> impl Future<Output = Result<Option<Account<R, G>>>>;
 
-    /// Returns the account for the given `username`.
-    fn query_by_username(
+    /// Returns the account for the given `user_id`.
+    fn query_by_user_id(
         &self,
-        username: &str,
+        user_id: &str,
     ) -> impl Future<Output = Result<Option<Account<R, G>>>>;
 }

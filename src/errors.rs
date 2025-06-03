@@ -11,7 +11,11 @@ pub enum Error {
     #[error("Hashing error: {0}")]
     Hashing(String),
     /// This error occurs in combination with a
-    /// [SecretStorage](crate::services::SecretStorage) operation.
+    /// [SecretStorage](crate::services::SecretStorageService) operation.
     #[error("SecretStorageService error: {0}")]
     SecretStorage(String),
+    /// This error occurs in combination with a
+    /// [AccountStorageService](crate::services::AccountStorageService) operation.
+    #[error("AccountStorageService error: {0}")]
+    AccountStorage(String),
 }

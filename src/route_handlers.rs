@@ -3,6 +3,7 @@ use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
 use crate::jwt::{JwtClaims, RegisteredClaims};
+use crate::secrets::VerificationResult;
 use crate::services::{AccountStorageService, CodecService, SecretStorageService};
 use crate::utils::AccessHierarchy;
 use axum::Json;
@@ -30,7 +31,7 @@ where
 {
     let creds = request_credentials.0;
 
-    let account = match account_storage.query_by_username(&creds.id).await {
+    let account = match account_storage.query_by_user_id(&creds.id).await {
         Ok(Some(acc)) => acc,
         Ok(_) => return Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -41,8 +42,8 @@ where
 
     let creds_to_verify = Credentials::new(&account.account_id, &creds.secret);
     match secret_storage.verify(creds_to_verify).await {
-        Ok(true) => (),
-        Ok(false) => {
+        Ok(VerificationResult::Ok) => (),
+        Ok(VerificationResult::Unauthorized) => {
             debug!("Hashed creds do not match.");
             return Err(StatusCode::UNAUTHORIZED);
         }

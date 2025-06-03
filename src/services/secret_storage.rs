@@ -1,4 +1,4 @@
-use crate::Credentials;
+use crate::{Credentials, secrets::VerificationResult};
 
 use anyhow::Result;
 use uuid::Uuid;
@@ -22,5 +22,8 @@ pub trait SecretStorageService {
     fn delete(&self, id: &Uuid) -> impl Future<Output = Result<bool>>;
 
     /// Verifies the given plain value to the hashed one in the storage.
-    fn verify(&self, credentials: Credentials<Uuid>) -> impl Future<Output = Result<bool>>;
+    fn verify(
+        &self,
+        credentials: Credentials<Uuid>,
+    ) -> impl Future<Output = Result<VerificationResult>>;
 }

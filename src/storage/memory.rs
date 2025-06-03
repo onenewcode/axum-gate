@@ -4,11 +4,11 @@ use crate::Account;
 use crate::Error;
 use crate::credentials::Credentials;
 use crate::secrets::Argon2Hasher;
+use crate::secrets::VerificationResult;
 use crate::services::{AccountStorageService, SecretStorageService, SecretsHashingService};
 use crate::utils::AccessHierarchy;
 
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
@@ -33,7 +33,7 @@ where
     fn from(value: Vec<Account<R, G>>) -> Self {
         let mut accounts = HashMap::new();
         for val in value {
-            let id = val.id().clone();
+            let id = val.user_id.clone();
             accounts.insert(id, val);
         }
         let accounts = Arc::new(RwLock::new(accounts));
@@ -47,12 +47,12 @@ where
     R: AccessHierarchy + Eq,
     G: Eq,
 {
-    async fn query_by_username(&self, username: &str) -> Result<Option<Account<R, G>>> {
+    async fn query_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let read = self.accounts.read().await;
-        Ok(read.get(username).cloned())
+        Ok(read.get(user_id).cloned())
     }
     async fn store(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        let id = account.username.clone();
+        let id = account.user_id.clone();
         let mut write = self.accounts.write().await;
         write.insert(id, account.clone());
         Ok(Some(account))
@@ -174,10 +174,10 @@ where
         Ok(())
     }
 
-    async fn verify(&self, credentials: Credentials<Uuid>) -> Result<bool> {
+    async fn verify(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
         let read = self.store.read().await;
         let Some(stored_secret) = read.get(&credentials.id) else {
-            return Ok(false);
+            return Ok(VerificationResult::Unauthorized);
         };
         self.hasher
             .verify_secret(&credentials.secret, stored_secret)
@@ -187,24 +187,19 @@ where
 #[test]
 fn credentials_memory_storage() {
     tokio_test::block_on(async move {
-        let creds = Credentials::new(&"admin@example.com", "admin_password");
-        let creds_to_verify = Credentials::new(&"admin@example.com", "admin_password");
-        let wrong_creds = Credentials::new(&"admin@example.com", "admin_passwordwrong");
+        let id = Uuid::now_v7();
+        let creds = Credentials::new(&id, "admin_password");
+        let creds_to_verify = Credentials::new(&id, "admin_password");
+        let wrong_creds = Credentials::new(&id, "admin_passwordwrong");
 
         let creds_storage = MemorySecretStorage::try_from(vec![creds.clone()]).unwrap();
         assert_eq!(
-            false,
-            creds_storage
-                .verify_credentials(&wrong_creds)
-                .await
-                .unwrap()
+            VerificationResult::Unauthorized,
+            creds_storage.verify(wrong_creds).await.unwrap()
         );
         assert_eq!(
-            true,
-            creds_storage
-                .verify_credentials(&creds_to_verify)
-                .await
-                .unwrap()
+            VerificationResult::Ok,
+            creds_storage.verify(creds_to_verify).await.unwrap()
         );
     })
 }
