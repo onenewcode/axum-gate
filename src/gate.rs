@@ -1,8 +1,8 @@
 //! Implementation for [axum]
-use crate::AccessHierarchy;
-use crate::codecs::CodecService;
+use crate::Account;
 use crate::jwt::JwtClaims;
-use crate::passport::Passport;
+use crate::services::CodecService;
+use crate::utils::AccessHierarchy;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use cookie::CookieBuilder;
@@ -76,23 +76,24 @@ where
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Clone)]
-pub struct Gate<Pp, Codec>
+pub struct Gate<Codec, R, G>
 where
     Codec: CodecService,
-    Pp: Passport,
+    R: AccessHierarchy + Eq,
+    G: Eq,
 {
     issuer: String,
-    role_scopes: Vec<AccessScope<Pp::Role>>,
-    group_scope: Vec<Pp::Group>,
+    role_scopes: Vec<AccessScope<R>>,
+    group_scope: Vec<G>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
 }
 
-impl<Pp, Codec> Gate<Pp, Codec>
+impl<Codec, R, G> Gate<Codec, R, G>
 where
     Codec: CodecService,
-    Pp: Passport,
-    <Pp as Passport>::Role: std::fmt::Display,
+    R: AccessHierarchy + Eq + std::fmt::Display,
+    G: Eq,
 {
     /// Creates a new instance of a gate.
     pub fn new(issuer: &str, codec: Arc<Codec>) -> Self {
@@ -112,33 +113,33 @@ where
     }
 
     /// Users with the given role are granted access.
-    pub fn grant_role(mut self, role: Pp::Role) -> Self {
+    pub fn grant_role(mut self, role: R) -> Self {
         self.role_scopes.push(AccessScope::new(role));
         self
     }
 
     /// Users with the given role and all [supervisor](AccessHierarchy::supervisor)
     /// roles are granted access.
-    pub fn grant_role_and_supervisor(mut self, role: Pp::Role) -> Self {
+    pub fn grant_role_and_supervisor(mut self, role: R) -> Self {
         self.role_scopes
             .push(AccessScope::new(role).allow_supervisor());
         self
     }
 
     /// Users that are member of the given groupe are granted access.
-    pub fn grant_group(mut self, group: Pp::Group) -> Self {
+    pub fn grant_group(mut self, group: G) -> Self {
         self.group_scope.push(group);
         self
     }
 }
 
-impl<Pp, Codec, S> Layer<S> for Gate<Pp, Codec>
+impl<Codec, R, G, S> Layer<S> for Gate<Codec, R, G>
 where
     Codec: CodecService,
-    Pp: Passport,
-    Pp::Group: Clone,
+    R: AccessHierarchy + Eq,
+    G: Eq + Clone,
 {
-    type Service = GateService<Pp, Codec, S>;
+    type Service = GateService<Codec, R, G, S>;
 
     fn layer(&self, inner: S) -> Self::Service {
         Self::Service {
@@ -154,24 +155,25 @@ where
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Debug, Clone)]
-pub struct GateService<Pp, Codec, S>
+pub struct GateService<Codec, R, G, S>
 where
     Codec: CodecService,
-    Pp: Passport,
+    R: AccessHierarchy + Eq,
+    G: Eq,
 {
     inner: S,
     issuer: String,
-    role_scopes: Vec<AccessScope<Pp::Role>>,
-    group_scope: Vec<Pp::Group>,
+    role_scopes: Vec<AccessScope<R>>,
+    group_scope: Vec<G>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
 }
 
-impl<Pp, Codec, S> GateService<Pp, Codec, S>
+impl<Codec, R, G, S> GateService<Codec, R, G, S>
 where
     Codec: CodecService,
-    Pp: Passport,
-    <Pp as Passport>::Role: std::fmt::Display,
+    R: AccessHierarchy + Eq + std::fmt::Display,
+    G: Eq,
 {
     /// Creates a new instance of a gate.
     pub fn new(
@@ -190,34 +192,35 @@ where
         }
     }
 
-    fn authorized_by_role(&self, passport: &Pp) -> bool {
+    fn authorized_by_role(&self, passport: &Account<R, G>) -> bool {
         passport
-            .roles()
+            .roles
             .iter()
             .any(|r| self.role_scopes.iter().any(|scope| scope.grants_role(r)))
     }
 
-    fn authorized_by_minimum_role(&self, passport: &Pp) -> bool {
+    fn authorized_by_minimum_role(&self, passport: &Account<R, G>) -> bool {
         debug!("Checking if any subordinate role matches the required one.");
-        passport.roles().iter().any(|ur| {
+        passport.roles.iter().any(|ur| {
             self.role_scopes
                 .iter()
                 .any(|scope| scope.grants_supervisor(ur))
         })
     }
 
-    fn authorized_by_group(&self, passport: &Pp) -> bool {
+    fn authorized_by_group(&self, passport: &Account<R, G>) -> bool {
         passport
-            .groups()
+            .groups
             .iter()
             .any(|r| self.group_scope.iter().any(|g_scope| g_scope.eq(r)))
     }
 }
 
-impl<Pp, Codec, S> GateService<Pp, Codec, S>
+impl<Codec, R, G, S> GateService<Codec, R, G, S>
 where
     Codec: CodecService,
-    Pp: Passport,
+    R: AccessHierarchy + Eq,
+    G: Eq,
 {
     /// Queries the axum-gate auth cookie from the request.
     pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie> {
@@ -227,7 +230,7 @@ where
     }
 }
 
-impl<Pp, Codec, S> Service<Request<Body>> for GateService<Pp, Codec, S>
+impl<Codec, R, G, S> Service<Request<Body>> for GateService<Codec, R, G, S>
 where
     S: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
         + Clone
@@ -235,10 +238,10 @@ where
         + 'static,
     S::Error: Into<Infallible>,
     S::Future: Send + 'static,
-    Pp: Passport + Clone + Debug + Send + Sync + 'static,
-    <Pp as Passport>::Id: std::fmt::Display,
-    <Pp as Passport>::Role: std::fmt::Display,
-    Codec: CodecService<Payload = JwtClaims<Pp>>,
+    Account<R, G>: Clone,
+    Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + std::fmt::Display + Sync + Send + 'static,
+    G: Eq + Sync + Send + 'static,
 {
     type Response = Response<Body>;
     type Error = Infallible;
@@ -264,10 +267,13 @@ where
             }
             Ok(j) => j,
         };
-        debug!("Logged in with id: {}", jwt.custom_claims.id());
+        debug!("Logged in with id: {}", jwt.custom_claims.account_id);
 
         if !jwt.has_issuer(&self.issuer) {
-            warn!("JWT claims tried to access, but issuer does not match:\n{jwt:?}");
+            warn!(
+                "Access for issuer {:?} denied. User: {}",
+                jwt.registered_claims.issuer, jwt.custom_claims.account_id
+            );
             return AuthFuture::unauthorized();
         }
 

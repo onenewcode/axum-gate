@@ -1,40 +1,46 @@
 //! Route handler for [axum].
-use crate::codecs::CodecService;
+use crate::Account;
 use crate::cookie::CookieBuilder;
-use crate::credentials::{Credentials, CredentialsVerifierService};
+use crate::credentials::Credentials;
 use crate::jwt::{JwtClaims, RegisteredClaims};
-use crate::passport::Passport;
-use crate::storage::PassportStorageService;
+use crate::services::{AccountStorageService, CodecService, SecretStorageService};
+use crate::utils::AccessHierarchy;
 use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
-use std::fmt::Display;
 use std::sync::Arc;
-use tracing::{debug, error, warn};
+use tracing::{debug, error};
 
 /// Can be used to log a user in.
-pub async fn login<CredVeri, PpStore, Pp, Codec>(
+pub async fn login<SecStore, AccStore, Codec, R, G>(
     cookie_jar: CookieJar,
-    request_credentials: Json<Credentials<Pp::Id>>,
+    request_credentials: Json<Credentials<String>>,
     registered_claims: RegisteredClaims,
-    credentials_verifier: Arc<CredVeri>,
-    passport_storage: Arc<PpStore>,
+    secret_storage: Arc<SecStore>,
+    account_storage: Arc<AccStore>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
 ) -> Result<CookieJar, StatusCode>
 where
-    Pp::Id: Clone + Display + std::fmt::Debug,
-    CredVeri: CredentialsVerifierService<Pp::Id>,
-    PpStore: PassportStorageService<Pp>,
-    Pp: Passport + Clone,
-    Codec: CodecService<Payload = JwtClaims<Pp>>,
+    R: AccessHierarchy + Eq,
+    G: Eq,
+    SecStore: SecretStorageService,
+    AccStore: AccountStorageService<R, G>,
+    Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
 {
     let creds = request_credentials.0;
-    let creds_to_verify = Credentials::new(&creds.id, &creds.secret);
-    match credentials_verifier
-        .verify_credentials(&creds_to_verify)
-        .await
-    {
+
+    let account = match account_storage.query_by_username(&creds.id).await {
+        Ok(Some(acc)) => acc,
+        Ok(_) => return Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            error!("{e}");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    let creds_to_verify = Credentials::new(&account.account_id, &creds.secret);
+    match secret_storage.verify(creds_to_verify).await {
         Ok(true) => (),
         Ok(false) => {
             debug!("Hashed creds do not match.");
@@ -46,22 +52,7 @@ where
         }
     }
 
-    let passport = match passport_storage.passport(&creds.id).await {
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(Some(p)) => p,
-        Ok(_) => {
-            warn!(
-                "Inconsistencies between credentials verifier service and passport storage state. The user with ID: {} verified its credentials but no passport available. Could not login.",
-                creds.id
-            );
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-
-    let claims = JwtClaims::new(passport, registered_claims);
+    let claims = JwtClaims::new(account, registered_claims);
     let jwt = match codec.encode(&claims) {
         Ok(jwt) => jwt,
         Err(e) => {

@@ -1,5 +1,5 @@
 //! En- and decoding payload interfaces.
-use crate::Error;
+use anyhow::Result;
 use serde::{Serialize, de::DeserializeOwned};
 
 /// Methods for encoding and decoding payload.
@@ -12,7 +12,7 @@ where
     type Payload;
 
     /// Encodes the given payload.
-    fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>, Error>;
+    fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>>;
     /// Decodoes the given payload.
-    fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload, Error>;
+    fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload>;
 }

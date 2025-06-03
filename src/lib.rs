@@ -1,36 +1,24 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-mod access_hierarchy;
-mod account;
-pub mod codecs;
-pub mod credentials;
+mod accounts;
+mod credentials;
 mod errors;
 mod gate;
 mod groups;
 pub mod jwt;
-pub mod passport;
 mod roles;
 pub mod route_handlers;
 pub mod secrets;
+pub mod services;
 pub mod storage;
+pub mod utils;
 
-pub use access_hierarchy::AccessHierarchy;
-pub use account::Account;
+pub use accounts::Account;
 pub use cookie;
+pub use credentials::Credentials;
 pub use errors::Error;
 pub use gate::Gate;
 pub use groups::Group;
 pub use jsonwebtoken;
 pub use roles::Role;
-
-/// Conversion between a model and its CSV representation.
-pub trait CommaSeparatedValue
-where
-    Self: Sized,
-{
-    /// Converts `self` into a comma separated value.
-    fn into_csv(self) -> String;
-    /// Converts the given slice into the model.
-    fn from_csv(value: &str) -> Result<Self, String>;
-}

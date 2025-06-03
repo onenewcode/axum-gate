@@ -1,17 +1,21 @@
-trait AccountStorageBackend {
-    fn create(&self, acc: Acc);
-    fn update(&self, acc: Acc);
-    fn delete(&self, username: &str);
-    fn query(&self, username: &str);
+trait AccountStorageService {
+    fn create(&self, acc: &AccountRegistration);
+    fn update(&self, acc: &StoredAccount);
+    fn delete(&self, acc: &StoredAccount);
+    fn query_by_username(&self, username: &str);
 }
-trait SecretStorageBackend: Create + Update + Delete + Verify {}
+trait SecretStorageService {
+    fn create(&self, acc: &Secret);
+    fn update(&self, acc: &Secret);
+    fn delete(&self, user_id: &Uuid);
+    fn verify(&self, user_id: &Uuid);
+}
 
-trait StorageRequest
-where
-    A: AccountStorageBackend,
-    S: SecretStorageBackend,
-{
-    fn execute(&self, account_storage: Arc<A>, secrets_storage: Arc<S>) -> Result<(), String>;
+trait Account {
+    fn id(&self) -> &Self::Id;
+    fn username(&self) -> &str;
+    fn roles(&self) -> &[Self::Role];
+    fn groups(&self) -> &[Self::Group];
 }
 
 fn howto_create_and_delete_account() {
@@ -20,21 +24,20 @@ fn howto_create_and_delete_account() {
     let secrets_storage = SecretStorage::new();
 
     // Create an account request.
-    let account = CreationRequest::new()
-        .with_username("admin@example.com") // borrowed
-        .with_roles(vec![Role::Admin, Role::Reporter])
-        .with_groups(vec![Group::Staff])
-        .with_secret("my-secret-secret") // borrowed
-        .execute(&account_storage, &secrets_storage)
-        .await?;
+    let account: StoredAccount<Id> =
+        AccountRegisterService::register("admin@example.com", "my-secret-secret")
+            .with_roles(vec![Role::Admin, Role::Reporter])
+            .with_groups(vec![Group::Staff])
+            .in_storages(&account_storage, &secrets_storage)
+            .await?;
 
     // This also deletes the secret from its storage.
-    DeletionRequest::from(account)
-        .execute(&account_storage, &secrets_storage)
+    AccountDeleteService::delete(account)
+        .from_storages(&account_storage, &secrets_storage)
         .await?;
 }
 
-fn howto_retrieve_account_and_verify_credentials() {
+fn howto_retrieve_account_and_verify_secret() {
     let account_storage = AccountStorage::new();
     let secret_storage = SecretStorage::new();
 

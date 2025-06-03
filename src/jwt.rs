@@ -1,11 +1,14 @@
 //! JWT related models like claims or encoding.
 use crate::Error;
-use crate::codecs::CodecService;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use serde_with::skip_serializing_none;
+use crate::services::CodecService;
+
 use std::collections::HashSet;
 use std::marker::PhantomData;
+
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_with::skip_serializing_none;
 
 /// Registered/reserved claims by IANA/JWT spec, see
 /// [auth0](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-token-claims) for more
@@ -156,7 +159,7 @@ where
     P: Serialize + DeserializeOwned + Clone,
 {
     type Payload = P;
-    fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>, Error> {
+    fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>> {
         let web_token = jsonwebtoken::encode(&self.header, payload, &self.enc_key)
             .map_err(|e| Error::Codec(format!("{e}")))?;
         Ok(web_token.as_bytes().to_vec())
@@ -166,7 +169,7 @@ where
     /// # Errors
     /// Returns an error if the header stored in [JsonWebToken] does not match the decoded value.
     /// The header can be retrieved from [JsonWebToken::header].
-    fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload, Error> {
+    fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload> {
         let claims = jsonwebtoken::decode::<Self::Payload>(
             &String::from_utf8_lossy(encoded_value),
             &self.dec_key,
@@ -175,9 +178,9 @@ where
         .map_err(|e| Error::Codec(format!("{e}")))?;
 
         if self.header != claims.header {
-            return Err(Error::Codec(format!(
+            return Err(anyhow!(Error::Codec(format!(
                 "Header of the decoded value does not match the one used for encoding."
-            )));
+            ))));
         }
 
         Ok(claims.claims)
