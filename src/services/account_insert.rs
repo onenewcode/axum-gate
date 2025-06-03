@@ -7,6 +7,7 @@ use crate::{
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
+use tracing::debug;
 
 /// Ergonomic service that is able to insert/register a new [Account] to the storages.
 pub struct AccountInsertService<R, G>
@@ -56,11 +57,13 @@ where
         SecStore: SecretStorageService,
     {
         let account = Account::new(&self.user_id, &self.roles, &self.groups);
+        debug!("Created account.");
         let Some(account) = account_storage.store(account).await? else {
             return Err(anyhow!(Error::AccountStorage(format!(
                 "Account storage returned None on insertion."
             ))));
         };
+        debug!("Stored account in account storage.");
         let id = &account.account_id;
         let cred = Credentials::new(id, &self.secret);
         if !secret_storage.store(cred).await? {
@@ -68,6 +71,7 @@ where
                 "Storing secret in storage returned false."
             ))))
         } else {
+            debug!("Stored secret in secret storage.");
             Ok(Some(account))
         }
     }

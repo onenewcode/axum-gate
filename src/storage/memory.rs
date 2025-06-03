@@ -13,6 +13,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use tokio::sync::RwLock;
+use tracing::debug;
 use uuid::Uuid;
 
 /// A [MemoryAccountStorage] is a data structure where all [Account]s are stored in memory.
@@ -23,6 +24,18 @@ where
     G: Eq,
 {
     accounts: Arc<RwLock<HashMap<String, Account<R, G>>>>,
+}
+
+impl<R, G> Default for MemoryAccountStorage<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    fn default() -> Self {
+        Self {
+            accounts: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
 }
 
 impl<R, G> From<Vec<Account<R, G>>> for MemoryAccountStorage<R, G>
@@ -73,17 +86,21 @@ where
 /// # Create and use a credential storage for authentication
 /// ```rust
 /// # tokio_test::block_on(async move {
-/// # use axum_gate::credentials::{Credentials, CredentialsVerifierService};
+/// # use axum_gate::Credentials;
+/// # use axum_gate::secrets::VerificationResult;
+/// # use axum_gate::services::SecretStorageService;
 /// # use axum_gate::storage::memory::MemorySecretStorage;
+/// # use uuid::Uuid;
 /// // Lets assume the user id is an email address and the user has a gooood password.
-/// let creds = Credentials::new(&"admin@example.com", "admin_password");
-/// let creds_to_verify = Credentials::new(&"admin@example.com", "admin_password");
+/// let id = Uuid::now_v7();
+/// let creds = Credentials::new(&id, "admin_password");
+/// let creds_to_verify = Credentials::new(&id, "admin_password");
 /// // In order to enable user verification we need to store a hashed version in our pre-defined
 /// // memory storage.
 /// let creds_storage = MemorySecretStorage::try_from(vec![creds.clone()]).unwrap();
-/// assert_eq!(true, creds_storage.verify_credentials(&creds_to_verify).await.unwrap());
-/// let false_creds = Credentials::new(&"admin@example.com", "crazysecret");
-/// assert_eq!(false, creds_storage.verify_credentials(&false_creds).await.unwrap());
+/// assert_eq!(VerificationResult::Ok, creds_storage.verify(creds_to_verify).await.unwrap());
+/// let false_creds = Credentials::new(&id, "crazysecret");
+/// assert_eq!(VerificationResult::Unauthorized, creds_storage.verify(false_creds).await.unwrap());
 /// # });
 /// ```
 #[derive(Clone)]
@@ -130,8 +147,6 @@ where
     Hasher: SecretsHashingService,
 {
     async fn store(&self, credentials: Credentials<Uuid>) -> Result<bool> {
-        let mut write = self.store.write().await;
-
         let already_present = {
             let read = self.store.read().await;
             read.contains_key(&credentials.id)
@@ -147,10 +162,14 @@ where
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
+        debug!("Sucessfully hashed secret.");
+
+        let mut write = self.store.write().await;
+        debug!("Got write lock on secret storage.");
 
         if write
             .insert(credentials.id.clone(), secret.clone())
-            .is_none()
+            .is_some()
         {
             return Err(anyhow!(Error::SecretStorage(format!(
                 "This should never occur because it is checked if the key is already present a few lines earlier."
