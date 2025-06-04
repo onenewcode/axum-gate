@@ -1,4 +1,6 @@
 use crate::utils::AccessHierarchy;
+#[cfg(feature = "storage-seaorm")]
+use crate::utils::CommaSeparatedValue;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -39,5 +41,26 @@ where
             groups,
             roles,
         }
+    }
+}
+
+#[cfg(feature = "storage-seaorm")]
+impl<R, G> TryFrom<crate::storage::sea_orm::models::account::Model> for Account<R, G>
+where
+    R: AccessHierarchy + Eq + std::fmt::Display + Clone,
+    Vec<R>: CommaSeparatedValue,
+    G: Eq + Clone,
+    Vec<G>: CommaSeparatedValue,
+{
+    type Error = String;
+
+    fn try_from(
+        value: crate::storage::sea_orm::models::account::Model,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self::new(
+            &value.user_id,
+            &Vec::<R>::from_csv(&value.roles)?,
+            &Vec::<G>::from_csv(&value.groups)?,
+        ))
     }
 }

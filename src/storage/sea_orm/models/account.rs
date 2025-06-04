@@ -1,9 +1,7 @@
 //! Passport model to be used with [sea-orm].
 
 use crate::Account;
-use crate::CommaSeparatedValue;
-
-use std::collections::HashSet;
+use crate::utils::{AccessHierarchy, CommaSeparatedValue};
 
 use sea_orm::ActiveValue;
 use sea_orm::entity::prelude::*;
@@ -15,8 +13,8 @@ pub struct Model {
     /// Primary key for storing in a database table.
     #[sea_orm(primary_key)]
     pub id: i32,
-    /// The account id, eg an email address or a username.
-    pub username: String,
+    /// The user id, eg an email address or a username.
+    pub user_id: String,
     /// The groups this passport belongs to.
     pub groups: String,
     /// The roles this passport has.
@@ -29,15 +27,17 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl<R> From<Account<i32, R>> for ActiveModel
+impl<R, G> From<Account<R, G>> for ActiveModel
 where
-    R: Eq + std::hash::Hash,
-    HashSet<R>: CommaSeparatedValue,
+    R: AccessHierarchy + Eq,
+    Vec<R>: CommaSeparatedValue,
+    G: Eq,
+    Vec<G>: CommaSeparatedValue,
 {
-    fn from(value: Account<i32, R>) -> Self {
+    fn from(value: Account<R, G>) -> Self {
         Self {
-            id: ActiveValue::Set(value.id),
-            username: ActiveValue::Set(value.username),
+            id: ActiveValue::NotSet,
+            user_id: ActiveValue::Set(value.user_id),
             groups: ActiveValue::Set(value.groups.into_csv()),
             roles: ActiveValue::Set(value.roles.into_csv()),
         }

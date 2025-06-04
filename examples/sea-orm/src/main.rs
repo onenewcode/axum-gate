@@ -1,23 +1,19 @@
-use axum::extract::Json;
-use axum::routing::{Router, get, post};
-use axum_gate::Account;
-use axum_gate::Role;
-use axum_gate::cookie;
-use axum_gate::credentials::Credentials;
-use axum_gate::jsonwebtoken::DecodingKey;
-use axum_gate::jsonwebtoken::EncodingKey;
-use axum_gate::jsonwebtoken::Header;
-use axum_gate::jsonwebtoken::Validation;
+use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use axum_gate::secrets::Argon2Hasher;
-use axum_gate::storage::{
-    CredentialsStorageService, PassportStorageService, sea_orm::SeaOrmStorage,
-};
+use axum_gate::services::AccountInsertService;
+use axum_gate::storage::sea_orm::SeaOrmStorage;
+use axum_gate::{Account, Credentials, Group, Role, cookie};
+
+use std::sync::Arc;
+
+use axum::extract::Json;
+use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
 use dotenv;
 use sea_orm::{ConnectionTrait, DbBackend, DbConn, Schema};
 use sea_query::table::TableCreateStatement;
-use std::sync::Arc;
+use tracing::debug;
 
 const DATABASE_URL: &str = "sqlite::memory:";
 
@@ -51,7 +47,7 @@ async fn main() {
         validation: Some(Validation::default()),
     };
     let jwt_codec =
-        Arc::new(JsonWebToken::<JwtClaims<Account<i32, Role>>>::new_with_options(jwt_options));
+        Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
 
     // SQLite memory database connection
     let db = sea_orm::Database::connect(DATABASE_URL)
@@ -60,46 +56,34 @@ async fn main() {
 
     setup_database_schema(&db).await;
 
-    // setup dummy usernames
-    let username_admin = "admin@example.com";
-    let username_reporter = "reporter@example.com";
-    let username_user = "user@example.com";
+    let account_storage = Arc::new(SeaOrmStorage::new(&db, Argon2Hasher));
+    debug!("Account storage initialized.");
+    let secrets_storage = Arc::new(SeaOrmStorage::new(&db, Argon2Hasher));
+    debug!("Secrets storage initialized.");
 
-    let creds = Credentials::new(username_admin, "admin_password");
-    let reporter_creds = Credentials::new(username_reporter, "reporter_password");
-    let user_creds = Credentials::new(username_user, "user_password");
+    AccountInsertService::insert("admin@example.com", "admin_password")
+        .with_roles(vec![Role::Admin])
+        .with_groups(vec![Group::new("admin")])
+        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .await
+        .unwrap();
+    debug!("Inserted Admin.");
 
-    let creds_storage = Arc::new(SeaOrmStorage::new(&db, Argon2Hasher::default()));
-    let creds = creds_storage
-        .store_credentials(creds)
+    AccountInsertService::insert("reporter@example.com", "reporter_password")
+        .with_roles(vec![Role::Reporter])
+        .with_groups(vec![Group::new("reporter")])
+        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
-        .expect("Could not insert creds.");
-    let reporter_creds = creds_storage
-        .store_credentials(reporter_creds)
-        .await
-        .expect("Could not insert reporter_creds.");
-    let user_creds = creds_storage
-        .store_credentials(user_creds)
-        .await
-        .expect("Could not insert user_creds.");
+        .unwrap();
+    debug!("Inserted Reporter.");
 
-    let admin_passport = Account::new(username_admin, &["admin"], &[Role::Admin]);
-    let reporter_passport = Account::new(username_reporter, &["reporter"], &[Role::Reporter]);
-    let user_passport = Account::new(username_user, &["user"], &[Role::User]);
-
-    let passport_storage = Arc::clone(&creds_storage);
-    passport_storage
-        .store_passport(&admin_passport)
+    AccountInsertService::insert("user@example.com", "user_password")
+        .with_roles(vec![Role::User])
+        .with_groups(vec![Group::new("user")])
+        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
-        .expect("Could not insert admin passport.");
-    passport_storage
-        .store_passport(&reporter_passport)
-        .await
-        .expect("Could not insert reporter passport.");
-    passport_storage
-        .store_passport(&user_passport)
-        .await
-        .expect("Could not insert user passport.");
+        .unwrap();
+    debug!("Inserted User.");
 
     let cookie_template = cookie::CookieBuilder::new("axum-gate", "").secure(true);
 
@@ -111,17 +95,17 @@ async fn main() {
                     "auth-node", // same as in distributed example, so you can re-use the consumer_node
                     (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
                 );
-                let credentials_verifier = Arc::clone(&creds_storage);
-                let passport_storage = Arc::clone(&passport_storage);
+                let secrets_storage = Arc::clone(&secrets_storage);
+                let account_storage = Arc::clone(&account_storage);
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
-                move |cookie_jar, request_credentials: Json<Credentials<i32>>| {
+                move |cookie_jar, request_credentials: Json<Credentials<String>>| {
                     axum_gate::route_handlers::login(
                         cookie_jar,
                         request_credentials,
                         registered_claims,
-                        credentials_verifier,
-                        passport_storage,
+                        secrets_storage,
+                        account_storage,
                         jwt_codec,
                         cookie_template,
                     )

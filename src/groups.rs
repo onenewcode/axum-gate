@@ -1,3 +1,5 @@
+use crate::utils::CommaSeparatedValue;
+
 use serde::{Deserialize, Serialize};
 
 /// Basic group definitions.
@@ -14,5 +16,23 @@ impl Group {
     /// Returns the group name.
     pub fn name(&self) -> &str {
         &self.0
+    }
+}
+
+impl CommaSeparatedValue for Vec<Group> {
+    fn from_csv(value: &str) -> Result<Self, String> {
+        Ok(value
+            .split(',')
+            .collect::<Vec<&str>>()
+            .iter()
+            .map(|g| Group::new(g))
+            .collect())
+    }
+
+    fn into_csv(self) -> String {
+        self.into_iter()
+            .map(|g| g.name().to_string())
+            .collect::<Vec<String>>()
+            .join(",")
     }
 }

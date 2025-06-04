@@ -13,7 +13,7 @@ categories = ["authentication", "web-programming"]
 
 [features]
 storage-surrealdb = ["surrealdb"]
-storage-seaorm = ["sea-orm"]
+storage-seaorm = ["sea-orm/uuid"]
 
 [dependencies]
 anyhow = "1.0.98"

@@ -1,6 +1,9 @@
 //! Default implementation of roles and their relation.
 
-use crate::utils::AccessHierarchy;
+use crate::utils::{AccessHierarchy, CommaSeparatedValue};
+
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 /// Available default roles.
@@ -34,5 +37,23 @@ impl AccessHierarchy for Role {
             Self::Reporter => Some(Self::Moderator),
             Self::User => Some(Self::Reporter),
         }
+    }
+}
+
+impl CommaSeparatedValue for Vec<Role> {
+    fn from_csv(value: &str) -> Result<Self, String> {
+        let mut role_str = value.split(',').collect::<Vec<&str>>();
+        let mut roles = Vec::with_capacity(role_str.len());
+        while let Some(r) = role_str.pop() {
+            roles.push(Role::from_str(r).map_err(|e| e.to_string())?);
+        }
+        Ok(roles)
+    }
+
+    fn into_csv(self) -> String {
+        self.into_iter()
+            .map(|g| g.to_string())
+            .collect::<Vec<String>>()
+            .join(",")
     }
 }
