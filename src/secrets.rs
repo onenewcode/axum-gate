@@ -55,7 +55,7 @@ impl SecretsHashingService for Argon2Hasher {
 #[test]
 fn argon2hasher() {
     let secret = "something";
-    let hasher = Argon2Hasher::default();
+    let hasher = Argon2Hasher;
     let hashed_secret = hasher.hash_secret(secret).unwrap();
     assert_eq!(
         VerificationResult::Ok,

@@ -188,7 +188,7 @@ where
 
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            &credentials.user_id.to_string(),
+            credentials.user_id.to_string(),
         );
 
         let credentials = Credentials::new(&credentials.user_id, &secret);
@@ -224,7 +224,7 @@ where
 
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            &credentials.user_id.to_string(),
+            credentials.user_id.to_string(),
         );
         let credentials = Credentials::new(&credentials.user_id, &secret);
         let _: Option<Credentials<Uuid>> = self
@@ -240,11 +240,9 @@ where
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            &credentials.user_id.to_string(),
+            credentials.user_id.to_string(),
         );
-        let query = format!(
-            "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))"
-        );
+        let query = "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))".to_string();
 
         let mut response = self
             .db
@@ -272,7 +270,7 @@ fn secret_storage() {
             .await
             .expect("Could not create in memory database.");
         let creds_storage =
-            SurrealDbStorage::new(db, Argon2Hasher::default(), DatabaseScope::default());
+            SurrealDbStorage::new(db, Argon2Hasher, DatabaseScope::default());
         let id = Uuid::now_v7();
 
         let creds = Credentials::new(&id, "admin_password");
@@ -302,7 +300,7 @@ fn account_storage() {
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
-        let hasher = Argon2Hasher::default();
+        let hasher = Argon2Hasher;
         let account_storage = SurrealDbStorage::new(db, hasher, DatabaseScope::default());
 
         let account = Account::new(
