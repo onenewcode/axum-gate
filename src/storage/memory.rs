@@ -116,7 +116,7 @@ impl Default for MemorySecretStorage<Argon2Hasher> {
     fn default() -> Self {
         Self {
             store: Arc::new(RwLock::new(HashMap::new())),
-            hasher: Argon2Hasher::default(),
+            hasher: Argon2Hasher,
         }
     }
 }
@@ -124,10 +124,10 @@ impl Default for MemorySecretStorage<Argon2Hasher> {
 impl TryFrom<Vec<Credentials<Uuid>>> for MemorySecretStorage<Argon2Hasher> {
     type Error = Error;
     fn try_from(value: Vec<Credentials<Uuid>>) -> Result<Self, Error> {
-        let hasher = Argon2Hasher::default();
+        let hasher = Argon2Hasher;
         let mut store = HashMap::with_capacity(value.len());
-        let mut value_iter = value.into_iter();
-        while let Some(v) = value_iter.next() {
+        let value_iter = value.into_iter();
+        for v in value_iter {
             let secret = hasher
                 .hash_secret(&v.secret)
                 .map_err(|e| Error::SecretStorage(e.to_string()))?;
@@ -137,7 +137,7 @@ impl TryFrom<Vec<Credentials<Uuid>>> for MemorySecretStorage<Argon2Hasher> {
         let store = Arc::new(RwLock::new(store));
         Ok(Self {
             store,
-            hasher: Argon2Hasher::default(),
+            hasher: Argon2Hasher,
         })
     }
 }
@@ -153,9 +153,9 @@ where
         };
 
         if already_present {
-            return Err(anyhow!(Error::SecretStorage(format!(
-                "Credentials ID is already present."
-            ))));
+            return Err(anyhow!(Error::SecretStorage(
+                "Credentials ID is already present.".to_string()
+            )));
         }
 
         let secret = self
@@ -167,13 +167,8 @@ where
         let mut write = self.store.write().await;
         debug!("Got write lock on secret storage.");
 
-        if write
-            .insert(credentials.id.clone(), secret.clone())
-            .is_some()
-        {
-            return Err(anyhow!(Error::SecretStorage(format!(
-                "This should never occur because it is checked if the key is already present a few lines earlier."
-            ))));
+        if write.insert(credentials.id, secret.clone()).is_some() {
+            return Err(anyhow!(Error::SecretStorage("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
         };
         Ok(true)
     }

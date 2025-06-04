@@ -25,13 +25,9 @@ impl From<bool> for VerificationResult {
 }
 
 /// Hashes values using [argon2].
+#[derive(Default)]
 pub struct Argon2Hasher;
 
-impl Default for Argon2Hasher {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl SecretsHashingService for Argon2Hasher {
     fn hash_secret(&self, plain_value: &str) -> Result<HashedSecret> {
@@ -43,7 +39,7 @@ impl SecretsHashingService for Argon2Hasher {
             .to_string())
     }
     fn verify_secret(&self, plain_value: &str, hashed_value: &str) -> Result<VerificationResult> {
-        let hash = PasswordHash::new(&hashed_value).map_err(|e| {
+        let hash = PasswordHash::new(hashed_value).map_err(|e| {
             crate::Error::Hashing(format!(
                 "Could not create password hash from hashed value string: {e}"
             ))

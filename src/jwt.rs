@@ -178,9 +178,7 @@ where
         .map_err(|e| Error::Codec(format!("{e}")))?;
 
         if self.header != claims.header {
-            return Err(anyhow!(Error::Codec(format!(
-                "Header of the decoded value does not match the one used for encoding."
-            ))));
+            return Err(anyhow!(Error::Codec("Header of the decoded value does not match the one used for encoding.".to_string())));
         }
 
         Ok(claims.claims)

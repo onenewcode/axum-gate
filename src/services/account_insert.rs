@@ -59,17 +59,13 @@ where
         let account = Account::new(&self.user_id, &self.roles, &self.groups);
         debug!("Created account.");
         let Some(account) = account_storage.store(account).await? else {
-            return Err(anyhow!(Error::AccountStorage(format!(
-                "Account storage returned None on insertion."
-            ))));
+            return Err(anyhow!(Error::AccountStorage("Account storage returned None on insertion.".to_string())));
         };
         debug!("Stored account in account storage.");
         let id = &account.account_id;
         let cred = Credentials::new(id, &self.secret);
         if !secret_storage.store(cred).await? {
-            Err(anyhow!(Error::SecretStorage(format!(
-                "Storing secret in storage returned false."
-            ))))
+            Err(anyhow!(Error::SecretStorage("Storing secret in storage returned false.".to_string())))
         } else {
             debug!("Stored secret in secret storage.");
             Ok(Some(account))
