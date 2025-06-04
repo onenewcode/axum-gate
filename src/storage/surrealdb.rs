@@ -1,23 +1,18 @@
 //! Storage implementations that use surrealdb as backend.
 
 use super::TableNames;
-use crate::AccessHierarchy;
-use crate::Account;
-use crate::Error;
-use crate::credentials::{Credentials, CredentialsVerifierService};
-use crate::secrets::SecretsHashingService;
-use crate::storage::CredentialsStorageService;
-use crate::storage::PassportStorageService;
+use crate::secrets::VerificationResult;
+use crate::services::{AccountStorageService, SecretStorageService, SecretsHashingService};
+use crate::utils::AccessHierarchy;
+use crate::{Account, Credentials, Error};
 
 use std::default::Default;
-use std::fmt::Display;
-use std::str::FromStr;
 
-use sea_orm::Iden;
+use anyhow::{Result, anyhow};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use surrealdb::{Connection, RecordId, Surreal};
-use tracing::debug;
+use uuid::Uuid;
 
 /// Configurations to use with the [surrealdb] database.
 #[derive(Clone, Debug)]
@@ -39,6 +34,53 @@ impl Default for DatabaseScope {
         }
     }
 }
+
+/*
+/// Account model as it is represented within [surrealdb].
+#[derive(Serialize, Deserialize)]
+struct SurrealDbAccount<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    /// The unique record id.
+    pub id: RecordId,
+    /// The actual account data.
+    #[serde(flatten)]
+    pub account_data: Account<R, G>,
+}
+
+impl<R, G> From<Account<R, G>> for SurrealDbAccount<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    fn from(value: Account<R, G>) -> Self {
+        Self {
+            id: RecordId::from_table_key(TableNames::default().accounts, value.user_id.clone()),
+            account_data: value,
+        }
+    }
+}
+
+/// Credentials model as it is represented within [surrealdb].
+#[derive(Serialize, Deserialize)]
+struct SurrealDbCredentials {
+    /// The unique record id.
+    pub id: RecordId,
+    /// The actual secret data.
+    #[serde(flatten)]
+    pub data: Credentials<Uuid>,
+}
+
+impl From<Credentials<Uuid>> for SurrealDbCredentials {
+    fn from(value: Credentials<Uuid>) -> Self {
+        Self {
+            id: RecordId::from_table_key(TableNames::default().credentials, value.id.clone()),
+            data: value,
+        }
+    }
+} */
 
 /// A storage that uses [surrealdb] as backend.
 #[derive(Clone)]
@@ -67,201 +109,138 @@ where
     }
 
     /// Sets the correct namespace and database to use.
-    async fn use_ns_db(&self) -> Result<(), Error> {
+    async fn use_ns_db(&self) -> Result<()> {
         self.db
             .use_ns(&self.scope_settings.namespace)
             .use_db(&self.scope_settings.database)
             .await
-            .map_err(|e| Error::Storage(e.to_string()))
+            .map_err(|e| anyhow!(Error::Storage(e.to_string())))
     }
 }
 
-impl<Id, R, S, Hasher> PassportStorageService<Account<Id, R>> for SurrealDbStorage<S, Hasher>
+impl<R, G, S, Hasher> AccountStorageService<R, G> for SurrealDbStorage<S, Hasher>
 where
-    Id: Clone + Display + FromStr,
-    <Id as FromStr>::Err: Display,
-    R: AccessHierarchy + std::hash::Hash + Eq + DeserializeOwned + Serialize + 'static,
+    R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
+    G: Serialize + DeserializeOwned + Eq + 'static,
     Hasher: SecretsHashingService,
     S: Connection,
 {
-    async fn passport(&self, username: &str) -> Result<Option<Account<Id, R>>, Error> {
+    async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         self.use_ns_db().await?;
-        let Some(db_passport): Option<Account<RecordId, R>> = self
+        let db_account: Option<Account<R, G>> = self
             .db
             .select(RecordId::from_table_key(
                 &self.scope_settings.table_names.accounts,
-                username.to_string(),
+                user_id,
             ))
             .await
-            .map_err(|e| Error::PassportStorage(e.to_string()))?
-        else {
-            debug!("Could not find passport with id {username} in database.");
-            return Ok(None);
-        };
-        let Some(db_id) = db_passport.id else {
-            return Err(Error::PassportStorage(format!(
-                "SurrealDb instance returned id with value None which should never occur."
-            )));
-        };
-        let id = db_id.key().to_string();
-        let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
-        Ok(Some(Account {
-            id: Some(Id::from_str(id).map_err(|e| {
-                Error::Passport(format!("Could not convert id {id} from RecordId: {e}"))
-            })?),
-            username: db_passport.username,
-            groups: db_passport.groups,
-            roles: db_passport.roles,
-        }))
+            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+        Ok(db_account)
     }
 
-    async fn store_passport(&self, passport: &Account<Id, R>) -> Result<Option<Id>, Error> {
+    async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         self.use_ns_db().await?;
-        let record_id = RecordId::from_table_key(
-            &self.scope_settings.table_names.accounts,
-            passport.username.to_string(),
-        );
-        let db_passport = Account {
-            id: None::<()>,
-            username: passport.username.clone(),
-            groups: passport.groups.clone(),
-            roles: passport.roles.clone(),
-        };
-
-        let Some(db_passport): Option<Account<RecordId, R>> = self
+        let record_id =
+            RecordId::from_table_key(&self.scope_settings.table_names.accounts, &account.user_id);
+        let db_account: Option<Account<R, G>> = self
             .db
             .insert(record_id)
-            .content(db_passport)
+            .content(account)
             .await
-            .map_err(|e| Error::PassportStorage(format!("Could not insert passport: {e}")))?
-        else {
-            debug!(
-                "Inserting passport {} returned None. Maybe it is already available in the database?",
-                passport.username
-            );
-            return Ok(None);
-        };
-        let Some(db_id) = db_passport.id else {
-            return Err(Error::PassportStorage(format!(
-                "SurrealDb instance returned id with value None which should never occur."
-            )));
-        };
-        let id = db_id.key().to_string();
-        let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
-        Ok(Some(Id::from_str(id).map_err(|e| {
-            Error::PassportStorage(format!("Could not convert id {id} from_str: {e}"))
-        })?))
+            .map_err(|e| Error::AccountStorage(format!("Could not insert account: {e}")))?;
+        Ok(db_account)
     }
 
-    async fn remove_passport(&self, username: &Id) -> Result<Option<Account<Id, R>>, Error> {
+    async fn delete_account(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         self.use_ns_db().await?;
-        let p: Option<Account<RecordId, R>> = self
+        let db_account: Option<Account<R, G>> = self
             .db
             .delete(RecordId::from_table_key(
                 &self.scope_settings.table_names.accounts,
-                username.to_string(),
+                user_id,
             ))
             .await
-            .map_err(|e| Error::PassportStorage(e.to_string()))?;
-        let p = p.map(|acc| Account {
-            id: Some(username.clone()),
-            username: acc.username,
-            roles: acc.roles,
-            groups: acc.groups,
-        });
-        Ok(p)
+            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+        Ok(db_account)
+    }
+
+    async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
+        self.use_ns_db().await?;
+        let record_id =
+            RecordId::from_table_key(&self.scope_settings.table_names.accounts, &account.user_id);
+        let db_account: Option<Account<R, G>> = self.db.update(&record_id).content(account).await?;
+        Ok(db_account)
     }
 }
 
-impl<Id, S, Hasher> CredentialsStorageService<Id> for SurrealDbStorage<S, Hasher>
+impl<S, Hasher> SecretStorageService for SurrealDbStorage<S, Hasher>
 where
-    Id: Clone + Display + Serialize + FromStr + 'static,
-    <Id as FromStr>::Err: Display,
     Hasher: SecretsHashingService,
     S: Connection,
 {
-    async fn store_credentials(
-        &self,
-        credentials: Credentials<Id>,
-    ) -> Result<Credentials<Id>, crate::Error> {
+    async fn store_secret(&self, credentials: Credentials<Uuid>) -> Result<bool> {
         self.use_ns_db().await?;
 
-        let record_id = RecordId::from_table_key(
-            &self.scope_settings.table_names.credentials,
-            &credentials.username.to_string(),
-        );
         let secret = self
             .hasher
             .hash_secret(&credentials.secret)
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let db_credentials = Credentials::<()>::new(&credentials.username, &secret);
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
 
-        let Some(result): Option<Credentials<RecordId>> = self
-            .db
-            .insert(&record_id)
-            .content(db_credentials)
-            .await
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?
-        else {
-            return Err(Error::CredentialsStorage(
-                "Insertion of credentials returned None due to an unknown reason.".to_string(),
-            ));
-        };
-        let id = record_id.key().to_string();
-        let id = id.trim_start_matches("⟨").trim_end_matches("⟩");
-        Ok(Credentials::new_with_id(
-            Some(Id::from_str(id).map_err(|e| Error::CredentialsStorage(e.to_string()))?),
-            &credentials.username,
-            &result.secret,
-        ))
-    }
-
-    async fn remove_credentials(&self, id: &Id) -> Result<bool, crate::Error> {
-        self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            &id.to_string(),
+            &credentials.user_id.to_string(),
         );
-        let result: Option<Credentials<RecordId>> = self
+
+        let credentials = Credentials::new(&credentials.user_id, &secret);
+
+        let db_credentials: Option<Credentials<Uuid>> = self
+            .db
+            .insert(&record_id)
+            .content(credentials)
+            .await
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+        Ok(db_credentials.is_some())
+    }
+
+    async fn delete_secret(&self, id: &Uuid) -> Result<bool> {
+        self.use_ns_db().await?;
+        let record_id =
+            RecordId::from_table_key(&self.scope_settings.table_names.credentials, id.to_string());
+        let result: Option<Credentials<Uuid>> = self
             .db
             .delete(record_id)
             .await
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
         Ok(result.is_some())
     }
 
-    async fn update_credentials(&self, credentials: Credentials<Id>) -> Result<(), crate::Error> {
+    async fn update_secret(&self, credentials: Credentials<Uuid>) -> Result<()> {
         self.use_ns_db().await?;
-        let record_id = RecordId::from_table_key(
-            &self.scope_settings.table_names.credentials,
-            &credentials.id.to_string(),
-        );
+
         let secret = self
             .hasher
             .hash_secret(&credentials.secret)
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        let db_credentials = Credentials::new(&record_id, &secret);
-        let _: Option<Credentials<RecordId>> = self
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+
+        let record_id = RecordId::from_table_key(
+            &self.scope_settings.table_names.credentials,
+            &credentials.user_id.to_string(),
+        );
+        let credentials = Credentials::new(&credentials.user_id, &secret);
+        let _: Option<Credentials<Uuid>> = self
             .db
-            .update(&db_credentials.id)
-            .content(db_credentials)
+            .update(record_id)
+            .content(credentials)
             .await
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
         Ok(())
     }
-}
 
-impl<Id, S, Hasher> CredentialsVerifierService<Id> for SurrealDbStorage<S, Hasher>
-where
-    Id: Display + Serialize,
-    S: Connection,
-    Hasher: SecretsHashingService,
-{
-    async fn verify_credentials(&self, credentials: &Credentials<Id>) -> Result<bool, Error> {
+    async fn verify_secret(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            &credentials.id.to_string(),
+            &credentials.user_id.to_string(),
         );
         let query = format!(
             "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))"
@@ -273,16 +252,17 @@ where
             .bind(("record_id", record_id))
             .bind(("request_secret", credentials.secret.clone()))
             .await
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
         let result: Option<bool> = response
             .take(0)
-            .map_err(|e| Error::CredentialsStorage(e.to_string()))?;
-        Ok(result.unwrap_or(false))
+            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+
+        Ok(VerificationResult::from(result.unwrap_or(false)))
     }
 }
 
 #[test]
-fn credentials_storage() {
+fn secret_storage() {
     tokio_test::block_on(async move {
         use crate::secrets::Argon2Hasher;
         use surrealdb::engine::local::Mem;
@@ -293,73 +273,72 @@ fn credentials_storage() {
             .expect("Could not create in memory database.");
         let creds_storage =
             SurrealDbStorage::new(db, Argon2Hasher::default(), DatabaseScope::default());
+        let id = Uuid::now_v7();
 
-        let creds = Credentials::new(&"admin@example.com".to_string(), "admin_password");
+        let creds = Credentials::new(&id, "admin_password");
 
-        creds_storage.store_credentials(creds).await.unwrap();
+        creds_storage.store_secret(creds).await.unwrap();
 
-        let creds_to_verify = Credentials::new(&"admin@example.com", "admin_password");
-        let wrong_creds = Credentials::new(&"admin@example.com", "admin_passwordwrong");
+        let creds_to_verify = Credentials::new(&id, "admin_password");
+        let wrong_creds = Credentials::new(&id, "admin_passwordwrong");
         assert_eq!(
-            false,
-            creds_storage
-                .verify_credentials(&wrong_creds)
-                .await
-                .unwrap()
+            VerificationResult::Unauthorized,
+            creds_storage.verify_secret(wrong_creds).await.unwrap()
         );
         assert_eq!(
-            true,
-            creds_storage
-                .verify_credentials(&creds_to_verify)
-                .await
-                .unwrap()
+            VerificationResult::Ok,
+            creds_storage.verify_secret(creds_to_verify).await.unwrap()
         );
     })
 }
 
 #[test]
-fn passport_storage() {
+fn account_storage() {
     tokio_test::block_on(async move {
-        use crate::passport::Passport;
-        use crate::roles::Role;
         use crate::secrets::Argon2Hasher;
+        use crate::{Account, Group, Role};
         use surrealdb::engine::local::Mem;
-        use uuid::Uuid;
 
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
         let hasher = Argon2Hasher::default();
-        let passport_storage = SurrealDbStorage::new(db, hasher, DatabaseScope::default());
+        let account_storage = SurrealDbStorage::new(db, hasher, DatabaseScope::default());
 
-        let id = Uuid::new_v4();
-        let passport = Account::new(
-            &id,
+        let account = Account::new(
             "mymail@accountid-example.com",
-            &["admin", "audio"],
             &[Role::Admin],
+            &[Group::new("admin"), Group::new("audio")],
         );
-        passport_storage.store_passport(&passport).await.unwrap();
+        let account = account_storage
+            .store_account(account)
+            .await
+            .unwrap()
+            .unwrap();
 
-        let Some(db_passport): Option<Account<Uuid, Role>> =
-            passport_storage.passport(&id).await.unwrap()
+        let Some(db_account): Option<Account<Role, Group>> = account_storage
+            .query_account_by_user_id(&account.user_id)
+            .await
+            .unwrap()
         else {
-            panic!("Passport not found in storage.");
+            panic!("Account not found in database.");
         };
 
-        assert_eq!(passport.id(), db_passport.id());
+        assert_eq!(account.account_id, db_account.account_id);
 
-        let account: Option<Account<Uuid, Role>> = passport_storage
-            .remove_passport(passport.id())
+        let Some(account): Option<Account<Role, Group>> = account_storage
+            .delete_account(&account.user_id)
             .await
-            .unwrap();
-        if !account.is_some() {
+            .unwrap()
+        else {
             panic!("Removing passport was not successful.");
         };
 
-        let passport: Option<Account<Uuid, Role>> =
-            passport_storage.passport(passport.id()).await.unwrap();
-        if passport.is_some() {
+        let account: Option<Account<Role, Group>> = account_storage
+            .query_account_by_user_id(&account.user_id)
+            .await
+            .unwrap();
+        if account.is_some() {
             panic!("Passport is still available althoug it should not.");
         };
     })

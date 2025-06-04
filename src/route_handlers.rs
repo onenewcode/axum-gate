@@ -31,7 +31,10 @@ where
 {
     let creds = request_credentials.0;
 
-    let account = match account_storage.query_by_user_id(&creds.id).await {
+    let account = match account_storage
+        .query_account_by_user_id(&creds.user_id)
+        .await
+    {
         Ok(Some(acc)) => acc,
         Ok(_) => return Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -41,7 +44,7 @@ where
     };
 
     let creds_to_verify = Credentials::new(&account.account_id, &creds.secret);
-    match secret_storage.verify(creds_to_verify).await {
+    match secret_storage.verify_secret(creds_to_verify).await {
         Ok(VerificationResult::Ok) => (),
         Ok(VerificationResult::Unauthorized) => {
             debug!("Hashed creds do not match.");

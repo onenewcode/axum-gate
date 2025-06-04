@@ -60,25 +60,25 @@ where
     R: AccessHierarchy + Eq,
     G: Eq,
 {
-    async fn query_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
+    async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let read = self.accounts.read().await;
         Ok(read.get(user_id).cloned())
     }
-    async fn store(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
+    async fn store_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         let id = account.user_id.clone();
         let mut write = self.accounts.write().await;
         write.insert(id, account.clone());
         Ok(Some(account))
     }
-    async fn delete(&self, account_id: &str) -> Result<Option<Account<R, G>>> {
+    async fn delete_account(&self, account_id: &str) -> Result<Option<Account<R, G>>> {
         let mut write = self.accounts.write().await;
         if !write.contains_key(account_id) {
             return Ok(None);
         }
         Ok(write.remove(account_id))
     }
-    async fn update(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
-        self.store(account).await
+    async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
+        self.store_account(account).await
     }
 }
 /// Stores secrets in memory for authentication.
@@ -132,7 +132,7 @@ impl TryFrom<Vec<Credentials<Uuid>>> for MemorySecretStorage<Argon2Hasher> {
                 .hash_secret(&v.secret)
                 .map_err(|e| Error::SecretStorage(e.to_string()))?;
 
-            store.insert(v.id, secret);
+            store.insert(v.user_id, secret);
         }
         let store = Arc::new(RwLock::new(store));
         Ok(Self {
@@ -146,10 +146,10 @@ impl<Hasher> SecretStorageService for MemorySecretStorage<Hasher>
 where
     Hasher: SecretsHashingService,
 {
-    async fn store(&self, credentials: Credentials<Uuid>) -> Result<bool> {
+    async fn store_secret(&self, credentials: Credentials<Uuid>) -> Result<bool> {
         let already_present = {
             let read = self.store.read().await;
-            read.contains_key(&credentials.id)
+            read.contains_key(&credentials.user_id)
         };
 
         if already_present {
@@ -167,30 +167,30 @@ where
         let mut write = self.store.write().await;
         debug!("Got write lock on secret storage.");
 
-        if write.insert(credentials.id, secret.clone()).is_some() {
+        if write.insert(credentials.user_id, secret.clone()).is_some() {
             return Err(anyhow!(Error::SecretStorage("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
         };
         Ok(true)
     }
 
-    async fn delete(&self, id: &Uuid) -> Result<bool> {
+    async fn delete_secret(&self, id: &Uuid) -> Result<bool> {
         let mut write = self.store.write().await;
         Ok(write.remove(id).is_some())
     }
 
-    async fn update(&self, credentials: Credentials<Uuid>) -> Result<()> {
+    async fn update_secret(&self, credentials: Credentials<Uuid>) -> Result<()> {
         let mut write = self.store.write().await;
         let secret = self
             .hasher
             .hash_secret(&credentials.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        write.insert(credentials.id, secret);
+        write.insert(credentials.user_id, secret);
         Ok(())
     }
 
-    async fn verify(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
+    async fn verify_secret(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
         let read = self.store.read().await;
-        let Some(stored_secret) = read.get(&credentials.id) else {
+        let Some(stored_secret) = read.get(&credentials.user_id) else {
             return Ok(VerificationResult::Unauthorized);
         };
         self.hasher
@@ -209,11 +209,11 @@ fn credentials_memory_storage() {
         let creds_storage = MemorySecretStorage::try_from(vec![creds.clone()]).unwrap();
         assert_eq!(
             VerificationResult::Unauthorized,
-            creds_storage.verify(wrong_creds).await.unwrap()
+            creds_storage.verify_secret(wrong_creds).await.unwrap()
         );
         assert_eq!(
             VerificationResult::Ok,
-            creds_storage.verify(creds_to_verify).await.unwrap()
+            creds_storage.verify_secret(creds_to_verify).await.unwrap()
         );
     })
 }

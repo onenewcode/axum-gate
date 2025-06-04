@@ -18,4 +18,7 @@ pub enum Error {
     /// [AccountStorageService](crate::services::AccountStorageService) operation.
     #[error("AccountStorageService error: {0}")]
     AccountStorage(String),
+    /// This error occurs in combination with a generic Storage operation.
+    #[error("Storage error: {0}")]
+    Storage(String),
 }

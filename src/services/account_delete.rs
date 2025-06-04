@@ -30,16 +30,23 @@ where
         AccStore: AccountStorageService<R, G>,
         SecStore: SecretStorageService,
     {
-        if !secret_storage.delete(&self.account.account_id).await? {
-            return Err(anyhow!(Error::SecretStorage("Deleting secret in storage returned false.".to_string())));
+        if !secret_storage
+            .delete_secret(&self.account.account_id)
+            .await?
+        {
+            return Err(anyhow!(Error::SecretStorage(
+                "Deleting secret in storage returned false.".to_string()
+            )));
         };
 
         if account_storage
-            .delete(&self.account.user_id)
+            .delete_account(&self.account.user_id)
             .await?
             .is_none()
         {
-            return Err(anyhow!(Error::AccountStorage("Account storage returned None on insertion.".to_string())));
+            return Err(anyhow!(Error::AccountStorage(
+                "Account storage returned None on insertion.".to_string()
+            )));
         };
         Ok(())
     }

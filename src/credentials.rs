@@ -1,7 +1,7 @@
 //! Credentials definitions used for API, or storage.
 use serde::{Deserialize, Serialize};
 
-/// Defines credentials for a simple login based on an `id` and a `secret`.
+/// Defines credentials for a simple login based on a `user_id` and a `secret`.
 ///
 /// This struct is also used to store the secret in a storage. For this, the `Id` is set
 /// to the [Account::account_id](crate::Account::account_id). This enables the possibility to
@@ -11,19 +11,19 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {
     /// The identification of the user, eg. a username.
-    pub id: Id,
+    pub user_id: Id,
     /// The secret of the user, eg. a password.
     pub secret: String,
 }
 
 impl<Id> Credentials<Id> {
     /// Creates a new instance with the given id and secret.
-    pub fn new(id: &Id, secret: &str) -> Self
+    pub fn new(user_id: &Id, secret: &str) -> Self
     where
         Id: ToOwned<Owned = Id>,
     {
         Self {
-            id: id.to_owned(),
+            user_id: user_id.to_owned(),
             secret: secret.to_string(),
         }
     }

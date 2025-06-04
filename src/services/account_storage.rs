@@ -10,17 +10,22 @@ where
     G: Eq,
 {
     /// Stores the given account in the storage returning it again on success.
-    fn store(&self, account: Account<R, G>) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    fn store_account(
+        &self,
+        account: Account<R, G>,
+    ) -> impl Future<Output = Result<Option<Account<R, G>>>>;
 
     /// Deletes the account from the storage.
-    fn delete(&self, user_id: &str) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    fn delete_account(&self, user_id: &str) -> impl Future<Output = Result<Option<Account<R, G>>>>;
 
     /// Updates the given account in the storage returning it again on success.
-    fn update(&self, account: Account<R, G>)
-    -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    fn update_account(
+        &self,
+        account: Account<R, G>,
+    ) -> impl Future<Output = Result<Option<Account<R, G>>>>;
 
     /// Returns the account for the given `user_id`.
-    fn query_by_user_id(
+    fn query_account_by_user_id(
         &self,
         user_id: &str,
     ) -> impl Future<Output = Result<Option<Account<R, G>>>>;

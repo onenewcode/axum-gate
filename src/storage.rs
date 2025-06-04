@@ -4,8 +4,9 @@ pub mod memory;
 /*
 #[cfg(feature = "storage-seaorm")]
 pub mod sea_orm;
+*/
 #[cfg(feature = "storage-surrealdb")]
-pub mod surrealdb; */
+pub mod surrealdb;
 
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
 pub use storage_additions::*;
