@@ -1,16 +1,15 @@
-use axum::extract::Json;
-use axum::routing::{Router, get, post};
-use axum_gate::Credentials;
-use axum_gate::Group;
-use axum_gate::Role;
-use axum_gate::cookie;
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::services::AccountInsertService;
 use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
+use axum_gate::{Credentials, Group, Role, cookie};
+
+use std::sync::Arc;
+
+use axum::extract::Json;
+use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
 use dotenv;
-use std::sync::Arc;
 use tracing::debug;
 
 const ISSUER: &str = "auth-node";
