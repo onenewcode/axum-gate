@@ -1,6 +1,11 @@
 //! Secrets hashing, verification models.
-use crate::hashing::HashedValue;
+use crate::{
+    Error,
+    hashing::{HashedValue, VerificationResult},
+    services::HashingService,
+};
 
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -17,10 +22,26 @@ pub struct Secret {
 
 impl Secret {
     /// Creates a new instance with the given id and secret.
-    pub fn new(account_id: &Uuid, secret: &HashedValue) -> Self {
-        Self {
+    pub fn new<Hasher: HashingService>(
+        account_id: &Uuid,
+        plain_secret: &str,
+        hasher: Hasher,
+    ) -> Result<Self> {
+        let secret = hasher
+            .hash_value(plain_secret)
+            .map_err(|e| Error::Hashing(e.to_string()))?;
+        Ok(Self {
             account_id: account_id.clone(),
-            secret: secret.clone(),
-        }
+            secret,
+        })
+    }
+
+    /// Verifies the given plain value to the stored one.
+    pub fn verify<Hasher: HashingService>(
+        &self,
+        plain_secret: &str,
+        hasher: Hasher,
+    ) -> Result<VerificationResult> {
+        hasher.verify_value(plain_secret, &self.secret)
     }
 }

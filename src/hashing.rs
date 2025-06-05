@@ -6,7 +6,7 @@ use anyhow::Result;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 
-/// A hashed secret.
+/// A hashed value.
 pub type HashedValue = String;
 
 /// The result of a secret verification.

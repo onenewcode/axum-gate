@@ -1,9 +1,8 @@
 //! Memory storage implementations.
 
-use crate::credentials::Credentials;
 use crate::hashing::{Argon2Hasher, VerificationResult};
 use crate::secrets::Secret;
-use crate::services::{AccountStorageService, HashingService, SecretStorageService};
+use crate::services::{AccountStorageService, SecretStorageService, SecretVerifierService};
 use crate::utils::AccessHierarchy;
 use crate::{Account, Error};
 
@@ -103,48 +102,31 @@ where
 /// # });
 /// ```
 #[derive(Clone)]
-pub struct MemorySecretStorage<Hasher>
-where
-    Hasher: HashingService,
-{
+pub struct MemorySecretStorage {
     store: Arc<RwLock<HashMap<Uuid, String>>>,
-    hasher: Hasher,
 }
 
-impl Default for MemorySecretStorage<Argon2Hasher> {
+impl Default for MemorySecretStorage {
     fn default() -> Self {
         Self {
             store: Arc::new(RwLock::new(HashMap::new())),
-            hasher: Argon2Hasher,
         }
     }
 }
 
-impl TryFrom<Vec<Credentials<Uuid>>> for MemorySecretStorage<Argon2Hasher> {
+impl TryFrom<Vec<Secret>> for MemorySecretStorage {
     type Error = Error;
-    fn try_from(value: Vec<Credentials<Uuid>>) -> Result<Self, Error> {
-        let hasher = Argon2Hasher;
+    fn try_from(value: Vec<Secret>) -> Result<Self, Error> {
         let mut store = HashMap::with_capacity(value.len());
-        let value_iter = value.into_iter();
-        for v in value_iter {
-            let secret = hasher
-                .hash_value(&v.secret)
-                .map_err(|e| Error::SecretStorage(e.to_string()))?;
-
-            store.insert(v.user_id, secret);
-        }
+        value.into_iter().for_each(|v| {
+            store.insert(v.account_id.clone(), v.secret);
+        });
         let store = Arc::new(RwLock::new(store));
-        Ok(Self {
-            store,
-            hasher: Argon2Hasher,
-        })
+        Ok(Self { store })
     }
 }
 
-impl<Hasher> SecretStorageService for MemorySecretStorage<Hasher>
-where
-    Hasher: HashingService,
-{
+impl SecretStorageService for MemorySecretStorage {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let already_present = {
             let read = self.store.read().await;
@@ -153,23 +135,14 @@ where
 
         if already_present {
             return Err(anyhow!(Error::SecretStorage(
-                "Credentials ID is already present.".to_string()
+                "AccountID is already present.".to_string()
             )));
         }
-
-        let hashed_secret = self
-            .hasher
-            .hash_value(&secret.secret)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        debug!("Sucessfully hashed secret.");
 
         let mut write = self.store.write().await;
         debug!("Got write lock on secret storage.");
 
-        if write
-            .insert(secret.account_id, hashed_secret.clone())
-            .is_some()
-        {
+        if write.insert(secret.account_id, secret.secret).is_some() {
             return Err(anyhow!(Error::SecretStorage("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
         };
         Ok(true)
@@ -182,20 +155,18 @@ where
 
     async fn update_secret(&self, secret: Secret) -> Result<()> {
         let mut write = self.store.write().await;
-        let hashed_secret = self
-            .hasher
-            .hash_value(&secret.secret)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        write.insert(secret.account_id, hashed_secret);
+        write.insert(secret.account_id, secret.secret);
         Ok(())
     }
+}
 
-    async fn verify_secret(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
+impl SecretVerifierService for MemorySecretStorage {
+    async fn verify_secret(&self, secret: Secret) -> Result<VerificationResult> {
         let read = self.store.read().await;
-        let Some(stored_secret) = read.get(&credentials.user_id) else {
+        let Some(stored_secret) = read.get(&secret.account_id) else {
             return Ok(VerificationResult::Unauthorized);
         };
-        self.hasher.verify_value(&credentials.secret, stored_secret)
+        secret.verify(stored_secret, Argon2Hasher)
     }
 }
 
@@ -203,9 +174,9 @@ where
 fn credentials_memory_storage() {
     tokio_test::block_on(async move {
         let id = Uuid::now_v7();
-        let creds = Credentials::new(&id, "admin_password");
-        let creds_to_verify = Credentials::new(&id, "admin_password");
-        let wrong_creds = Credentials::new(&id, "admin_passwordwrong");
+        let creds = Secret::new(&id, "admin_password", Argon2Hasher).unwrap();
+        let creds_to_verify = Secret::new(&id, "admin_password", Argon2Hasher).unwrap();
+        let wrong_creds = Secret::new(&id, "admin_passwordwrong", Argon2Hasher).unwrap();
 
         let creds_storage = MemorySecretStorage::try_from(vec![creds.clone()]).unwrap();
         assert_eq!(

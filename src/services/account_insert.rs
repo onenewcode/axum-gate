@@ -1,5 +1,6 @@
 use crate::{
     Account, Error,
+    hashing::Argon2Hasher,
     secrets::Secret,
     services::{AccountStorageService, SecretStorageService},
     utils::AccessHierarchy,
@@ -66,7 +67,7 @@ where
         };
         debug!("Stored account in account storage.");
         let id = &account.account_id;
-        let secret = Secret::new(id, &self.secret);
+        let secret = Secret::new(id, &self.secret, Argon2Hasher)?;
         if !secret_storage.store_secret(secret).await? {
             Err(anyhow!(Error::SecretStorage(
                 "Storing secret in storage returned false.".to_string()

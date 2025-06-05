@@ -1,5 +1,3 @@
-use crate::Credentials;
-use crate::hashing::VerificationResult;
 use crate::secrets::Secret;
 
 use anyhow::Result;
@@ -21,10 +19,4 @@ pub trait SecretStorageService {
     /// Removes the credentials with the given id. Returns `true` on success, `false` if the
     /// [Secret::account_id] does NOT exists.
     fn delete_secret(&self, id: &Uuid) -> impl Future<Output = Result<bool>>;
-
-    /// Verifies the given plain value from the given credentials to the hashed one in the storage.
-    fn verify_secret(
-        &self,
-        credentials: Credentials<Uuid>,
-    ) -> impl Future<Output = Result<VerificationResult>>;
 }

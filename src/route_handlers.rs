@@ -2,9 +2,10 @@
 use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
-use crate::hashing::VerificationResult;
+use crate::hashing::{Argon2Hasher, VerificationResult};
 use crate::jwt::{JwtClaims, RegisteredClaims};
-use crate::services::{AccountStorageService, CodecService, SecretStorageService};
+use crate::secrets::Secret;
+use crate::services::{AccountStorageService, CodecService, SecretVerifierService};
 use crate::utils::AccessHierarchy;
 use axum::Json;
 use axum::http::StatusCode;
@@ -13,11 +14,11 @@ use std::sync::Arc;
 use tracing::{debug, error};
 
 /// Can be used to log a user in.
-pub async fn login<SecStore, AccStore, Codec, R, G>(
+pub async fn login<SecVeri, AccStore, Codec, R, G>(
     cookie_jar: CookieJar,
     request_credentials: Json<Credentials<String>>,
     registered_claims: RegisteredClaims,
-    secret_storage: Arc<SecStore>,
+    secret_verifier: Arc<SecVeri>,
     account_storage: Arc<AccStore>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
@@ -25,7 +26,7 @@ pub async fn login<SecStore, AccStore, Codec, R, G>(
 where
     R: AccessHierarchy + Eq,
     G: Eq,
-    SecStore: SecretStorageService,
+    SecVeri: SecretVerifierService,
     AccStore: AccountStorageService<R, G>,
     Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
 {
@@ -43,8 +44,14 @@ where
         }
     };
 
-    let creds_to_verify = Credentials::new(&account.account_id, &creds.secret);
-    match secret_storage.verify_secret(creds_to_verify).await {
+    let creds_to_verify = match Secret::new(&account.account_id, &creds.secret, Argon2Hasher) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("{e}");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+    match secret_verifier.verify_secret(creds_to_verify).await {
         Ok(VerificationResult::Ok) => (),
         Ok(VerificationResult::Unauthorized) => {
             debug!("Hashed creds do not match.");
