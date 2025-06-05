@@ -45,3 +45,22 @@ impl Secret {
         hasher.verify_value(plain_secret, &self.secret)
     }
 }
+
+#[test]
+fn secret_verification() {
+    use crate::hashing::Argon2Hasher;
+
+    let id = Uuid::now_v7();
+    let correct_password = "admin_password";
+    let wrong_password = "admin_wrong_password";
+    let secret = Secret::new(&id, correct_password, Argon2Hasher).unwrap();
+
+    assert_eq!(
+        VerificationResult::Unauthorized,
+        secret.verify(wrong_password, Argon2Hasher).unwrap()
+    );
+    assert_eq!(
+        VerificationResult::Ok,
+        secret.verify(correct_password, Argon2Hasher).unwrap()
+    );
+}

@@ -3,9 +3,9 @@
 use super::TableNames;
 use crate::hashing::VerificationResult;
 use crate::secrets::Secret;
-use crate::services::{AccountStorageService, HashingService, SecretStorageService};
+use crate::services::{AccountStorageService, CredentialsVerifierService, SecretStorageService};
 use crate::utils::AccessHierarchy;
-use crate::{Account, Credentials, Error};
+use crate::{Account, Error};
 
 use std::default::Default;
 
@@ -36,77 +36,23 @@ impl Default for DatabaseScope {
     }
 }
 
-/*
-/// Account model as it is represented within [surrealdb].
-#[derive(Serialize, Deserialize)]
-struct SurrealDbAccount<R, G>
-where
-    R: AccessHierarchy + Eq,
-    G: Eq,
-{
-    /// The unique record id.
-    pub id: RecordId,
-    /// The actual account data.
-    #[serde(flatten)]
-    pub account_data: Account<R, G>,
-}
-
-impl<R, G> From<Account<R, G>> for SurrealDbAccount<R, G>
-where
-    R: AccessHierarchy + Eq,
-    G: Eq,
-{
-    fn from(value: Account<R, G>) -> Self {
-        Self {
-            id: RecordId::from_table_key(TableNames::default().accounts, value.user_id.clone()),
-            account_data: value,
-        }
-    }
-}
-
-/// Credentials model as it is represented within [surrealdb].
-#[derive(Serialize, Deserialize)]
-struct SurrealDbCredentials {
-    /// The unique record id.
-    pub id: RecordId,
-    /// The actual secret data.
-    #[serde(flatten)]
-    pub data: Credentials<Uuid>,
-}
-
-impl From<Credentials<Uuid>> for SurrealDbCredentials {
-    fn from(value: Credentials<Uuid>) -> Self {
-        Self {
-            id: RecordId::from_table_key(TableNames::default().credentials, value.id.clone()),
-            data: value,
-        }
-    }
-} */
-
 /// A storage that uses [surrealdb] as backend.
 #[derive(Clone)]
-pub struct SurrealDbStorage<S, Hasher>
+pub struct SurrealDbStorage<S>
 where
     S: Connection,
-    Hasher: HashingService,
 {
     db: Surreal<S>,
-    hasher: Hasher,
     scope_settings: DatabaseScope,
 }
 
-impl<S, Hasher> SurrealDbStorage<S, Hasher>
+impl<S> SurrealDbStorage<S>
 where
     S: Connection,
-    Hasher: HashingService,
 {
     /// Creates a new instance.
-    pub fn new(db: Surreal<S>, hasher: Hasher, scope_settings: DatabaseScope) -> Self {
-        Self {
-            db,
-            hasher,
-            scope_settings,
-        }
+    pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Self {
+        Self { db, scope_settings }
     }
 
     /// Sets the correct namespace and database to use.
@@ -119,11 +65,10 @@ where
     }
 }
 
-impl<R, G, S, Hasher> AccountStorageService<R, G> for SurrealDbStorage<S, Hasher>
+impl<R, G, S> AccountStorageService<R, G> for SurrealDbStorage<S>
 where
     R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
     G: Serialize + DeserializeOwned + Eq + 'static,
-    Hasher: HashingService,
     S: Connection,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
@@ -174,25 +119,17 @@ where
     }
 }
 
-impl<S, Hasher> SecretStorageService for SurrealDbStorage<S, Hasher>
+impl<S> SecretStorageService for SurrealDbStorage<S>
 where
-    Hasher: HashingService,
     S: Connection,
 {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         self.use_ns_db().await?;
 
-        let hashed_secret = self
-            .hasher
-            .hash_value(&secret.secret)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
-
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            secret.account_id.to_string(),
+            secret.account_id,
         );
-
-        let secret = Secret::new(&secret.account_id, &hashed_secret);
 
         let db_credentials: Option<Secret> = self
             .db
@@ -206,7 +143,7 @@ where
     async fn delete_secret(&self, id: &Uuid) -> Result<bool> {
         self.use_ns_db().await?;
         let record_id =
-            RecordId::from_table_key(&self.scope_settings.table_names.credentials, id.to_string());
+            RecordId::from_table_key(&self.scope_settings.table_names.credentials, id.clone());
         let result: Option<Secret> = self
             .db
             .delete(record_id)
@@ -218,16 +155,10 @@ where
     async fn update_secret(&self, secret: Secret) -> Result<()> {
         self.use_ns_db().await?;
 
-        let hashed_secret = self
-            .hasher
-            .hash_value(&secret.secret)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
-
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            secret.account_id.to_string(),
+            secret.account_id,
         );
-        let secret = Secret::new(&secret.account_id, &hashed_secret);
         let _: Option<Secret> = self
             .db
             .update(record_id)
@@ -236,12 +167,17 @@ where
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         Ok(())
     }
+}
 
-    async fn verify_secret(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
+impl<S> CredentialsVerifierService for SurrealDbStorage<S>
+where
+    S: Connection,
+{
+    async fn verify_secret(&self, secret: Secret) -> Result<VerificationResult> {
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            credentials.user_id.to_string(),
+            secret.account_id,
         );
         let query = "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))".to_string();
 
@@ -249,7 +185,7 @@ where
             .db
             .query(query)
             .bind(("record_id", record_id))
-            .bind(("request_secret", credentials.secret.clone()))
+            .bind(("request_secret", secret.secret))
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         let result: Option<bool> = response
@@ -270,15 +206,15 @@ fn secret_storage() {
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
-        let creds_storage = SurrealDbStorage::new(db, Argon2Hasher, DatabaseScope::default());
+        let creds_storage = SurrealDbStorage::new(db, DatabaseScope::default());
         let id = Uuid::now_v7();
 
-        let creds = Secret::new(&id, &"admin_password".to_string());
+        let creds = Secret::new(&id, &"admin_password".to_string(), Argon2Hasher).unwrap();
 
         creds_storage.store_secret(creds).await.unwrap();
 
-        let creds_to_verify = Credentials::new(&id, "admin_password");
-        let wrong_creds = Credentials::new(&id, "admin_passwordwrong");
+        let creds_to_verify = Secret::new(&id, "admin_password", Argon2Hasher).unwrap();
+        let wrong_creds = Secret::new(&id, "admin_passwordwrong", Argon2Hasher).unwrap();
         assert_eq!(
             VerificationResult::Unauthorized,
             creds_storage.verify_secret(wrong_creds).await.unwrap()
@@ -293,15 +229,13 @@ fn secret_storage() {
 #[test]
 fn account_storage() {
     tokio_test::block_on(async move {
-        use crate::hashing::Argon2Hasher;
         use crate::{Account, Group, Role};
         use surrealdb::engine::local::Mem;
 
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
-        let hasher = Argon2Hasher;
-        let account_storage = SurrealDbStorage::new(db, hasher, DatabaseScope::default());
+        let account_storage = SurrealDbStorage::new(db, DatabaseScope::default());
 
         let account = Account::new(
             "mymail@accountid-example.com",
@@ -341,3 +275,50 @@ fn account_storage() {
         };
     })
 }
+
+/*
+/// Account model as it is represented within [surrealdb].
+#[derive(Serialize, Deserialize)]
+struct SurrealDbAccount<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    /// The unique record id.
+    pub id: RecordId,
+    /// The actual account data.
+    #[serde(flatten)]
+    pub account_data: Account<R, G>,
+}
+
+impl<R, G> From<Account<R, G>> for SurrealDbAccount<R, G>
+where
+    R: AccessHierarchy + Eq,
+    G: Eq,
+{
+    fn from(value: Account<R, G>) -> Self {
+        Self {
+            id: RecordId::from_table_key(TableNames::default().accounts, value.user_id.clone()),
+            account_data: value,
+        }
+    }
+}
+
+/// Credentials model as it is represented within [surrealdb].
+#[derive(Serialize, Deserialize)]
+struct SurrealDbCredentials {
+    /// The unique record id.
+    pub id: RecordId,
+    /// The actual secret data.
+    #[serde(flatten)]
+    pub data: Credentials<Uuid>,
+}
+
+impl From<Credentials<Uuid>> for SurrealDbCredentials {
+    fn from(value: Credentials<Uuid>) -> Self {
+        Self {
+            id: RecordId::from_table_key(TableNames::default().credentials, value.id.clone()),
+            data: value,
+        }
+    }
+} */

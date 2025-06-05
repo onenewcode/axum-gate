@@ -2,10 +2,12 @@
 
 use crate::hashing::VerificationResult;
 use crate::secrets::Secret;
-use crate::services::{AccountStorageService, HashingService, SecretStorageService};
+use crate::services::{
+    AccountStorageService, CredentialsVerifierService, HashingService, SecretStorageService,
+};
 use crate::utils::{AccessHierarchy, CommaSeparatedValue};
 use crate::{
-    Account, Credentials, Error, storage::sea_orm::models::account as seaorm_account,
+    Account, Error, storage::sea_orm::models::account as seaorm_account,
     storage::sea_orm::models::credentials as seaorm_credentials,
 };
 
@@ -119,12 +121,6 @@ where
     Hasher: HashingService,
 {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
-        let hashed_secret = self
-            .hasher
-            .hash_value(&secret.secret)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        let secret = Secret::new(&secret.account_id, &hashed_secret);
-
         let model = seaorm_credentials::ActiveModel::from(secret);
         let _ = model
             .insert(&self.db)
@@ -152,12 +148,6 @@ where
     }
 
     async fn update_secret(&self, secret: Secret) -> Result<()> {
-        let hashed_secret = self
-            .hasher
-            .hash_value(&secret.secret)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        let secret = Secret::new(&secret.account_id, &hashed_secret);
-
         let model = models::credentials::ActiveModel::from(secret);
         model
             .update(&self.db)
@@ -165,18 +155,23 @@ where
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         Ok(())
     }
+}
 
-    async fn verify_secret(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
+impl<Hasher> CredentialsVerifierService for SeaOrmStorage<Hasher>
+where
+    Hasher: HashingService,
+{
+    async fn verify_secret(&self, secret: Secret) -> Result<VerificationResult> {
         let Some(model) = seaorm_credentials::Entity::find()
-            .filter(seaorm_credentials::Column::AccountId.eq(credentials.user_id))
+            .filter(seaorm_credentials::Column::AccountId.eq(secret.account_id))
             .one(&self.db)
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?
         else {
             return Ok(VerificationResult::Unauthorized);
         };
-        tracing::debug!("Secret to verify: {}", &credentials.secret);
+        tracing::debug!("Secret to verify: {}", &secret.secret);
 
-        self.hasher.verify_value(&credentials.secret, &model.secret)
+        self.hasher.verify_value(&secret.secret, &model.secret)
     }
 }

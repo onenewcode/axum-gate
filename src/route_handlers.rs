@@ -2,23 +2,23 @@
 use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
-use crate::hashing::{Argon2Hasher, VerificationResult};
+use crate::hashing::VerificationResult;
 use crate::jwt::{JwtClaims, RegisteredClaims};
-use crate::secrets::Secret;
-use crate::services::{AccountStorageService, CodecService, SecretVerifierService};
+use crate::services::{AccountStorageService, CodecService, CredentialsVerifierService};
 use crate::utils::AccessHierarchy;
 use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
 use std::sync::Arc;
 use tracing::{debug, error};
+use uuid::Uuid;
 
 /// Can be used to log a user in.
-pub async fn login<SecVeri, AccStore, Codec, R, G>(
+pub async fn login<CredVeri, AccStore, Codec, R, G>(
     cookie_jar: CookieJar,
     request_credentials: Json<Credentials<String>>,
     registered_claims: RegisteredClaims,
-    secret_verifier: Arc<SecVeri>,
+    secret_verifier: Arc<CredVeri>,
     account_storage: Arc<AccStore>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
@@ -26,16 +26,13 @@ pub async fn login<SecVeri, AccStore, Codec, R, G>(
 where
     R: AccessHierarchy + Eq,
     G: Eq,
-    SecVeri: SecretVerifierService,
+    CredVeri: CredentialsVerifierService<Uuid>,
     AccStore: AccountStorageService<R, G>,
     Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
 {
     let creds = request_credentials.0;
 
-    let account = match account_storage
-        .query_account_by_user_id(&creds.user_id)
-        .await
-    {
+    let account = match account_storage.query_account_by_user_id(&creds.id).await {
         Ok(Some(acc)) => acc,
         Ok(_) => return Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -44,14 +41,9 @@ where
         }
     };
 
-    let creds_to_verify = match Secret::new(&account.account_id, &creds.secret, Argon2Hasher) {
-        Ok(s) => s,
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-    match secret_verifier.verify_secret(creds_to_verify).await {
+    let creds_to_verify = Credentials::new(&account.account_id, &creds.secret);
+
+    match secret_verifier.verify_credentials(creds_to_verify).await {
         Ok(VerificationResult::Ok) => (),
         Ok(VerificationResult::Unauthorized) => {
             debug!("Hashed creds do not match.");
