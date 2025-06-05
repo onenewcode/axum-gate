@@ -1,12 +1,11 @@
 //! Memory storage implementations.
 
-use crate::Account;
-use crate::Error;
 use crate::credentials::Credentials;
-use crate::secrets::Argon2Hasher;
-use crate::secrets::VerificationResult;
-use crate::services::{AccountStorageService, SecretStorageService, SecretsHashingService};
+use crate::hashing::{Argon2Hasher, VerificationResult};
+use crate::secrets::Secret;
+use crate::services::{AccountStorageService, HashingService, SecretStorageService};
 use crate::utils::AccessHierarchy;
+use crate::{Account, Error};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -106,7 +105,7 @@ where
 #[derive(Clone)]
 pub struct MemorySecretStorage<Hasher>
 where
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
 {
     store: Arc<RwLock<HashMap<Uuid, String>>>,
     hasher: Hasher,
@@ -129,7 +128,7 @@ impl TryFrom<Vec<Credentials<Uuid>>> for MemorySecretStorage<Argon2Hasher> {
         let value_iter = value.into_iter();
         for v in value_iter {
             let secret = hasher
-                .hash_secret(&v.secret)
+                .hash_value(&v.secret)
                 .map_err(|e| Error::SecretStorage(e.to_string()))?;
 
             store.insert(v.user_id, secret);
@@ -144,12 +143,12 @@ impl TryFrom<Vec<Credentials<Uuid>>> for MemorySecretStorage<Argon2Hasher> {
 
 impl<Hasher> SecretStorageService for MemorySecretStorage<Hasher>
 where
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
 {
-    async fn store_secret(&self, credentials: Credentials<Uuid>) -> Result<bool> {
+    async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let already_present = {
             let read = self.store.read().await;
-            read.contains_key(&credentials.user_id)
+            read.contains_key(&secret.account_id)
         };
 
         if already_present {
@@ -158,16 +157,19 @@ where
             )));
         }
 
-        let secret = self
+        let hashed_secret = self
             .hasher
-            .hash_secret(&credentials.secret)
+            .hash_value(&secret.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         debug!("Sucessfully hashed secret.");
 
         let mut write = self.store.write().await;
         debug!("Got write lock on secret storage.");
 
-        if write.insert(credentials.user_id, secret.clone()).is_some() {
+        if write
+            .insert(secret.account_id, hashed_secret.clone())
+            .is_some()
+        {
             return Err(anyhow!(Error::SecretStorage("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
         };
         Ok(true)
@@ -178,13 +180,13 @@ where
         Ok(write.remove(id).is_some())
     }
 
-    async fn update_secret(&self, credentials: Credentials<Uuid>) -> Result<()> {
+    async fn update_secret(&self, secret: Secret) -> Result<()> {
         let mut write = self.store.write().await;
-        let secret = self
+        let hashed_secret = self
             .hasher
-            .hash_secret(&credentials.secret)
+            .hash_value(&secret.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        write.insert(credentials.user_id, secret);
+        write.insert(secret.account_id, hashed_secret);
         Ok(())
     }
 
@@ -193,8 +195,7 @@ where
         let Some(stored_secret) = read.get(&credentials.user_id) else {
             return Ok(VerificationResult::Unauthorized);
         };
-        self.hasher
-            .verify_secret(&credentials.secret, stored_secret)
+        self.hasher.verify_value(&credentials.secret, stored_secret)
     }
 }
 

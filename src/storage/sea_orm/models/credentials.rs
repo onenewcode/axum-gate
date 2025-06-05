@@ -1,6 +1,6 @@
 //! Credentials model to be used with [sea-orm].
 
-use crate::Credentials;
+use crate::secrets::Secret;
 
 use sea_orm::{ActiveValue, entity::prelude::*};
 
@@ -12,7 +12,7 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     /// The unique identifier, eg username.
-    pub user_id: Uuid,
+    pub account_id: Uuid,
     /// The actual secret.
     pub secret: String,
 }
@@ -23,11 +23,11 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl From<Credentials<Uuid>> for ActiveModel {
-    fn from(value: Credentials<Uuid>) -> Self {
+impl From<Secret> for ActiveModel {
+    fn from(value: Secret) -> Self {
         Self {
             id: ActiveValue::NotSet,
-            user_id: ActiveValue::Set(value.user_id),
+            account_id: ActiveValue::Set(value.account_id),
             secret: ActiveValue::Set(value.secret),
         }
     }

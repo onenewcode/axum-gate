@@ -1,7 +1,8 @@
 //! Support for SQL database storage through [sea-orm](sea_orm).
 
-use crate::secrets::VerificationResult;
-use crate::services::{AccountStorageService, SecretStorageService, SecretsHashingService};
+use crate::hashing::VerificationResult;
+use crate::secrets::Secret;
+use crate::services::{AccountStorageService, HashingService, SecretStorageService};
 use crate::utils::{AccessHierarchy, CommaSeparatedValue};
 use crate::{
     Account, Credentials, Error, storage::sea_orm::models::account as seaorm_account,
@@ -28,7 +29,7 @@ impl<Hasher> SeaOrmStorage<Hasher> {
     /// Creates a new instance from the given variables.
     pub fn new(db: &DatabaseConnection, hasher: Hasher) -> Self
     where
-        Hasher: SecretsHashingService,
+        Hasher: HashingService,
     {
         Self {
             db: db.clone(),
@@ -39,7 +40,7 @@ impl<Hasher> SeaOrmStorage<Hasher> {
 
 impl<Hasher, R, G> AccountStorageService<R, G> for SeaOrmStorage<Hasher>
 where
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
     R: AccessHierarchy + Eq + Serialize + DeserializeOwned + std::fmt::Display + Clone,
     G: Eq + Clone,
     Vec<R>: CommaSeparatedValue,
@@ -115,16 +116,16 @@ where
 
 impl<Hasher> SecretStorageService for SeaOrmStorage<Hasher>
 where
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
 {
-    async fn store_secret(&self, credentials: Credentials<Uuid>) -> Result<bool> {
-        let secret = self
+    async fn store_secret(&self, secret: Secret) -> Result<bool> {
+        let hashed_secret = self
             .hasher
-            .hash_secret(&credentials.secret)
+            .hash_value(&secret.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        let credentials = Credentials::new(&credentials.user_id, &secret);
+        let secret = Secret::new(&secret.account_id, &hashed_secret);
 
-        let model = seaorm_credentials::ActiveModel::from(credentials);
+        let model = seaorm_credentials::ActiveModel::from(secret);
         let _ = model
             .insert(&self.db)
             .await
@@ -135,7 +136,7 @@ where
     /// The credentials `account_id` needs to be queried from the account storage.
     async fn delete_secret(&self, account_id: &Uuid) -> Result<bool> {
         let Some(model) = seaorm_credentials::Entity::find()
-            .filter(seaorm_credentials::Column::UserId.eq(*account_id))
+            .filter(seaorm_credentials::Column::AccountId.eq(*account_id))
             .one(&self.db)
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?
@@ -150,14 +151,14 @@ where
         Ok(true)
     }
 
-    async fn update_secret(&self, credentials: Credentials<Uuid>) -> Result<()> {
-        let secret = self
+    async fn update_secret(&self, secret: Secret) -> Result<()> {
+        let hashed_secret = self
             .hasher
-            .hash_secret(&credentials.secret)
+            .hash_value(&secret.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
-        let credentials = Credentials::new(&credentials.user_id, &secret);
+        let secret = Secret::new(&secret.account_id, &hashed_secret);
 
-        let model = models::credentials::ActiveModel::from(credentials);
+        let model = models::credentials::ActiveModel::from(secret);
         model
             .update(&self.db)
             .await
@@ -167,7 +168,7 @@ where
 
     async fn verify_secret(&self, credentials: Credentials<Uuid>) -> Result<VerificationResult> {
         let Some(model) = seaorm_credentials::Entity::find()
-            .filter(seaorm_credentials::Column::UserId.eq(credentials.user_id))
+            .filter(seaorm_credentials::Column::AccountId.eq(credentials.user_id))
             .one(&self.db)
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?
@@ -176,7 +177,6 @@ where
         };
         tracing::debug!("Secret to verify: {}", &credentials.secret);
 
-        self.hasher
-            .verify_secret(&credentials.secret, &model.secret)
+        self.hasher.verify_value(&credentials.secret, &model.secret)
     }
 }

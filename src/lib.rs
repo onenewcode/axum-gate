@@ -6,6 +6,7 @@ mod credentials;
 mod errors;
 mod gate;
 mod groups;
+pub mod hashing;
 pub mod jwt;
 mod roles;
 pub mod route_handlers;

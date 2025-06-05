@@ -1,5 +1,6 @@
 use crate::{
-    Account, Credentials, Error,
+    Account, Error,
+    secrets::Secret,
     services::{AccountStorageService, SecretStorageService},
     utils::AccessHierarchy,
 };
@@ -65,8 +66,8 @@ where
         };
         debug!("Stored account in account storage.");
         let id = &account.account_id;
-        let cred = Credentials::new(id, &self.secret);
-        if !secret_storage.store_secret(cred).await? {
+        let secret = Secret::new(id, &self.secret);
+        if !secret_storage.store_secret(secret).await? {
             Err(anyhow!(Error::SecretStorage(
                 "Storing secret in storage returned false.".to_string()
             )))

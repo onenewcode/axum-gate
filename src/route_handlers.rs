@@ -2,8 +2,8 @@
 use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
+use crate::hashing::VerificationResult;
 use crate::jwt::{JwtClaims, RegisteredClaims};
-use crate::secrets::VerificationResult;
 use crate::services::{AccountStorageService, CodecService, SecretStorageService};
 use crate::utils::AccessHierarchy;
 use axum::Json;

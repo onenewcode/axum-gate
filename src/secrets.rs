@@ -1,70 +1,26 @@
 //! Secrets hashing, verification models.
-use crate::Error;
-use crate::services::SecretsHashingService;
+use crate::hashing::HashedValue;
 
-use anyhow::Result;
-use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
-use argon2::{Argon2, PasswordHash, PasswordVerifier};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
-/// A hashed secret.
-pub type HashedSecret = String;
-
-/// The result of a secret verification.
-#[derive(Eq, PartialEq, Debug)]
-pub enum VerificationResult {
-    /// The verification was successful.
-    Ok,
-    /// The verification failed.
-    Unauthorized,
+/// Represents a secret that is bound to an [Account](crate::Account).
+///
+/// The `account_id` needs to be queried from an [AccountStorage](crate::services::AccountStorageService) to be able to create a correct secret.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Secret {
+    /// The [account id](crate::Account::account_id) that this secret belongs to.
+    pub account_id: Uuid,
+    /// The actual secret.
+    pub secret: HashedValue,
 }
 
-impl From<bool> for VerificationResult {
-    fn from(value: bool) -> Self {
-        if value { Self::Ok } else { Self::Unauthorized }
+impl Secret {
+    /// Creates a new instance with the given id and secret.
+    pub fn new(account_id: &Uuid, secret: &HashedValue) -> Self {
+        Self {
+            account_id: account_id.clone(),
+            secret: secret.clone(),
+        }
     }
-}
-
-/// Hashes values using [argon2].
-#[derive(Default)]
-pub struct Argon2Hasher;
-
-
-impl SecretsHashingService for Argon2Hasher {
-    fn hash_secret(&self, plain_value: &str) -> Result<HashedSecret> {
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::default();
-        Ok(argon2
-            .hash_password(plain_value.as_bytes(), &salt)
-            .map_err(|e| Error::Hashing(format!("Could not hash secret: {e}")))?
-            .to_string())
-    }
-    fn verify_secret(&self, plain_value: &str, hashed_value: &str) -> Result<VerificationResult> {
-        let hash = PasswordHash::new(hashed_value).map_err(|e| {
-            crate::Error::Hashing(format!(
-                "Could not create password hash from hashed value string: {e}"
-            ))
-        })?;
-        Ok(VerificationResult::from(
-            Argon2::default()
-                .verify_password(plain_value.as_bytes(), &hash)
-                .is_ok(),
-        ))
-    }
-}
-
-#[test]
-fn argon2hasher() {
-    let secret = "something";
-    let hasher = Argon2Hasher;
-    let hashed_secret = hasher.hash_secret(secret).unwrap();
-    assert_eq!(
-        VerificationResult::Ok,
-        hasher.verify_secret(secret, &hashed_secret).unwrap()
-    );
-    assert_eq!(
-        VerificationResult::Unauthorized,
-        hasher
-            .verify_secret("somethingwrong", &hashed_secret)
-            .unwrap()
-    );
 }

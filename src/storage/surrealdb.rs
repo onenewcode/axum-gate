@@ -1,8 +1,9 @@
 //! Storage implementations that use surrealdb as backend.
 
 use super::TableNames;
-use crate::secrets::VerificationResult;
-use crate::services::{AccountStorageService, SecretStorageService, SecretsHashingService};
+use crate::hashing::VerificationResult;
+use crate::secrets::Secret;
+use crate::services::{AccountStorageService, HashingService, SecretStorageService};
 use crate::utils::AccessHierarchy;
 use crate::{Account, Credentials, Error};
 
@@ -87,7 +88,7 @@ impl From<Credentials<Uuid>> for SurrealDbCredentials {
 pub struct SurrealDbStorage<S, Hasher>
 where
     S: Connection,
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
 {
     db: Surreal<S>,
     hasher: Hasher,
@@ -97,7 +98,7 @@ where
 impl<S, Hasher> SurrealDbStorage<S, Hasher>
 where
     S: Connection,
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
 {
     /// Creates a new instance.
     pub fn new(db: Surreal<S>, hasher: Hasher, scope_settings: DatabaseScope) -> Self {
@@ -122,7 +123,7 @@ impl<R, G, S, Hasher> AccountStorageService<R, G> for SurrealDbStorage<S, Hasher
 where
     R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
     G: Serialize + DeserializeOwned + Eq + 'static,
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
     S: Connection,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
@@ -175,28 +176,28 @@ where
 
 impl<S, Hasher> SecretStorageService for SurrealDbStorage<S, Hasher>
 where
-    Hasher: SecretsHashingService,
+    Hasher: HashingService,
     S: Connection,
 {
-    async fn store_secret(&self, credentials: Credentials<Uuid>) -> Result<bool> {
+    async fn store_secret(&self, secret: Secret) -> Result<bool> {
         self.use_ns_db().await?;
 
-        let secret = self
+        let hashed_secret = self
             .hasher
-            .hash_secret(&credentials.secret)
+            .hash_value(&secret.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
 
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            credentials.user_id.to_string(),
+            secret.account_id.to_string(),
         );
 
-        let credentials = Credentials::new(&credentials.user_id, &secret);
+        let secret = Secret::new(&secret.account_id, &hashed_secret);
 
-        let db_credentials: Option<Credentials<Uuid>> = self
+        let db_credentials: Option<Secret> = self
             .db
             .insert(&record_id)
-            .content(credentials)
+            .content(secret)
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         Ok(db_credentials.is_some())
@@ -206,7 +207,7 @@ where
         self.use_ns_db().await?;
         let record_id =
             RecordId::from_table_key(&self.scope_settings.table_names.credentials, id.to_string());
-        let result: Option<Credentials<Uuid>> = self
+        let result: Option<Secret> = self
             .db
             .delete(record_id)
             .await
@@ -214,23 +215,23 @@ where
         Ok(result.is_some())
     }
 
-    async fn update_secret(&self, credentials: Credentials<Uuid>) -> Result<()> {
+    async fn update_secret(&self, secret: Secret) -> Result<()> {
         self.use_ns_db().await?;
 
-        let secret = self
+        let hashed_secret = self
             .hasher
-            .hash_secret(&credentials.secret)
+            .hash_value(&secret.secret)
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
 
         let record_id = RecordId::from_table_key(
             &self.scope_settings.table_names.credentials,
-            credentials.user_id.to_string(),
+            secret.account_id.to_string(),
         );
-        let credentials = Credentials::new(&credentials.user_id, &secret);
-        let _: Option<Credentials<Uuid>> = self
+        let secret = Secret::new(&secret.account_id, &hashed_secret);
+        let _: Option<Secret> = self
             .db
             .update(record_id)
-            .content(credentials)
+            .content(secret)
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         Ok(())
@@ -262,18 +263,17 @@ where
 #[test]
 fn secret_storage() {
     tokio_test::block_on(async move {
-        use crate::secrets::Argon2Hasher;
+        use crate::hashing::Argon2Hasher;
         use surrealdb::engine::local::Mem;
 
         // create a storage
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
-        let creds_storage =
-            SurrealDbStorage::new(db, Argon2Hasher, DatabaseScope::default());
+        let creds_storage = SurrealDbStorage::new(db, Argon2Hasher, DatabaseScope::default());
         let id = Uuid::now_v7();
 
-        let creds = Credentials::new(&id, "admin_password");
+        let creds = Secret::new(&id, &"admin_password".to_string());
 
         creds_storage.store_secret(creds).await.unwrap();
 
@@ -293,7 +293,7 @@ fn secret_storage() {
 #[test]
 fn account_storage() {
     tokio_test::block_on(async move {
-        use crate::secrets::Argon2Hasher;
+        use crate::hashing::Argon2Hasher;
         use crate::{Account, Group, Role};
         use surrealdb::engine::local::Mem;
 
