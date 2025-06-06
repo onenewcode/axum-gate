@@ -42,6 +42,25 @@ where
             roles,
         }
     }
+
+    /// Creates a new account with the given `account_id`.
+    ///
+    /// This is only used to transform the result of a storage query into the [Account] model.
+    pub fn new_with_account_id(
+        account_id: &Uuid,
+        user_id: &str,
+        roles: &[R],
+        groups: &[G],
+    ) -> Self {
+        let roles = roles.to_vec();
+        let groups = groups.to_vec();
+        Self {
+            account_id: account_id.to_owned(),
+            user_id: user_id.to_owned(),
+            groups,
+            roles,
+        }
+    }
 }
 
 #[cfg(feature = "storage-seaorm")]
@@ -57,7 +76,8 @@ where
     fn try_from(
         value: crate::storage::sea_orm::models::account::Model,
     ) -> Result<Self, Self::Error> {
-        Ok(Self::new(
+        Ok(Self::new_with_account_id(
+            &value.account_id,
             &value.user_id,
             &Vec::<R>::from_csv(&value.roles)?,
             &Vec::<G>::from_csv(&value.groups)?,

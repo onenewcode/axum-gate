@@ -1,6 +1,5 @@
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use axum_gate::secrets::Argon2Hasher;
 use axum_gate::services::AccountInsertService;
 use axum_gate::storage::sea_orm::SeaOrmStorage;
 use axum_gate::{Account, Credentials, Group, Role, cookie};
@@ -16,6 +15,8 @@ use sea_query::table::TableCreateStatement;
 use tracing::debug;
 
 const DATABASE_URL: &str = "sqlite::memory:";
+// Use the following if you want to see what is stored
+//const DATABASE_URL: &str = "sqlite:auth-node.sqlite3?mode=rwc";
 
 async fn setup_database_schema(db: &DbConn) {
     let schema = Schema::new(DbBackend::Sqlite);
@@ -56,9 +57,9 @@ async fn main() {
 
     setup_database_schema(&db).await;
 
-    let account_storage = Arc::new(SeaOrmStorage::new(&db, Argon2Hasher));
+    let account_storage = Arc::new(SeaOrmStorage::new(&db));
     debug!("Account storage initialized.");
-    let secrets_storage = Arc::new(SeaOrmStorage::new(&db, Argon2Hasher));
+    let secrets_storage = Arc::new(SeaOrmStorage::new(&db));
     debug!("Secrets storage initialized.");
 
     AccountInsertService::insert("admin@example.com", "admin_password")
@@ -92,7 +93,8 @@ async fn main() {
             "/login",
             post({
                 let registered_claims = RegisteredClaims::new(
-                    "auth-node", // same as in distributed example, so you can re-use the consumer_node
+                    // same as in distributed example, so you can re-use the consumer_node
+                    "auth-node",
                     (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
                 );
                 let secrets_storage = Arc::clone(&secrets_storage);

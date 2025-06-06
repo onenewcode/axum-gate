@@ -13,6 +13,8 @@ pub struct Model {
     /// Primary key for storing in a database table.
     #[sea_orm(primary_key)]
     pub id: i32,
+    /// The unique account id.
+    pub account_id: Uuid,
     /// The user id, eg an email address or a username.
     pub user_id: String,
     /// The groups this passport belongs to.
@@ -37,6 +39,7 @@ where
     fn from(value: Account<R, G>) -> Self {
         Self {
             id: ActiveValue::NotSet,
+            account_id: ActiveValue::Set(value.account_id),
             user_id: ActiveValue::Set(value.user_id),
             groups: ActiveValue::Set(value.groups.into_csv()),
             roles: ActiveValue::Set(value.roles.into_csv()),

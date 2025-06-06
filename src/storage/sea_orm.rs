@@ -145,11 +145,11 @@ impl SecretStorageService for SeaOrmStorage {
     }
 }
 
-impl<Id> CredentialsVerifierService<Id> for SeaOrmStorage
-where
-    Id: Into<sea_orm::Value>,
-{
-    async fn verify_credentials(&self, credentials: Credentials<Id>) -> Result<VerificationResult> {
+impl CredentialsVerifierService<Uuid> for SeaOrmStorage {
+    async fn verify_credentials(
+        &self,
+        credentials: Credentials<Uuid>,
+    ) -> Result<VerificationResult> {
         let Some(model) = seaorm_credentials::Entity::find()
             .filter(seaorm_credentials::Column::AccountId.eq(credentials.id))
             .one(&self.db)
