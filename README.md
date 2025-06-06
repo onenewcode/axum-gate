@@ -1,7 +1,7 @@
 Fully customizable role based JWT cookie auth for axum, applicable for single nodes or distributed systems.
 
 `axum-gate` uses composition of different services to enable maximum flexibility
-for any specific use case.
+for any specific use case. It provides a high-level API for role based access within `axum`. Encryption/encoding is outsourced to external crates.
 
 # Security considerations
 
@@ -11,55 +11,48 @@ issues that have not been detected yet. If you found one, please
 The authors do not guarantee the security nor are liable for
 any type of issues within the use of this software.
 
-# Examples
-
-These examples aim to give you a basic overview about the possibilities that `axum-gate` offers.
-
-## Prerequisites to protect your application
+# Preparing protection of your application
 
 To protect your application with `axum-gate` you need to use storages that implement
-[CredentialsStorageService](crate::storage::CredentialsStorageService),
-[CredentialsVerifierService](crate::credentials::CredentialsVerifierService) and
-[PassportStorageService](crate::storage::PassportStorageService). It is possible to implement
+[SecretStorageService](crate::services::SecretStorageService),
+[CredentialsVerifierService](crate::services::CredentialsVerifierService) and
+[AccountStorageService](crate::services::AccountStorageService). It is possible to implement
 all on the same storage if it is responsible
-for [`Passport`](crate::passport::Passport) as well as the
-[`Credentials`](crate::credentials::Credentials) of a user.
+for [`Account`] as well as the
+[`Secret`](crate::secrets::Secret) of a user.
 
-In case of the pre-defined [MemoryPassportStorage](crate::storage::memory::MemoryPassportStorage)
-and [CredentialsMemoryStorage](crate::storage::memory::MemoryCredentialsStorage)
-(implements both, [CredentialsStorageService](crate::storage::CredentialsStorageService) and
-[CredentialsVerifierService](crate::credentials::CredentialsVerifierService))
-, the following steps are required during the setup of your app. The pre-defined storages
-use the memory to store the information.
+The basic process of initialization and usage of a storage is independent of the actual used storage
+implementation. For demonstration purposes, we will use
+[MemoryAccountStorage](crate::storage::memory::MemoryAccountStorage)
+and [MemorySecretStorage](crate::storage::memory::MemorySecretStorage) implementation.
 
 ```rust
-# use axum_gate::credentials::Credentials;
-# use axum_gate::Account;
-# use axum_gate::Role;
-# use axum_gate::secrets::Argon2Hasher;
-# use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
+# use axum_gate::{Account, Role, Group};
+# use axum_gate::secrets::Secret;
+# use axum_gate::hashing::Argon2Hasher;
+# use axum_gate::storage::memory::{MemorySecretStorage, MemoryAccountStorage};
+# use axum_gate::services::AccountInsertService;
 # use std::sync::Arc;
 # async fn example_storage() {
-// We first need to create the credentials.
-// This is for demonstration purpose only, your application should provide another way to add
-// credentials.
-let user_creds = Credentials::new(
-    &"user@example.com",
-    "user_password",
-);
-// Then a credentials storage is created.
-let creds_storage = MemoryCredentialsStorage::try_from(vec![user_creds.clone()]).unwrap();
-// Same for the passport which provides details about the user.
-// The ID is used to create a connection between the storage entries.
-let user_passport = Account::new(&user_creds.id, "my-username", &["user"], &[Role::User]);
-let passport_storage = MemoryPassportStorage::from(vec![user_passport]);
+// We first instantiate both memory storages.
+let acc_store = Arc::new(MemoryAccountStorage::from(Vec::<Account<Role, Group>>::new()));
+let sec_store = Arc::new(MemorySecretStorage::from(Vec::<Secret>::new()));
+
+// The AccountInsertService provides an ergonomic way of inserting the account into the storages.
+let user_account = AccountInsertService::insert("user@example.com", "my-user-password")
+    .with_roles(vec![Role::User])
+    .with_groups(vec![Group::new("staff")])
+    .into_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
+    .await
+    .unwrap();
 # }
 ```
 
 ## Protecting your application
 
-The actual protection of your application is pretty simple. All possibilities presented below
-can also be combined so you are not limited to choosing one.
+After creating the connections to the storages, the actual protection of your application is pretty
+simple. All possibilities presented below can also be combined so you are not limited to choosing
+one.
 
 ### Limit access to a specific role
 
@@ -67,16 +60,14 @@ You can limit the access of a route to one or multiple specific role(s).
 
 ```rust
 # use axum::routing::{Router, get};
-# use axum_gate::Gate;
-# use axum_gate::Role;
-# use axum_gate::Account;
+# use axum_gate::{Account, Gate, Role, Group};
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn admin() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<String, Role>>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role>>>>::new()
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route(
         "/admin",
         // Please note, that the layer is applied directly to the route handler.
@@ -91,22 +82,21 @@ let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role
 
 ### Grant access to a specific role and all its supervisors
 
-If your role implements [AccessHierarchy], you can limit the access of a route to a specific role but at the same time allow it to
-all supervisor of this role. This is also possible for multiple roles, although this does not
-make much sense in a real world application.
+If your role implements [AccessHierarchy](crate::utils::AccessHierarchy), you can limit the access
+of a route to a specific role
+but at the same time allow it to all supervisor of this role. This is also possible for multiple
+roles, although this does not make much sense in a real world application.
 
 ```rust
 # use axum::routing::{Router, get};
-# use axum_gate::Gate;
-# use axum_gate::Role;
-# use axum_gate::Account;
+# use axum_gate::{Account, Gate, Role, Group};
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn user() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<String, Role>>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role>>>>::new()
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route("/user", get(user))
     // In contrast to granting access to user only, this layer is applied to the route.
     .layer(
@@ -122,17 +112,14 @@ You can limit the access of a route to one or more specific group(s).
 
 ```rust
 # use axum::routing::{Router, get};
-# use axum_gate::Gate;
-# use axum_gate::Account;
-# use axum_gate::Group;
-# use axum_gate::Role;
+# use axum_gate::{Account, Gate, Group, Role};
 # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn group_handler() -> () {}
-# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<String, Role>>>> = Arc::new(JsonWebToken::default());
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role>>>>::new()
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route(
         "/group-scope",
         // Please note, that the layer is applied directly to the route handler.
@@ -145,7 +132,7 @@ let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role
     );
 ```
 
-## Using `Passport` details in your route handler
+## Using `Account` details in your route handler
 
 `axum-gate` provides two [Extension](axum::extract::Extension)s to the handler.
 The first one contains the [RegisteredClaims](crate::jwt::RegisteredClaims), the second
@@ -154,12 +141,11 @@ your custom claims. In this pre-defined case it is the
 You can use them like any other extension:
 ```rust
 # use axum::extract::Extension;
-# use axum_gate::Account;
-# use axum_gate::Role;
-async fn reporter(Extension(user): Extension<Account<String, Role>>) -> Result<String, ()> {
+# use axum_gate::{Account, Role, Group};
+async fn reporter(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {}, your roles are {:?} and you are member of groups {:?}!",
-        user.id, user.roles, user.groups
+        user.account_id, user.roles, user.groups
     ))
 }
 ```
@@ -167,7 +153,7 @@ async fn reporter(Extension(user): Extension<Account<String, Role>>) -> Result<S
 ## Enable login and logout for your application
 
 `axum-gate` provides pre-defined [route_handler](crate::route_handlers) for login and logout
-using [Credentials](crate::credentials::Credentials).
+using [Credentials].
 
 ### Login
 
@@ -177,22 +163,21 @@ To enable a login, you only need to add a custom route with the
 ```rust
 # use axum::extract::Json;
 # use axum::routing::{Router, post};
-# use axum_gate::credentials::Credentials;
+# use axum_gate::Credentials;
 # use axum_gate::jwt::{JsonWebToken, RegisteredClaims};
-# use axum_gate::Account;
-# use axum_gate::Gate;
-# use axum_gate::Role;
-# use axum_gate::secrets::Argon2Hasher;
-# use axum_gate::storage::memory::{MemoryCredentialsStorage, MemoryPassportStorage};
+# use axum_gate::{Account, Gate, Role, Group};
+# use axum_gate::hashing::Argon2Hasher;
+# use axum_gate::secrets::Secret;
+# use axum_gate::storage::memory::{MemorySecretStorage, MemoryAccountStorage};
 # use std::sync::Arc;
 # use chrono::{Utc, TimeDelta};
-# let creds_storage = Arc::new(MemoryCredentialsStorage::<String, Argon2Hasher>::try_from(vec![]).unwrap());
-# let passport_storage = Arc::new(MemoryPassportStorage::<Account<String, Role>>::from(vec![]));
+let account_storage = Arc::new(MemoryAccountStorage::from(Vec::<Account<Role, Group>>::new()));
+let secret_storage = Arc::new(MemorySecretStorage::from(Vec::<Secret>::new()));
 # let jwt_codec = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy the compiler
 // for this example.
-let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role>>>>::new()
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route(
         "/login",
         post({
@@ -200,8 +185,8 @@ let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role
                 "my-auth-node-issuer-id", // iss claim in the JWT
                 (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64, // exp in the JWT
             );
-            let credentials_verifier = Arc::clone(&creds_storage);
-            let passport_storage = Arc::clone(&passport_storage);
+            let credentials_verifier = Arc::clone(&secret_storage);
+            let account_storage = Arc::clone(&account_storage);
             let jwt_codec = Arc::clone(&jwt_codec);
             let cookie_template = cookie_template.clone();
             move |cookie_jar, request_credentials: Json<Credentials<String>>| {
@@ -210,7 +195,7 @@ let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role
                     request_credentials,
                     registered_claims,
                     credentials_verifier,
-                    passport_storage,
+                    account_storage,
                     jwt_codec,
                     cookie_template,
                 )
@@ -224,12 +209,14 @@ let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role
 Because `axum-gate` is using a cookie to store the information, you can easily create a logout
 route:
 ```rust
-# use axum_gate::{Role, Account, jwt::JsonWebToken, Gate, route_handlers};
+# use axum_gate::{Role, Account, Gate, Group};
+# use axum_gate::jwt::JsonWebToken;
+# use axum_gate::route_handlers;
 # use axum::{routing::get, Router};
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 // let app = Router::new() is enough in the real world, this long type is to satisfy the compiler
 // for this example.
-let app = Router::<Gate<Account<String, Role>, JsonWebToken<Account<String, Role>>>>::new()
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route(
         "/logout",
         get({
