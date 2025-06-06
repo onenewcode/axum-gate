@@ -3,10 +3,11 @@ use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredCla
 use axum_gate::services::AccountInsertService;
 use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
 use axum_gate::utils::AccessHierarchy;
-use axum_gate::{Account, Credentials, cookie};
+use axum_gate::{Account, Credentials, Gate, cookie};
 
 use std::sync::Arc;
 
+use axum::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
@@ -14,8 +15,10 @@ use dotenv;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
+pub const ISSUER: &str = "auth-node";
+
 /// A custom role definition.
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug, strum::Display)]
 pub enum CustomRoleDefinition {
     Novice,
     Experienced,
@@ -32,11 +35,47 @@ impl AccessHierarchy for CustomRoleDefinition {
 }
 
 /// A custom group definition.
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]
 pub enum CustomGroupDefinition {
     Maintenance,
     Operations,
     Administration,
+}
+
+async fn reporter(
+    Extension(user): Extension<Account<CustomRoleDefinition, CustomGroupDefinition>>,
+) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
+        user.user_id, user.roles, user.groups
+    ))
+}
+
+async fn user(
+    Extension(user): Extension<Account<CustomRoleDefinition, CustomGroupDefinition>>,
+) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
+        user.user_id, user.roles, user.groups
+    ))
+}
+
+async fn admin_group(
+    Extension(user): Extension<Account<CustomRoleDefinition, CustomGroupDefinition>>,
+) -> Result<String, ()> {
+    Ok(format!(
+        "Hi {} and welcome to the secret admin-group site on the consumer node, your roles are {:?} and you are member of groups {:?}!",
+        user.user_id, user.roles, user.groups
+    ))
+}
+
+async fn admin(
+    Extension(user): Extension<Account<CustomRoleDefinition, CustomGroupDefinition>>,
+) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!",
+        user.user_id, user.roles, user.groups
+    ))
 }
 
 #[tokio::main]
@@ -90,6 +129,36 @@ async fn main() {
     let cookie_template = cookie::CookieBuilder::new("axum-gate", "").secure(true);
 
     let app = Router::new()
+        .route("/admin", get(admin))
+        .layer(
+            Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                .with_cookie_template(cookie_template.clone())
+                .grant_role(CustomRoleDefinition::Expert),
+        )
+        .route(
+            "/secret-admin-group",
+            get(admin_group).layer(
+                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                    .with_cookie_template(cookie_template.clone())
+                    .grant_group(CustomGroupDefinition::Maintenance),
+            ),
+        )
+        .route(
+            "/reporter",
+            get(reporter).layer(
+                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                    .with_cookie_template(cookie_template.clone())
+                    .grant_role_and_supervisor(CustomRoleDefinition::Experienced),
+            ),
+        )
+        .route(
+            "/user",
+            get(user).layer(
+                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                    .with_cookie_template(cookie_template.clone())
+                    .grant_role(CustomRoleDefinition::Novice),
+            ),
+        )
         .route(
             "/login",
             post({

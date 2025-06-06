@@ -309,6 +309,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "serde",
+ "strum",
  "tokio",
  "tracing",
  "tracing-subscriber",
