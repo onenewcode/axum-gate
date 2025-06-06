@@ -19,7 +19,7 @@ use serde_with::skip_serializing_none;
 pub struct RegisteredClaims {
     /// Issuer of the JWT
     #[serde(rename = "iss")]
-    pub issuer: Option<String>,
+    pub issuer: String,
     /// Subject of the JWT (the user)
     #[serde(rename = "sub")]
     pub subject: Option<String>,
@@ -28,13 +28,13 @@ pub struct RegisteredClaims {
     pub audience: Option<HashSet<String>>,
     /// Time after which the JWT expires
     #[serde(rename = "exp")]
-    pub expiration_time: Option<u64>,
+    pub expiration_time: u64,
     /// Time before which the JWT must not be accepted for processing
     #[serde(rename = "nbf")]
     pub not_before_time: Option<u64>,
     /// Time at which the JWT was issued; can be used to determine age of the JWT
     #[serde(rename = "iat")]
-    pub issued_at_time: Option<u64>,
+    pub issued_at_time: u64,
     /// Unique identifier; can be used to prevent the JWT from being replayed (allows a token to be used only once)
     #[serde(rename = "jti")]
     pub jwt_id: Option<String>,
@@ -44,12 +44,12 @@ impl RegisteredClaims {
     /// Initializes the claims. Automatically sets the `issued_at_time` to `Utc::now`.
     pub fn new(issuer: &str, expiration_time: u64) -> Self {
         Self {
-            issuer: Some(issuer.to_string()),
+            issuer: issuer.to_string(),
             subject: None,
             audience: None,
-            expiration_time: Some(expiration_time),
+            expiration_time,
             not_before_time: None,
-            issued_at_time: Some(Utc::now().timestamp() as u64),
+            issued_at_time: Utc::now().timestamp() as u64,
             jwt_id: None,
         }
     }
@@ -77,10 +77,7 @@ impl<CustomClaims> JwtClaims<CustomClaims> {
 
     /// Checks whether the issuer equals to the given value.
     pub fn has_issuer(&self, issuer: &str) -> bool {
-        let Some(iss) = &self.registered_claims.issuer else {
-            return false;
-        };
-        iss.as_str() == issuer
+        &self.registered_claims.issuer == issuer
     }
 }
 
