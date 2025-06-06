@@ -50,7 +50,7 @@ impl<S> SurrealDbStorage<S>
 where
     S: Connection,
 {
-    /// Creates a new instance.
+    /// Creates a new storage that uses the given database connection limited by the given scope.
     pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Self {
         Self { db, scope_settings }
     }

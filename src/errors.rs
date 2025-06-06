@@ -3,11 +3,11 @@
 #[non_exhaustive]
 pub enum Error {
     /// This error occurs in combination with a
-    /// [CodecService](crate::codecs::CodecService) operation.
+    /// [CodecService](crate::services::CodecService) operation.
     #[error("CodecService error: {0}")]
     Codec(String),
     /// This error occurs in combination with a
-    /// [secrets](crate::secrets) operation.
+    /// [hashing](crate::hashing) operation.
     #[error("Hashing error: {0}")]
     Hashing(String),
     /// This error occurs in combination with a

@@ -1,4 +1,4 @@
-//! JWT related models like claims or encoding.
+//! Claims and JWT models.
 use crate::Error;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use crate::services::CodecService;
@@ -54,7 +54,7 @@ impl RegisteredClaims {
     }
 }
 
-/// Default claims for the use with `axum-gate`s [JsonWebToken] codec.
+/// Combination of claims used within `axum-gate` and encoded with [JsonWebToken] codec.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct JwtClaims<CustomClaims> {
     /// The registered claims of a JWT.
@@ -130,7 +130,7 @@ pub struct JsonWebToken<P> {
 }
 
 impl<P> JsonWebToken<P> {
-    /// Creates a new instance with the given encoding and decoding keys.
+    /// Creates a new instance with the given options.
     pub fn new_with_options(options: JsonWebTokenOptions) -> Self {
         let JsonWebTokenOptions {
             enc_key,
@@ -178,7 +178,9 @@ where
         .map_err(|e| Error::Codec(format!("{e}")))?;
 
         if self.header != claims.header {
-            return Err(anyhow!(Error::Codec("Header of the decoded value does not match the one used for encoding.".to_string())));
+            return Err(anyhow!(Error::Codec(
+                "Header of the decoded value does not match the one used for encoding.".to_string()
+            )));
         }
 
         Ok(claims.claims)

@@ -1,4 +1,4 @@
-//! Memory storage implementations.
+//! Storage implementations using the memory as backend.
 
 use crate::hashing::{Argon2Hasher, VerificationResult};
 use crate::secrets::Secret;

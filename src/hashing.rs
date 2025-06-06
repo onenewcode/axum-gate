@@ -1,4 +1,4 @@
-//! All about hashing values.
+//! Value hashing implementations.
 use crate::Error;
 use crate::services::HashingService;
 
@@ -9,7 +9,7 @@ use argon2::{Argon2, PasswordHash, PasswordVerifier};
 /// A hashed value.
 pub type HashedValue = String;
 
-/// The result of a secret verification.
+/// The verification result of a hashed value.
 #[derive(Eq, PartialEq, Debug)]
 pub enum VerificationResult {
     /// The verification was successful.

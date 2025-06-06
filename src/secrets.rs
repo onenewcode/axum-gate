@@ -1,4 +1,4 @@
-//! Secrets hashing, verification models.
+//! Secrets hashing and verification models.
 use crate::{
     Error,
     hashing::{HashedValue, VerificationResult},
@@ -9,7 +9,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Represents a secret that is bound to an [Account](crate::Account).
+/// Represents a secret that is bound to an [Account](crate::Account) by its [account_id](crate::Account::account_id).
 ///
 /// The `account_id` needs to be queried from an [AccountStorage](crate::services::AccountStorageService) to be able to create a correct secret.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,6 +34,14 @@ impl Secret {
             account_id: account_id.clone(),
             secret,
         })
+    }
+
+    /// Creates an instance given that the input secret is already a hashed value.
+    pub fn from_hashed(account_id: &Uuid, hashed_secret: &HashedValue) -> Self {
+        Self {
+            account_id: account_id.to_owned(),
+            secret: hashed_secret.to_owned(),
+        }
     }
 
     /// Verifies the given plain value to the stored one.

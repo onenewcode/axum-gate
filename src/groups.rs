@@ -2,7 +2,7 @@ use crate::utils::CommaSeparatedValue;
 
 use serde::{Deserialize, Serialize};
 
-/// Basic group definitions.
+/// A group representation.
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(transparent)]
 pub struct Group(String);

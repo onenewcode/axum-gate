@@ -12,7 +12,7 @@ where
 }
 
 /// Defines a hierarchy with the possibility to define a supervisor and a subordinate.
-/// You can implement this either for your roles or groups if you give supervisors access to
+/// You can implement this for your roles if you give supervisors access to
 /// routes that have a subordinate role attached.
 pub trait AccessHierarchy
 where

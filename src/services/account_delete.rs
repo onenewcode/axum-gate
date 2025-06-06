@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 
-/// Removes the given account and the corresponding secret from storages.
+/// Removes the given account and its corresponding secret from storages.
 pub struct AccountDeleteService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -20,7 +20,12 @@ where
     R: AccessHierarchy + Eq,
     G: Eq,
 {
-    /// Removes the given account and the corresponding secret from the given storages.
+    /// Creates a new instance with the account that should be deleted.
+    pub fn delete(account: Account<R, G>) -> Self {
+        Self { account }
+    }
+
+    /// Removes the account and its secret from the given storages.
     pub async fn from_storages<AccStore, SecStore>(
         self,
         account_storage: Arc<AccStore>,

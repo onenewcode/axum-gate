@@ -14,7 +14,7 @@ where
 {
     /// The unique identifier of the account which has been generated on registration.
     ///
-    /// This identifier is the loosely connection to the [Credentials](crate::Credentials) in
+    /// This identifier is the loose connection to the [Secret](crate::secrets::Secret) in
     /// a [SecretStorageService](crate::services::SecretStorageService).
     pub account_id: Uuid,
     /// The user id for this account. This should be unique within your application.

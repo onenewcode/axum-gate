@@ -2,7 +2,7 @@ use crate::{accounts::Account, utils::AccessHierarchy};
 
 use anyhow::Result;
 
-/// An account storage service has access to the collection of passports
+/// An account storage service has access to the collection of [Account]s
 /// known to your application.
 pub trait AccountStorageService<R, G>
 where

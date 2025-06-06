@@ -1,10 +1,9 @@
 //! Support for SQL database storage through [sea-orm](sea_orm).
 
-use crate::hashing::VerificationResult;
+use crate::Credentials;
+use crate::hashing::{Argon2Hasher, VerificationResult};
 use crate::secrets::Secret;
-use crate::services::{
-    AccountStorageService, CredentialsVerifierService, HashingService, SecretStorageService,
-};
+use crate::services::{AccountStorageService, CredentialsVerifierService, SecretStorageService};
 use crate::utils::{AccessHierarchy, CommaSeparatedValue};
 use crate::{
     Account, Error, storage::sea_orm::models::account as seaorm_account,
@@ -19,30 +18,22 @@ use sea_orm::{
 use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 
-pub mod models;
+pub(crate) mod models;
 
 /// Storage implementation for [sea-orm](sea_orm).
-pub struct SeaOrmStorage<Hasher> {
+pub struct SeaOrmStorage {
     db: DatabaseConnection,
-    hasher: Hasher,
 }
 
-impl<Hasher> SeaOrmStorage<Hasher> {
-    /// Creates a new instance from the given variables.
-    pub fn new(db: &DatabaseConnection, hasher: Hasher) -> Self
-    where
-        Hasher: HashingService,
-    {
-        Self {
-            db: db.clone(),
-            hasher,
-        }
+impl SeaOrmStorage {
+    /// Creates a new storage that uses the given database connection as backend.
+    pub fn new(db: &DatabaseConnection) -> Self {
+        Self { db: db.clone() }
     }
 }
 
-impl<Hasher, R, G> AccountStorageService<R, G> for SeaOrmStorage<Hasher>
+impl<R, G> AccountStorageService<R, G> for SeaOrmStorage
 where
-    Hasher: HashingService,
     R: AccessHierarchy + Eq + Serialize + DeserializeOwned + std::fmt::Display + Clone,
     G: Eq + Clone,
     Vec<R>: CommaSeparatedValue,
@@ -116,10 +107,7 @@ where
     }
 }
 
-impl<Hasher> SecretStorageService for SeaOrmStorage<Hasher>
-where
-    Hasher: HashingService,
-{
+impl SecretStorageService for SeaOrmStorage {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let model = seaorm_credentials::ActiveModel::from(secret);
         let _ = model
@@ -157,21 +145,21 @@ where
     }
 }
 
-impl<Hasher> CredentialsVerifierService for SeaOrmStorage<Hasher>
+impl<Id> CredentialsVerifierService<Id> for SeaOrmStorage
 where
-    Hasher: HashingService,
+    Id: Into<sea_orm::Value>,
 {
-    async fn verify_secret(&self, secret: Secret) -> Result<VerificationResult> {
+    async fn verify_credentials(&self, credentials: Credentials<Id>) -> Result<VerificationResult> {
         let Some(model) = seaorm_credentials::Entity::find()
-            .filter(seaorm_credentials::Column::AccountId.eq(secret.account_id))
+            .filter(seaorm_credentials::Column::AccountId.eq(credentials.id))
             .one(&self.db)
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?
         else {
             return Ok(VerificationResult::Unauthorized);
         };
-        tracing::debug!("Secret to verify: {}", &secret.secret);
 
-        self.hasher.verify_value(&secret.secret, &model.secret)
+        let secret = Secret::from_hashed(&model.account_id, &model.secret);
+        secret.verify(&credentials.secret, Argon2Hasher)
     }
 }

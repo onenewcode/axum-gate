@@ -1,4 +1,4 @@
-//! Route handler for [axum].
+//! Pre-defined route handler for [axum] like `login` and `logout`.
 use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
