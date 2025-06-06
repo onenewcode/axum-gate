@@ -59,7 +59,7 @@ async fn main() {
 
     let account_storage = Arc::new(SeaOrmStorage::new(&db));
     debug!("Account storage initialized.");
-    let secrets_storage = Arc::new(SeaOrmStorage::new(&db));
+    let secrets_storage = Arc::clone(&account_storage);
     debug!("Secrets storage initialized.");
 
     AccountInsertService::insert("admin@example.com", "admin_password")

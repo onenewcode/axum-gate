@@ -1,5 +1,5 @@
 [package]
-name = "sea-orm"
+name = "sea-orm-example"
 version = "0.1.0"
 edition = "2024"
 
@@ -9,7 +9,11 @@ axum-gate = { path = "../..", features = ["storage-seaorm"] }
 chrono = { version = "0.4" }
 dotenv = "0.15.0"
 sea-orm = { version = "1", features = ["sqlx-sqlite", "runtime-tokio"] }
-sea-query = { version = "0.32.6", default-features = false, features = ["backend-sqlite", "derive", "sea-query-derive"] }
+sea-query = { version = "0.32.6", default-features = false, features = [
+    "backend-sqlite",
+    "derive",
+    "sea-query-derive",
+] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
