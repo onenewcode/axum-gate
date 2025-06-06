@@ -5,14 +5,14 @@ use crate::hashing::VerificationResult;
 use crate::secrets::Secret;
 use crate::services::{AccountStorageService, CredentialsVerifierService, SecretStorageService};
 use crate::utils::AccessHierarchy;
-use crate::{Account, Error};
+use crate::{Account, Credentials, Error};
 
 use std::default::Default;
 
 use anyhow::{Result, anyhow};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use surrealdb::{Connection, RecordId, Surreal};
+use surrealdb::{Connection, RecordId, RecordIdKey, Surreal};
 use uuid::Uuid;
 
 /// Configurations to use with the [surrealdb] database.
@@ -169,23 +169,22 @@ where
     }
 }
 
-impl<S> CredentialsVerifierService for SurrealDbStorage<S>
+impl<S, Id> CredentialsVerifierService<Id> for SurrealDbStorage<S>
 where
     S: Connection,
+    Id: Into<RecordIdKey>,
 {
-    async fn verify_secret(&self, secret: Secret) -> Result<VerificationResult> {
+    async fn verify_credentials(&self, credentials: Credentials<Id>) -> Result<VerificationResult> {
         self.use_ns_db().await?;
-        let record_id = RecordId::from_table_key(
-            &self.scope_settings.table_names.credentials,
-            secret.account_id,
-        );
+        let record_id =
+            RecordId::from_table_key(&self.scope_settings.table_names.credentials, credentials.id);
         let query = "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))".to_string();
 
         let mut response = self
             .db
             .query(query)
             .bind(("record_id", record_id))
-            .bind(("request_secret", secret.secret))
+            .bind(("request_secret", credentials.secret))
             .await
             .map_err(|e| Error::SecretStorage(e.to_string()))?;
         let result: Option<bool> = response
@@ -213,15 +212,18 @@ fn secret_storage() {
 
         creds_storage.store_secret(creds).await.unwrap();
 
-        let creds_to_verify = Secret::new(&id, "admin_password", Argon2Hasher).unwrap();
-        let wrong_creds = Secret::new(&id, "admin_passwordwrong", Argon2Hasher).unwrap();
+        let creds_to_verify = Credentials::new(&id, "admin_password");
+        let wrong_creds = Credentials::new(&id, "admin_passwordwrong");
         assert_eq!(
             VerificationResult::Unauthorized,
-            creds_storage.verify_secret(wrong_creds).await.unwrap()
+            creds_storage.verify_credentials(wrong_creds).await.unwrap()
         );
         assert_eq!(
             VerificationResult::Ok,
-            creds_storage.verify_secret(creds_to_verify).await.unwrap()
+            creds_storage
+                .verify_credentials(creds_to_verify)
+                .await
+                .unwrap()
         );
     })
 }
