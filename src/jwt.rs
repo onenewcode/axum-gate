@@ -7,6 +7,7 @@ use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use anyhow::{Result, anyhow};
+use chrono::Utc;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
 
@@ -40,7 +41,7 @@ pub struct RegisteredClaims {
 }
 
 impl RegisteredClaims {
-    /// Initializes the claims.
+    /// Initializes the claims. Automatically sets the `issued_at_time` to `Utc::now`.
     pub fn new(issuer: &str, expiration_time: u64) -> Self {
         Self {
             issuer: Some(issuer.to_string()),
@@ -48,7 +49,7 @@ impl RegisteredClaims {
             audience: None,
             expiration_time: Some(expiration_time),
             not_before_time: None,
-            issued_at_time: None,
+            issued_at_time: Some(Utc::now().timestamp() as u64),
             jwt_id: None,
         }
     }
