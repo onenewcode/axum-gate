@@ -11,27 +11,32 @@ issues that have not been detected yet. If you found one, please
 The authors do not guarantee the security nor are liable for
 any type of issues within the use of this software.
 
-# Preparing protection of your application
+# Introduction
 
 To protect your application with `axum-gate` you need to use storages that implement
 [SecretStorageService](crate::services::SecretStorageService),
 [CredentialsVerifierService](crate::services::CredentialsVerifierService) and
 [AccountStorageService](crate::services::AccountStorageService). It is possible to implement
 all on the same storage if it is responsible
-for [`Account`] as well as the
-[`Secret`](crate::secrets::Secret) of a user.
+for [`Account`] as well as the [`Secret`](crate::secrets::Secret) of a user.
 
 The basic process of initialization and usage of a storage is independent of the actual used storage
 implementation. For demonstration purposes, we will use
 [MemoryAccountStorage](crate::storage::memory::MemoryAccountStorage)
 and [MemorySecretStorage](crate::storage::memory::MemorySecretStorage) implementation.
 
+# Insertion and deletion of `Account`s and `Secret`s
+
+You can use the [AccountInsertService](crate::services::AccountInsertService) and
+[AccountDeleteService](crate::services::AccountDeleteService) for easy insertion and deletion
+of user accounts and their secrets.
+
 ```rust
 # use axum_gate::{Account, Role, Group};
 # use axum_gate::secrets::Secret;
 # use axum_gate::hashing::Argon2Hasher;
 # use axum_gate::storage::memory::{MemorySecretStorage, MemoryAccountStorage};
-# use axum_gate::services::AccountInsertService;
+# use axum_gate::services::{AccountInsertService, AccountDeleteService};
 # use std::sync::Arc;
 # async fn example_storage() {
 // We first instantiate both memory storages.
@@ -44,17 +49,24 @@ let user_account = AccountInsertService::insert("user@example.com", "my-user-pas
     .with_groups(vec![Group::new("staff")])
     .into_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
     .await
+    .unwrap()
+    .unwrap();
+
+/// You can also remove a combination of account and secret using the AccountDeleteService.
+AccountDeleteService::delete(user_account)
+    .from_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
+    .await
     .unwrap();
 # }
 ```
 
-## Protecting your application
+# Protecting your application
 
 After creating the connections to the storages, the actual protection of your application is pretty
 simple. All possibilities presented below can also be combined so you are not limited to choosing
 one.
 
-### Limit access to a specific role
+## Limit access to a specific role
 
 You can limit the access of a route to one or multiple specific role(s).
 
@@ -80,7 +92,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
-### Grant access to a specific role and all its supervisors
+## Grant access to a specific role and all its supervisors
 
 If your role implements [AccessHierarchy](crate::utils::AccessHierarchy), you can limit the access
 of a route to a specific role
@@ -106,7 +118,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
-### Grant access to a group of users
+## Grant access to a group of users
 
 You can limit the access of a route to one or more specific group(s).
 
@@ -132,7 +144,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
-## Using `Account` details in your route handler
+# Using `Account` details in your route handler
 
 `axum-gate` provides two [Extension](axum::extract::Extension)s to the handler.
 The first one contains the [RegisteredClaims](crate::jwt::RegisteredClaims), the second
@@ -150,12 +162,12 @@ async fn reporter(Extension(user): Extension<Account<Role, Group>>) -> Result<St
 }
 ```
 
-## Enable login and logout for your application
+# Enable login and logout for your application
 
 `axum-gate` provides pre-defined [route_handler](crate::route_handlers) for login and logout
 using [Credentials].
 
-### Login
+## Login
 
 To enable a login, you only need to add a custom route with the
 [login](crate::route_handlers::login) handler.
@@ -204,7 +216,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
-### Logout
+## Logout
 
 Because `axum-gate` is using a cookie to store the information, you can easily create a logout
 route:
