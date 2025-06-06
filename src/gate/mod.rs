@@ -1,21 +1,25 @@
 //! Implementation for [axum]
+use self::state::GateState;
 use crate::Account;
 use crate::jwt::JwtClaims;
 use crate::services::CodecService;
 use crate::utils::AccessHierarchy;
-use axum::{body::Body, extract::Request, http::Response};
-use axum_extra::extract::cookie::{Cookie, CookieJar};
-use cookie::CookieBuilder;
-use http::StatusCode;
-use pin_project::pin_project;
+
 use std::convert::Infallible;
 use std::fmt::Debug;
-use std::future::{Future, Ready, ready};
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::task::Poll;
+
+use axum::{body::Body, extract::Request, http::Response};
+use axum_extra::extract::cookie::{Cookie, CookieJar};
+use chrono::{DateTime, Utc};
+use cookie::CookieBuilder;
+use http::StatusCode;
 use tower::{Layer, Service};
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, trace, warn};
+
+mod state;
 
 /// Contains information about the granted access scope.
 #[derive(Debug, Clone)]
@@ -87,6 +91,7 @@ where
     group_scope: Vec<G>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
+    state: Arc<GateState>,
 }
 
 impl<Codec, R, G> Gate<Codec, R, G>
@@ -103,6 +108,7 @@ where
             group_scope: vec![],
             codec,
             cookie_template: CookieBuilder::new("axum-gate", ""),
+            state: Arc::new(GateState::default()),
         }
     }
 
@@ -149,6 +155,7 @@ where
             group_scope: self.group_scope.clone(),
             codec: Arc::clone(&self.codec),
             cookie_template: self.cookie_template.clone(),
+            state: Arc::clone(&self.state),
         }
     }
 }
@@ -167,6 +174,7 @@ where
     group_scope: Vec<G>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
+    state: Arc<GateState>,
 }
 
 impl<Codec, R, G, S> GateService<Codec, R, G, S>
@@ -181,6 +189,7 @@ where
         issuer: &str,
         codec: Arc<Codec>,
         cookie_template: CookieBuilder<'static>,
+        state: Arc<GateState>,
     ) -> Self {
         Self {
             inner,
@@ -189,27 +198,28 @@ where
             group_scope: vec![],
             codec,
             cookie_template,
+            state,
         }
     }
 
-    fn authorized_by_role(&self, passport: &Account<R, G>) -> bool {
-        passport
+    fn authorized_by_role(&self, account: &Account<R, G>) -> bool {
+        account
             .roles
             .iter()
             .any(|r| self.role_scopes.iter().any(|scope| scope.grants_role(r)))
     }
 
-    fn authorized_by_minimum_role(&self, passport: &Account<R, G>) -> bool {
+    fn authorized_by_minimum_role(&self, account: &Account<R, G>) -> bool {
         debug!("Checking if any subordinate role matches the required one.");
-        passport.roles.iter().any(|ur| {
+        account.roles.iter().any(|ur| {
             self.role_scopes
                 .iter()
                 .any(|scope| scope.grants_supervisor(ur))
         })
     }
 
-    fn authorized_by_group(&self, passport: &Account<R, G>) -> bool {
-        passport
+    fn authorized_by_group(&self, account: &Account<R, G>) -> bool {
+        account
             .groups
             .iter()
             .any(|r| self.group_scope.iter().any(|g_scope| g_scope.eq(r)))
@@ -228,16 +238,22 @@ where
         let cookie = self.cookie_template.clone().build();
         cookie_jar.get(cookie.name()).cloned()
     }
+
+    /// Used to return the unauthorized response.
+    fn unauthorized() -> Response<Body> {
+        Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Body::from("Unauthorized"))
+            .unwrap()
+    }
 }
 
+/*
 impl<Codec, R, G, S> Service<Request<Body>> for GateService<Codec, R, G, S>
 where
-    S: Service<Request<Body>, Response = Response<Body>, Error = Infallible>
-        + Clone
-        + Send
-        + 'static,
+    S: Service<Request<Body>, Response = Response<Body>, Error = Infallible>,
     S::Error: Into<Infallible>,
-    S::Future: Send + 'static,
+    S::Future: Send + Sync + 'static,
     Account<R, G>: Clone,
     Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display + Sync + Send + 'static,
@@ -245,7 +261,7 @@ where
 {
     type Response = Response<Body>;
     type Error = Infallible;
-    type Future = AuthFuture<S::Future>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + Sync>>;
 
     fn poll_ready(
         &mut self,
@@ -256,14 +272,14 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let Some(auth_cookie) = self.auth_cookie(&req) else {
-            return AuthFuture::unauthorized();
+            return Box::pin(async move { Ok(Self::unauthorized()) });
         };
         trace!("axum-gate cookie: {auth_cookie:#?}");
         let cookie_value = auth_cookie.value_trimmed();
         let jwt = match self.codec.decode(cookie_value.as_bytes()) {
             Err(e) => {
                 debug!("Could not decode cookie value: {e}");
-                return AuthFuture::unauthorized();
+                return Box::pin(async move { Ok(Self::unauthorized()) });
             }
             Ok(j) => j,
         };
@@ -274,84 +290,133 @@ where
                 "Access for issuer {:?} denied. User: {}",
                 jwt.registered_claims.issuer, jwt.custom_claims.account_id
             );
-            return AuthFuture::unauthorized();
+            return Box::pin(async move { Ok(Self::unauthorized()) });
         }
 
-        let passport = &jwt.custom_claims;
-        if self.authorized_by_role(passport)
-            || self.authorized_by_minimum_role(passport)
-            || self.authorized_by_group(passport)
+        let account = &jwt.custom_claims;
+        let is_authorized = if self.authorized_by_role(account)
+            || self.authorized_by_minimum_role(account)
+            || self.authorized_by_group(account)
         {
-            req.extensions_mut().insert(jwt.custom_claims);
-            req.extensions_mut().insert(jwt.registered_claims);
-            return AuthFuture::authorized(self.inner.call(req));
-        }
-        AuthFuture::unauthorized()
+            req.extensions_mut().insert(jwt.custom_claims.clone());
+            req.extensions_mut().insert(jwt.registered_claims.clone());
+            true
+        } else {
+            false
+        };
+
+        let req = req;
+        let state = Arc::clone(&self.state);
+        let inner = self.inner.call(req);
+
+        Box::pin(async move {
+            let Some(issued_at_time) =
+                DateTime::<Utc>::from_timestamp(jwt.registered_claims.issued_at_time as i64, 0)
+            else {
+                debug!("Invalid issued_at_time, could not convert it from_timestamp.");
+                return Ok(Self::unauthorized());
+            };
+            if state.needs_invalidation(issued_at_time).await {
+                debug!(
+                    "User {} has been logged out because of invalidation check.",
+                    jwt.custom_claims.account_id
+                );
+                return Ok(Self::unauthorized());
+            }
+
+            if is_authorized {
+                return inner.await;
+            }
+            Ok(Self::unauthorized())
+        })
     }
 }
 
-/// A future indicating whether the user is authorized to access.
-#[pin_project]
-pub struct AuthFuture<F> {
-    #[pin]
-    state: AuthFutureState<F>,
-}
+*/
 
-impl<F> AuthFuture<F> {
-    /// Creates a new future that indicates unauthorized.
-    pub fn unauthorized() -> Self {
-        let response = Response::builder()
-            .status(StatusCode::UNAUTHORIZED)
-            .body(Body::from("Unauthorized"))
-            .unwrap();
-        Self {
-            state: AuthFutureState::Unauthorized(ready(Ok(response))),
-        }
-    }
-    /// Creates a new future that indicates authorized.
-    pub fn authorized(fut: F) -> Self {
-        Self {
-            state: AuthFutureState::Authorized(fut),
-        }
-    }
-}
-
-/// Possible states the future can become.
-#[pin_project(project = AuthFutureStateProj)]
-enum AuthFutureState<F> {
-    /// The user is unauthorized.
-    Unauthorized(#[pin] Ready<Result<Response<Body>, Infallible>>),
-    /// The user is authorized, so the request is forwarded to the next inner
-    /// service.
-    Authorized(#[pin] F),
-}
-
-impl<F> Future for AuthFuture<F>
+impl<Codec, R, G, S> Service<Request<Body>> for GateService<Codec, R, G, S>
 where
-    F: Future<Output = Result<Response<Body>, Infallible>>,
+    S: Service<Request<Body>, Response = Response<Body>, Error = Infallible> + Send + 'static,
+    S::Future: Send + 'static,
+    Account<R, G>: Clone,
+    Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
+    R: AccessHierarchy + Eq + std::fmt::Display + Sync + Send + 'static,
+    G: Eq + Sync + Send + 'static,
 {
-    type Output = Result<Response<Body>, Infallible>;
+    type Response = Response<Body>;
+    type Error = Infallible;
+    type Future =
+        Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
-    fn poll(
-        self: Pin<&mut Self>,
+    fn poll_ready(
+        &mut self,
         cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
-        let this = self.project();
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        self.inner.poll_ready(cx)
+    }
 
-        match this.state.project() {
-            AuthFutureStateProj::Unauthorized(fut) => fut.poll(cx),
-            AuthFutureStateProj::Authorized(fut) => match fut.poll(cx) {
-                Poll::Pending => Poll::Pending,
-                Poll::Ready(Ok(r)) => Poll::Ready(Ok(r)),
-                Poll::Ready(Err(e)) => {
-                    error!("{e}");
-                    let resp = Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::from("Internal Server Error"))
-                        .unwrap();
-                    Poll::Ready(Ok(resp))
-                }
-            },
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        let Some(auth_cookie) = self.auth_cookie(&req) else {
+            return Box::pin(async move { Ok(Self::unauthorized()) });
+        };
+        trace!("axum-gate cookie: {auth_cookie:#?}");
+        let cookie_value = auth_cookie.value_trimmed();
+        let jwt = match self.codec.decode(cookie_value.as_bytes()) {
+            Err(e) => {
+                debug!("Could not decode cookie value: {e}");
+                return Box::pin(async move { Ok(Self::unauthorized()) });
+            }
+            Ok(j) => j,
+        };
+        debug!("Logged in with id: {}", jwt.custom_claims.account_id);
+
+        if !jwt.has_issuer(&self.issuer) {
+            warn!(
+                "Access for issuer {:?} denied. User: {}",
+                jwt.registered_claims.issuer, jwt.custom_claims.account_id
+            );
+            return Box::pin(async move { Ok(Self::unauthorized()) });
         }
+
+        let account = &jwt.custom_claims;
+        let is_authorized = if self.authorized_by_role(account)
+            || self.authorized_by_minimum_role(account)
+            || self.authorized_by_group(account)
+        {
+            req.extensions_mut().insert(jwt.custom_claims.clone());
+            req.extensions_mut().insert(jwt.registered_claims.clone());
+            true
+        } else {
+            false
+        };
+
+        if !is_authorized {
+            return Box::pin(async move { Ok(Self::unauthorized()) });
+        }
+
+        let Some(issued_at_time) =
+            DateTime::<Utc>::from_timestamp(jwt.registered_claims.issued_at_time as i64, 0)
+        else {
+            debug!("Invalid issued_at_time, could not convert it from_timestamp.");
+            return Box::pin(async move { Ok(Self::unauthorized()) });
+        };
+
+        let req = req;
+        let state = Arc::clone(&self.state);
+        let inner = self.inner.call(req);
+        Box::pin(async move {
+            if state.needs_invalidation(issued_at_time).await {
+                debug!(
+                    "User {} has been logged out because of invalidation check.",
+                    jwt.custom_claims.account_id
+                );
+                return Ok(Self::unauthorized());
+            }
+
+            if is_authorized {
+                return inner.await;
+            }
+            Ok(Self::unauthorized())
+        })
     }
 }
