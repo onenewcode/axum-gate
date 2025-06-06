@@ -18,7 +18,7 @@ use sea_orm::{
 use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 
-pub(crate) mod models;
+pub mod models;
 
 /// Storage implementation for [sea-orm](sea_orm).
 pub struct SeaOrmStorage {
