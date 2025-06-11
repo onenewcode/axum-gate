@@ -3,8 +3,7 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use tokio::sync::RwLock;
 
-/// State of a [Gate](super::Gate) instance. Used internally for identifying whether a login has
-/// invalidated.
+/// State of a [Gate](super::Gate) instance.
 #[derive(Clone, Debug)]
 pub struct GateState {
     /// Defines the point in time where a login will be invalidated.
