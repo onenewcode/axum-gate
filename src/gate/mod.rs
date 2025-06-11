@@ -53,7 +53,7 @@ where
             group_scope: vec![],
             codec,
             cookie_template: CookieBuilder::new("axum-gate", ""),
-            state: Arc::new(GateState::default()),
+            state: Arc::new(GateState::new(Utc::now())),
         }
     }
 

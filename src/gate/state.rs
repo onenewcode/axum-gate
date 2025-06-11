@@ -11,10 +11,11 @@ pub struct GateState {
     not_before_time: Arc<RwLock<DateTime<Utc>>>,
 }
 
-impl Default for GateState {
-    fn default() -> Self {
+impl GateState {
+    /// Creates a new state.
+    pub fn new(not_before_time: DateTime<Utc>) -> Self {
         Self {
-            not_before_time: Arc::new(RwLock::new(Utc::now())),
+            not_before_time: Arc::new(RwLock::new(not_before_time)),
         }
     }
 }
