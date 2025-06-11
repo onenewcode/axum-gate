@@ -8,6 +8,7 @@ mod gate;
 mod groups;
 pub mod hashing;
 pub mod jwt;
+pub mod permissions;
 mod roles;
 pub mod route_handlers;
 pub mod secrets;
