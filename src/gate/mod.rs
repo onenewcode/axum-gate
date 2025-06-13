@@ -91,6 +91,14 @@ where
         self.permissions.insert(permission.into());
         self
     }
+
+    /// Users that do have the given permissions will be granted access.
+    pub fn grant_permissions<P: Into<u32>>(mut self, permission: Vec<P>) -> Self {
+        permission.into_iter().for_each(|p| {
+            self.permissions.insert(p.into());
+        });
+        self
+    }
 }
 
 impl<Codec, R, G, S> Layer<S> for Gate<Codec, R, G>
