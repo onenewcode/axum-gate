@@ -216,6 +216,12 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
+
+        if self.group_scope.is_empty() && self.role_scopes.is_empty() {
+            debug!("Denying access because roles and groups are empty.");
+            return unauthorized_future;
+        }
+
         let Some(auth_cookie) = self.auth_cookie(&req) else {
             return unauthorized_future;
         };
