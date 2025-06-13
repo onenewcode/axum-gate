@@ -215,15 +215,16 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
         let Some(auth_cookie) = self.auth_cookie(&req) else {
-            return Box::pin(async move { Ok(Self::unauthorized()) });
+            return unauthorized_future;
         };
         trace!("axum-gate cookie: {auth_cookie:#?}");
         let cookie_value = auth_cookie.value_trimmed();
         let jwt = match self.codec.decode(cookie_value.as_bytes()) {
             Err(e) => {
                 debug!("Could not decode cookie value: {e}");
-                return Box::pin(async move { Ok(Self::unauthorized()) });
+                return unauthorized_future;
             }
             Ok(j) => j,
         };
@@ -234,7 +235,7 @@ where
                 "Access for issuer {:?} denied. User: {}",
                 jwt.registered_claims.issuer, jwt.custom_claims.account_id
             );
-            return Box::pin(async move { Ok(Self::unauthorized()) });
+            return unauthorized_future;
         }
 
         let account = &jwt.custom_claims;
@@ -250,14 +251,14 @@ where
         };
 
         if !is_authorized {
-            return Box::pin(async move { Ok(Self::unauthorized()) });
+            return unauthorized_future;
         }
 
         let Some(issued_at_time) =
             DateTime::<Utc>::from_timestamp(jwt.registered_claims.issued_at_time as i64, 0)
         else {
             debug!("Invalid issued_at_time, could not convert it from_timestamp.");
-            return Box::pin(async move { Ok(Self::unauthorized()) });
+            return unauthorized_future;
         };
 
         let req = req;
