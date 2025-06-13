@@ -45,7 +45,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
-    /// Creates a new instance of a gate.
+    /// Creates a new instance of a gate, denying all requests by default.
     pub fn new(issuer: &str, codec: Arc<Codec>) -> Self {
         Self {
             issuer: issuer.to_string(),
