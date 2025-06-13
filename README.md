@@ -63,8 +63,8 @@ AccountDeleteService::delete(user_account)
 # Protecting your application
 
 After creating the connections to the storages, the actual protection of your application is pretty
-simple. All possibilities presented below can also be combined so you are not limited to choosing
-one.
+simple. When protecting with a `Gate`, all requests are denied by default. All grant possibilities
+presented below can also be combined so you are not limited to choosing one.
 
 ## Limit access to a specific role
 
