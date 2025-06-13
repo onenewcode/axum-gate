@@ -17,6 +17,7 @@ use axum_extra::extract::cookie::{Cookie, CookieJar};
 use chrono::{DateTime, Utc};
 use cookie::CookieBuilder;
 use http::StatusCode;
+use roaring::RoaringBitmap;
 use tower::{Layer, Service};
 use tracing::{debug, trace, warn};
 
@@ -34,6 +35,7 @@ where
     issuer: String,
     role_scopes: Vec<AccessScope<R>>,
     group_scope: Vec<G>,
+    permissions: RoaringBitmap,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
     state: Arc<GateState>,
@@ -51,6 +53,7 @@ where
             issuer: issuer.to_string(),
             role_scopes: vec![],
             group_scope: vec![],
+            permissions: RoaringBitmap::new(),
             codec,
             cookie_template: CookieBuilder::new("axum-gate", ""),
             state: Arc::new(GateState::new(Utc::now())),
@@ -82,6 +85,12 @@ where
         self.group_scope.push(group);
         self
     }
+
+    /// Users that do have the given permission will be granted access.
+    pub fn grant_permission<P: Into<u32>>(mut self, permission: P) -> Self {
+        self.permissions.insert(permission.into());
+        self
+    }
 }
 
 impl<Codec, R, G, S> Layer<S> for Gate<Codec, R, G>
@@ -98,6 +107,7 @@ where
             issuer: self.issuer.clone(),
             role_scopes: self.role_scopes.clone(),
             group_scope: self.group_scope.clone(),
+            permissions: RoaringBitmap::new(),
             codec: Arc::clone(&self.codec),
             cookie_template: self.cookie_template.clone(),
             state: Arc::clone(&self.state),
@@ -117,6 +127,7 @@ where
     issuer: String,
     role_scopes: Vec<AccessScope<R>>,
     group_scope: Vec<G>,
+    permissions: RoaringBitmap,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
     state: Arc<GateState>,
@@ -141,6 +152,7 @@ where
             issuer: issuer.to_string(),
             role_scopes: vec![],
             group_scope: vec![],
+            permissions: RoaringBitmap::new(),
             codec,
             cookie_template,
             state,
@@ -168,6 +180,10 @@ where
             .groups
             .iter()
             .any(|r| self.group_scope.iter().any(|g_scope| g_scope.eq(r)))
+    }
+
+    fn authorized_by_permission(&self, account: &Account<R, G>) -> bool {
+        self.permissions.is_superset(&account.permissions)
     }
 }
 
@@ -248,6 +264,7 @@ where
         let is_authorized = if self.authorized_by_role(account)
             || self.authorized_by_minimum_role(account)
             || self.authorized_by_group(account)
+            || self.authorized_by_permission(account)
         {
             req.extensions_mut().insert(jwt.custom_claims.clone());
             req.extensions_mut().insert(jwt.registered_claims.clone());

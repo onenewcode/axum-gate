@@ -2,6 +2,7 @@ use crate::utils::AccessHierarchy;
 #[cfg(feature = "storage-seaorm")]
 use crate::utils::CommaSeparatedValue;
 
+use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -23,6 +24,8 @@ where
     pub roles: Vec<R>,
     /// Groups the account belongs to.
     pub groups: Vec<G>,
+    /// Custom permissions that can be added to an account.
+    pub permissions: RoaringBitmap,
 }
 
 impl<R, G> Account<R, G>
@@ -40,6 +43,7 @@ where
             user_id: user_id.to_owned(),
             groups,
             roles,
+            permissions: RoaringBitmap::new(),
         }
     }
 
@@ -59,7 +63,18 @@ where
             user_id: user_id.to_owned(),
             groups,
             roles,
+            permissions: RoaringBitmap::new(),
         }
+    }
+
+    /// Adds the given permission to the account.
+    pub fn grant_permission<P: Into<u32>>(&mut self, permission: P) {
+        self.permissions.insert(permission.into());
+    }
+
+    /// Removes the given permission from the account.
+    pub fn revoke_permission<P: Into<u32>>(&mut self, permission: P) {
+        self.permissions.remove(permission.into());
     }
 }
 

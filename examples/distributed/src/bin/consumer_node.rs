@@ -28,6 +28,13 @@ async fn user(Extension(user): Extension<Account<Role, Group>>) -> Result<String
     ))
 }
 
+async fn permissions(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
+    Ok(format!(
+        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}! You only granted access because of the permissions that you have been assigned to.",
+        user.user_id, user.roles, user.groups
+    ))
+}
+
 async fn admin_group(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
     Ok(format!(
         "Hi {} and welcome to the secret admin-group site on the consumer node, your roles are {:?} and you are member of groups {:?}!",
@@ -88,6 +95,14 @@ async fn main() {
                 Gate::new(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_role(Role::User),
+            ),
+        )
+        .route(
+            "/permissions",
+            get(permissions).layer(
+                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                    .with_cookie_template(cookie_template.clone())
+                    .grant_permission(distributed::AdditionalPermissions::ReadApi),
             ),
         )
         .route("/", get(index));
