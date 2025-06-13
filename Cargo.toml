@@ -40,6 +40,8 @@ tracing = { version = "0.1.41", features = ["release_max_level_info"] }
 uuid = { version = "1", features = ["serde", "v7"] }
 
 [dev-dependencies]
+mime = "0.3.17"
+num_enum = "0.7.3"
 surrealdb = { version = "2", features = ["kv-mem"] }
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 tokio-test = "0.4.4"
