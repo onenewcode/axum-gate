@@ -144,6 +144,46 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
+## Use permissions to refine access control
+
+If a basic role/group access model does not match your use case or you need precise
+access control for your endpoints, you can use permissions.
+
+```rust
+# use axum::routing::{Router, get};
+# use axum_gate::{Account, Gate, Group, Role};
+# use axum_gate::jwt::{JsonWebToken, JwtClaims};
+# use std::sync::Arc;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
+#[derive(Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
+#[repr(u32)]
+#[non_exhaustive]
+enum MyCustomPermission {
+    ReadApi,
+    WriteApi,
+}
+
+# async fn read_api_handler() -> () {}
+# let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
+let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
+// let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+    .route(
+        "/read-api",
+        // Please note, that the layer is applied directly to the route handler.
+        get(read_api_handler).layer(
+            Gate::new("my-issuer-id", Arc::clone(&jwt_codec))
+                .with_cookie_template(cookie_template)
+                .grant_permission(MyCustomPermission::ReadApi)
+              // or use:
+              //.grant_permissions(vec![MyCustomPermission::ReadApi])
+        )
+    );
+```
+
+A permission set is backed by [roaring::RoaringBitmap] and stored in the JWT as well.
+
 # Using `Account` details in your route handler
 
 `axum-gate` provides two [Extension](axum::extract::Extension)s to the handler.
