@@ -4,7 +4,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 #[derive(Debug, PartialEq, IntoPrimitive, TryFromPrimitive)]
 #[repr(u32)]
 #[non_exhaustive]
-pub enum AdditionalPermissions {
+pub enum AdditionalPermission {
     ReadRepository,
     WriteRepository,
     ReadApi,

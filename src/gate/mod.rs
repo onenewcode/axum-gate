@@ -107,7 +107,7 @@ where
             issuer: self.issuer.clone(),
             role_scopes: self.role_scopes.clone(),
             group_scope: self.group_scope.clone(),
-            permissions: RoaringBitmap::new(),
+            permissions: self.permissions.clone(),
             codec: Arc::clone(&self.codec),
             cookie_template: self.cookie_template.clone(),
             state: Arc::clone(&self.state),
@@ -183,7 +183,10 @@ where
     }
 
     fn authorized_by_permission(&self, account: &Account<R, G>) -> bool {
-        self.permissions.is_superset(&account.permissions)
+        account
+            .permissions
+            .iter()
+            .any(|perm| self.permissions.contains(perm))
     }
 }
 
@@ -233,8 +236,9 @@ where
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
 
-        if self.group_scope.is_empty() && self.role_scopes.is_empty() {
-            debug!("Denying access because roles and groups are empty.");
+        if self.group_scope.is_empty() && self.role_scopes.is_empty() && self.permissions.is_empty()
+        {
+            debug!("Denying access because roles, groups or permissions are empty.");
             return unauthorized_future;
         }
 
@@ -261,10 +265,10 @@ where
         }
 
         let account = &jwt.custom_claims;
-        let is_authorized = if self.authorized_by_role(account)
-            || self.authorized_by_minimum_role(account)
+        let is_authorized = if self.authorized_by_permission(account)
             || self.authorized_by_group(account)
-            || self.authorized_by_permission(account)
+            || self.authorized_by_role(account)
+            || self.authorized_by_minimum_role(account)
         {
             req.extensions_mut().insert(jwt.custom_claims.clone());
             req.extensions_mut().insert(jwt.registered_claims.clone());

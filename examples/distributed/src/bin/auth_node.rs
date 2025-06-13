@@ -1,3 +1,5 @@
+use distributed::AdditionalPermission;
+
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::services::AccountInsertService;
@@ -40,6 +42,7 @@ async fn main() {
     AccountInsertService::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
+        .with_permissions(vec![AdditionalPermission::ReadApi])
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
@@ -56,6 +59,7 @@ async fn main() {
     AccountInsertService::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
+        .with_permissions(vec![AdditionalPermission::ReadApi])
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
@@ -67,11 +71,10 @@ async fn main() {
         .route(
             "/login",
             post({
-                let mut registered_claims = RegisteredClaims::new(
+                let registered_claims = RegisteredClaims::new(
                     ISSUER,
                     (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
                 );
-                registered_claims.issuer = Some(ISSUER.to_string());
                 let secrets_storage = Arc::clone(&secrets_storage);
                 let account_storage = Arc::clone(&account_storage);
                 let jwt_codec = Arc::clone(&jwt_codec);

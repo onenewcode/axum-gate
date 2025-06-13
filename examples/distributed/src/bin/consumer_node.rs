@@ -1,3 +1,5 @@
+use distributed::AdditionalPermission;
+
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use axum_gate::{Account, Gate, Group, Role, cookie};
@@ -30,8 +32,14 @@ async fn user(Extension(user): Extension<Account<Role, Group>>) -> Result<String
 
 async fn permissions(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
     Ok(format!(
-        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}! You only granted access because of the permissions that you have been assigned to.",
-        user.user_id, user.roles, user.groups
+        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}! Your permissions are: {:?}",
+        user.user_id,
+        user.roles,
+        user.groups,
+        user.permissions
+            .iter()
+            .map(|p| AdditionalPermission::try_from(p).expect("Permission does not exist."))
+            .collect::<Vec<_>>()
     ))
 }
 
@@ -102,7 +110,7 @@ async fn main() {
             get(permissions).layer(
                 Gate::new(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_permission(distributed::AdditionalPermissions::ReadApi),
+                    .grant_permission(distributed::AdditionalPermission::ReadApi),
             ),
         )
         .route("/", get(index));

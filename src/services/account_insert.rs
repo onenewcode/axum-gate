@@ -9,6 +9,7 @@ use crate::{
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
+use roaring::RoaringBitmap;
 use tracing::debug;
 
 /// Ergonomic service that is able to insert/register a new [Account] to the storages.
@@ -21,6 +22,7 @@ where
     secret: String,
     roles: Vec<R>,
     groups: Vec<G>,
+    permissions: RoaringBitmap,
 }
 
 impl<R, G> AccountInsertService<R, G>
@@ -35,6 +37,7 @@ where
             secret: secret.to_string(),
             roles: vec![],
             groups: vec![],
+            permissions: RoaringBitmap::new(),
         }
     }
 
@@ -48,6 +51,15 @@ where
         Self { groups, ..self }
     }
 
+    /// Adds the given permission list to the [Account].
+    pub fn with_permissions<P: Into<u32>>(self, permissions: Vec<P>) -> Self {
+        let permissions = RoaringBitmap::from_iter(permissions.into_iter().map(|p| p.into()));
+        Self {
+            permissions,
+            ..self
+        }
+    }
+
     /// Adds the created [Account] to the storages.
     pub async fn into_storages<AccStore, SecStore>(
         self,
@@ -58,7 +70,8 @@ where
         AccStore: AccountStorageService<R, G>,
         SecStore: SecretStorageService,
     {
-        let account = Account::new(&self.user_id, &self.roles, &self.groups);
+        let account = Account::new(&self.user_id, &self.roles, &self.groups)
+            .with_permissions(self.permissions);
         debug!("Created account.");
         let Some(account) = account_storage.store_account(account).await? else {
             return Err(anyhow!(Error::AccountStorage(

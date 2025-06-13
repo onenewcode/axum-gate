@@ -67,6 +67,14 @@ where
         }
     }
 
+    /// Consumes `self` and sets the given permission set.
+    pub fn with_permissions(self, permissions: RoaringBitmap) -> Self {
+        Self {
+            permissions,
+            ..self
+        }
+    }
+
     /// Adds the given permission to the account.
     pub fn grant_permission<P: Into<u32>>(&mut self, permission: P) {
         self.permissions.insert(permission.into());
