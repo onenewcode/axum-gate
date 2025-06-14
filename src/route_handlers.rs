@@ -1,4 +1,5 @@
 //! Pre-defined route handler for [axum] like `login` and `logout`.
+#![doc = include_str!("../doc/route_handlers.md")]
 use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
