@@ -7,10 +7,12 @@ use crate::hashing::VerificationResult;
 use crate::jwt::{JwtClaims, RegisteredClaims};
 use crate::services::{AccountStorageService, CodecService, CredentialsVerifierService};
 use crate::utils::AccessHierarchy;
+
+use std::sync::Arc;
+
 use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
-use std::sync::Arc;
 use tracing::{debug, error};
 use uuid::Uuid;
 
