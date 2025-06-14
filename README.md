@@ -3,14 +3,6 @@ Fully customizable role based JWT cookie auth for axum, applicable for single no
 `axum-gate` uses composition of different services to enable maximum flexibility
 for any specific use case. It provides a high-level API for role based access within `axum`. Encryption/encoding is outsourced to external crates.
 
-# Security considerations
-
-This crate has not been audited by third party security experts. This software MAY have security
-issues that have not been detected yet. If you found one, please
-[file an issue](https://github.com/emirror-de/axum-gate/issues/new?title=Vulnerability%20detected&labels=security,bug).
-The authors do not guarantee the security nor are liable for
-any type of issues within the use of this software.
-
 # Introduction
 
 To protect your application with `axum-gate` you need to use storages that implement
