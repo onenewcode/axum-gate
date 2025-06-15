@@ -10,6 +10,9 @@ use tracing::warn;
 ///
 /// The permissions are stored as `String` and its index is used for the permssion on the
 /// [Gate](crate::Gate) side.
+///
+/// See [DynamicPermissionService] for more information about resource access that changes over
+/// time.
 pub struct PermissionSet {
     /// The permissions can be any string you need for your application.
     permissions: RwLock<Vec<String>>,

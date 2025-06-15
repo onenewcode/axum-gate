@@ -3,6 +3,24 @@ Fully customizable role based JWT cookie auth for axum, applicable for single no
 `axum-gate` uses composition of different services to enable maximum flexibility
 for any specific use case. It provides a high-level API for role based access within `axum`. Encryption/encoding is outsourced to external crates.
 
+# Features
+
+- Role based access auth for `axum` using JWT cookies
+- Support for custom roles
+- Support for custom groups
+- Applicable to single nodes and distributed systems
+- Separate storage of `Account` and `Secret` information for increased security
+- Support for `surrealdb`, `sea-orm` and `memory` storages
+- Pre-defined handler for fast and easy integration
+- Static permission set for fine-grained resource control
+- Dynamic permission set for resource control that changes during runtime
+
+## Planned features
+
+- Simple Bearer auth layer with support for rotating key set or using a custom function
+(for node to node authentication, see
+[DynamicPermissionService](crate::services::DynamicPermissionService))
+
 # Introduction
 
 To protect your application with `axum-gate` you need to use storages that implement
@@ -16,41 +34,6 @@ The basic process of initialization and usage of a storage is independent of the
 implementation. For demonstration purposes, we will use
 [MemoryAccountStorage](crate::storage::memory::MemoryAccountStorage)
 and [MemorySecretStorage](crate::storage::memory::MemorySecretStorage) implementation.
-
-# Insertion and deletion of `Account`s and `Secret`s
-
-You can use the [AccountInsertService](crate::services::AccountInsertService) and
-[AccountDeleteService](crate::services::AccountDeleteService) for easy insertion and deletion
-of user accounts and their secrets.
-
-```rust
-# use axum_gate::{Account, Role, Group};
-# use axum_gate::secrets::Secret;
-# use axum_gate::hashing::Argon2Hasher;
-# use axum_gate::storage::memory::{MemorySecretStorage, MemoryAccountStorage};
-# use axum_gate::services::{AccountInsertService, AccountDeleteService};
-# use std::sync::Arc;
-# async fn example_storage() {
-// We first instantiate both memory storages.
-let acc_store = Arc::new(MemoryAccountStorage::from(Vec::<Account<Role, Group>>::new()));
-let sec_store = Arc::new(MemorySecretStorage::from(Vec::<Secret>::new()));
-
-// The AccountInsertService provides an ergonomic way of inserting the account into the storages.
-let user_account = AccountInsertService::insert("user@example.com", "my-user-password")
-    .with_roles(vec![Role::User])
-    .with_groups(vec![Group::new("staff")])
-    .into_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
-    .await
-    .unwrap()
-    .unwrap();
-
-/// You can also remove a combination of account and secret using the AccountDeleteService.
-AccountDeleteService::delete(user_account)
-    .from_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
-    .await
-    .unwrap();
-# }
-```
 
 # Protecting your application
 
@@ -136,10 +119,14 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
-## Use permissions to refine access control
+## Use permissions to refine resource control
 
 If a basic role/group access model does not match your use case or you need precise
-access control for your endpoints, you can use permissions.
+access control for your endpoints, you can use permissions. There are two separate ways to use
+permissions for fine-grained resource control, static and
+[dynamic](crate::services::DynamicPermissionService).
+
+If your resources do not change over time, the following example should fit your use case.
 
 ```rust
 # use axum::routing::{Router, get};
@@ -174,8 +161,6 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     );
 ```
 
-A permission set is backed by [roaring::RoaringBitmap] and stored in the JWT as well.
-
 # Using `Account` details in your route handler
 
 `axum-gate` provides two [Extension](axum::extract::Extension)s to the handler.
@@ -192,6 +177,41 @@ async fn reporter(Extension(user): Extension<Account<Role, Group>>) -> Result<St
         user.account_id, user.roles, user.groups
     ))
 }
+```
+
+# Handling storage of `Account`s and `Secret`s
+
+You can use the [AccountInsertService](crate::services::AccountInsertService) and
+[AccountDeleteService](crate::services::AccountDeleteService) for easy insertion and deletion
+of user accounts and their secrets.
+
+```rust
+# use axum_gate::{Account, Role, Group};
+# use axum_gate::secrets::Secret;
+# use axum_gate::hashing::Argon2Hasher;
+# use axum_gate::storage::memory::{MemorySecretStorage, MemoryAccountStorage};
+# use axum_gate::services::{AccountInsertService, AccountDeleteService};
+# use std::sync::Arc;
+# async fn example_storage() {
+// We first instantiate both memory storages.
+let acc_store = Arc::new(MemoryAccountStorage::from(Vec::<Account<Role, Group>>::new()));
+let sec_store = Arc::new(MemorySecretStorage::from(Vec::<Secret>::new()));
+
+// The AccountInsertService provides an ergonomic way of inserting the account into the storages.
+let user_account = AccountInsertService::insert("user@example.com", "my-user-password")
+    .with_roles(vec![Role::User])
+    .with_groups(vec![Group::new("staff")])
+    .into_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
+    .await
+    .unwrap()
+    .unwrap();
+
+/// You can also remove a combination of account and secret using the AccountDeleteService.
+AccountDeleteService::delete(user_account)
+    .from_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
+    .await
+    .unwrap();
+# }
 ```
 
 # Enable login and logout for your application

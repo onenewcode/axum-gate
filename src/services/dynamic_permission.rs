@@ -2,12 +2,19 @@ use std::future::Future;
 
 use anyhow::Result;
 
-/// Contains the current state of a dynamic extending permission set.
+/// Provides the implementor with the possibility to act as dynamic permission set.
 ///
-/// This is in extend to the standard usage of the permissions when protecting your route with
-/// a [Gate](crate::Gate). You can use the standard roles/groups feature and then check within your
-/// route handler for specific permissions. This is particularly useful when a registered user
-/// should only have access to specific categories within the same route.
+/// In extend to the static roles and groups feature of `axum-gate`, it is also possible to use a
+/// dynamic permission set for fine-grained resource control. This is done by using the
+/// [DynamicPermissionService] within your actual route handler. Particularly useful when
+/// a registered user should only have access to specific resources within the same route and
+/// your resources change over time.
+///
+/// However, keep in mind that the [PermissionSet](crate::PermissionSet) is stored in the cookie
+/// as well and **has a maximum amount of `u32` permissions**.
+///
+/// It is also applicable within a distributed system. See the pre-defined
+/// [route_handler](crate::route_handlers#dynamic-permission-set) for more information.
 pub trait DynamicPermissionService {
     /// Appends the permission to the set.
     ///

@@ -1,12 +1,14 @@
 //! Pre-defined route handler for [axum] like `login` and `logout`.
 #![doc = include_str!("../doc/route_handlers.md")]
-use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
 use crate::hashing::VerificationResult;
 use crate::jwt::{JwtClaims, RegisteredClaims};
-use crate::services::{AccountStorageService, CodecService, CredentialsVerifierService};
+use crate::services::{
+    AccountStorageService, CodecService, CredentialsVerifierService, DynamicPermissionService,
+};
 use crate::utils::AccessHierarchy;
+use crate::{Account, PermissionSet};
 
 use std::sync::Arc;
 
@@ -82,4 +84,20 @@ where
 pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'static>) -> CookieJar {
     let cookie = cookie_template.build();
     cookie_jar.remove(cookie)
+}
+
+/// Uses `updated_permission_set` to update `permission_set`. Used in combination with a
+/// [DynamicPermissionService].
+pub async fn extend_permission_set(
+    updated_permission_set: Json<Vec<String>>,
+    permission_set: Arc<PermissionSet>,
+) -> StatusCode {
+    if let Err(e) = permission_set
+        .extend_permission_set(updated_permission_set.0)
+        .await
+    {
+        error!("{e}");
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    }
+    StatusCode::OK
 }

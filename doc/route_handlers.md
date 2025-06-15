@@ -69,3 +69,34 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         })
     );
 ```
+
+## Dynamic permission set
+
+There is also a pre-defined handler available for updating a dynamic permission set within your
+application.
+
+It can be used on distributed systems and enables creating a single source of truth
+for the permission set that is able to update all other nodes on demand. When using this handler,
+make sure that you also protect it properly.
+```rust
+# use axum_gate::{Role, Account, Gate, Group, PermissionSet};
+# use axum_gate::jwt::JsonWebToken;
+# use axum_gate::route_handlers;
+# use std::sync::Arc;
+# use axum::{routing::patch, Router};
+let permission_set = Arc::new(PermissionSet::new(vec![
+    "read:resource1".to_string(),
+    "read:resource2".to_string()
+]));
+// let app = Router::new() is enough in the real world, this long type is to satisfy the compiler
+// for this example.
+let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+    .route(
+        "/extend-permissions",
+        patch({
+            move |updated_permission_set| {
+                route_handlers::extend_permission_set(updated_permission_set, Arc::clone(&permission_set))
+            }
+        })
+    );
+```
