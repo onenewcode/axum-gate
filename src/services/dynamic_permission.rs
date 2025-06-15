@@ -21,7 +21,7 @@ pub trait DynamicPermissionService {
     /// Does not update neither the order, nor the values of the permissions. It only checks if the
     /// permissions are in the set and if not, appends them to the end. Every other behavior would
     /// introduce a security leakage.
-    fn update_permission_set(&self, permissions: Vec<String>) -> impl Future<Output = Result<()>>;
+    fn extend_permission_set(&self, permissions: Vec<String>) -> impl Future<Output = Result<()>>;
 
     /// Returns the number that the given permission belongs to. Returns `None` if the permission
     /// is not found in the set.

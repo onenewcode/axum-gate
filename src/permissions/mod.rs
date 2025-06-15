@@ -40,7 +40,7 @@ impl DynamicPermissionService for PermissionSet {
         Ok(())
     }
 
-    async fn update_permission_set(&self, permissions: Vec<String>) -> Result<()> {
+    async fn extend_permission_set(&self, permissions: Vec<String>) -> Result<()> {
         for perm in permissions {
             self.append_permission(&perm).await?;
         }
