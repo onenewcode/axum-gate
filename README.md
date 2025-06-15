@@ -8,7 +8,7 @@ for any specific use case. It provides a high-level API for role based access wi
 - Role based access auth for `axum` using JWT cookies
 - Support for custom roles
 - Support for custom groups
-- Applicable to single nodes and distributed systems
+- Can be used in single nodes and/or distributed systems
 - Separate storage of `Account` and `Secret` information for increased security
 - Support for `surrealdb`, `sea-orm` and `memory` storages
 - Pre-defined handler for fast and easy integration
@@ -29,6 +29,7 @@ To protect your application with `axum-gate` you need to use storages that imple
 [AccountStorageService](crate::services::AccountStorageService). It is possible to implement
 all on the same storage if it is responsible
 for [`Account`] as well as the [`Secret`](crate::secrets::Secret) of a user.
+See [storage] module for pre-implemented storages.
 
 The basic process of initialization and usage of a storage is independent of the actual used storage
 implementation. For demonstration purposes, we will use
@@ -59,7 +60,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         "/admin",
         // Please note, that the layer is applied directly to the route handler.
         get(admin).layer(
-            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_role(Role::Admin)
                 .grant_role(Role::User)
@@ -87,7 +88,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route("/user", get(user))
     // In contrast to granting access to user only, this layer is applied to the route.
     .layer(
-        Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
+        Gate::("my-issuer-id", Arc::clone(&jwt_codec))
             .with_cookie_template(cookie_template)
             .grant_role_and_supervisor(Role::User)
     );
@@ -111,7 +112,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         "/group-scope",
         // Please note, that the layer is applied directly to the route handler.
         get(group_handler).layer(
-            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_group(Group::new("my-group"))
                 .grant_group(Group::new("another-group"))
@@ -152,7 +153,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         "/read-api",
         // Please note, that the layer is applied directly to the route handler.
         get(read_api_handler).layer(
-            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_permission(MyCustomPermission::ReadApi)
               // or use:
@@ -221,6 +222,8 @@ using [Credentials].
 
 # License
 This project is licensed under the **MIT** license.
+
+See NOTICE file for dependency licenses.
 
 # Contribution
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in axum-gate by you, shall be licensed as MIT, without any additional terms or conditions.
