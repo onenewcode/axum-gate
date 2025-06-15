@@ -1,7 +1,7 @@
 //! Implementation for [axum]
 use self::access_scope::AccessScope;
-use self::cookie::CookieGateService;
 use self::state::GateState;
+use self::cookie_service::CookieGateService;
 use crate::cookie::CookieBuilder;
 use crate::services::CodecService;
 use crate::utils::AccessHierarchy;
@@ -13,8 +13,8 @@ use roaring::RoaringBitmap;
 use tower::Layer;
 
 mod access_scope;
-mod cookie;
 mod state;
+mod cookie_service;
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Clone)]

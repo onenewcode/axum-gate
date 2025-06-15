@@ -1,4 +1,4 @@
-use super::{AccessScope, GateState};
+use super::AccessScope;
 use crate::Account;
 use crate::jwt::JwtClaims;
 use crate::services::CodecService;
@@ -12,7 +12,6 @@ use std::sync::Arc;
 
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
-use chrono::{DateTime, Utc};
 use cookie::CookieBuilder;
 use http::StatusCode;
 use roaring::RoaringBitmap;
@@ -34,7 +33,6 @@ where
     permissions: RoaringBitmap,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
-    state: Arc<GateState>,
 }
 
 impl<Codec, R, G, S> CookieGateService<Codec, R, G, S>
@@ -52,7 +50,6 @@ where
         permissions: RoaringBitmap,
         codec: Arc<Codec>,
         cookie_template: CookieBuilder<'static>,
-        state: Arc<GateState>,
     ) -> Self {
         Self {
             inner,
@@ -62,7 +59,6 @@ where
             permissions,
             codec,
             cookie_template,
-            state,
         }
     }
 
@@ -172,41 +168,21 @@ where
         }
 
         let account = &jwt.custom_claims;
-        let is_authorized = if self.authorized_by_permission(account)
+        let is_authorized = self.authorized_by_permission(account)
             || self.authorized_by_group(account)
             || self.authorized_by_role(account)
-            || self.authorized_by_minimum_role(account)
-        {
-            req.extensions_mut().insert(jwt.custom_claims.clone());
-            req.extensions_mut().insert(jwt.registered_claims.clone());
-            true
-        } else {
-            false
-        };
+            || self.authorized_by_minimum_role(account);
 
         if !is_authorized {
             return unauthorized_future;
         }
 
-        let Some(issued_at_time) =
-            DateTime::<Utc>::from_timestamp(jwt.registered_claims.issued_at_time as i64, 0)
-        else {
-            debug!("Invalid issued_at_time, could not convert it from_timestamp.");
-            return unauthorized_future;
-        };
+        req.extensions_mut().insert(jwt.custom_claims.clone());
+        req.extensions_mut().insert(jwt.registered_claims.clone());
 
         let req = req;
-        let state = Arc::clone(&self.state);
         let inner = self.inner.call(req);
         Box::pin(async move {
-            if state.needs_invalidation(issued_at_time).await {
-                debug!(
-                    "User {} has been logged out because of invalidation check.",
-                    jwt.custom_claims.account_id
-                );
-                return Ok(Self::unauthorized());
-            }
-
             if is_authorized {
                 return inner.await;
             }
