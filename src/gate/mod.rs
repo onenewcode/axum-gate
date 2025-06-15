@@ -1,6 +1,5 @@
 //! Implementation for [axum]
 use self::access_scope::AccessScope;
-use self::state::GateState;
 use self::cookie_service::CookieGateService;
 use crate::cookie::CookieBuilder;
 use crate::services::CodecService;
@@ -8,12 +7,10 @@ use crate::utils::AccessHierarchy;
 
 use std::sync::Arc;
 
-use chrono::Utc;
 use roaring::RoaringBitmap;
 use tower::Layer;
 
 mod access_scope;
-mod state;
 mod cookie_service;
 
 /// The gate is protecting your application from unauthorized access.
@@ -30,7 +27,6 @@ where
     permissions: RoaringBitmap,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
-    state: Arc<GateState>,
 }
 
 impl<Codec, R, G> Gate<Codec, R, G>
@@ -48,7 +44,6 @@ where
             permissions: RoaringBitmap::new(),
             codec,
             cookie_template: CookieBuilder::new("axum-gate", ""),
-            state: Arc::new(GateState::new(Utc::now())),
         }
     }
 
@@ -110,7 +105,6 @@ where
             self.permissions.clone(),
             Arc::clone(&self.codec),
             self.cookie_template.clone(),
-            Arc::clone(&self.state),
         )
     }
 }
