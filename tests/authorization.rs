@@ -127,28 +127,28 @@ async fn setup_dummy_app() -> Router {
     Router::new()
         .route("/admin", get(admin))
         .layer(
-            Gate::new(ISSUER, Arc::clone(&jwt_codec))
+            Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .grant_role_and_supervisor(Role::Admin),
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
-                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_group(Group::new("admin")),
             ),
         )
         .route("/reporter", get(reporter))
         .layer(
-            Gate::new(ISSUER, Arc::clone(&jwt_codec))
+            Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .grant_role_and_supervisor(Role::Reporter),
         )
         .route(
             "/user",
             get(user).layer(
-                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_role(Role::User),
             ),
@@ -156,7 +156,7 @@ async fn setup_dummy_app() -> Router {
         .route(
             "/permissions",
             get(permissions).layer(
-                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_permission(AdditionalPermission::ReadApi),
             ),

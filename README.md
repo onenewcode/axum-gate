@@ -59,7 +59,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         "/admin",
         // Please note, that the layer is applied directly to the route handler.
         get(admin).layer(
-            Gate::new("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_role(Role::Admin)
                 .grant_role(Role::User)
@@ -87,7 +87,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
     .route("/user", get(user))
     // In contrast to granting access to user only, this layer is applied to the route.
     .layer(
-        Gate::new("my-issuer-id", Arc::clone(&jwt_codec))
+        Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
             .with_cookie_template(cookie_template)
             .grant_role_and_supervisor(Role::User)
     );
@@ -111,7 +111,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         "/group-scope",
         // Please note, that the layer is applied directly to the route handler.
         get(group_handler).layer(
-            Gate::new("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_group(Group::new("my-group"))
                 .grant_group(Group::new("another-group"))
@@ -152,7 +152,7 @@ let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
         "/read-api",
         // Please note, that the layer is applied directly to the route handler.
         get(read_api_handler).layer(
-            Gate::new("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_permission(MyCustomPermission::ReadApi)
               // or use:

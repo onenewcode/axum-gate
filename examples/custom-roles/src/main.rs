@@ -131,14 +131,14 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(
-            Gate::new(ISSUER, Arc::clone(&jwt_codec))
+            Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .grant_role(CustomRoleDefinition::Expert),
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
-                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_group(CustomGroupDefinition::Maintenance),
             ),
@@ -146,7 +146,7 @@ async fn main() {
         .route(
             "/reporter",
             get(reporter).layer(
-                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_role_and_supervisor(CustomRoleDefinition::Experienced),
             ),
@@ -154,7 +154,7 @@ async fn main() {
         .route(
             "/user",
             get(user).layer(
-                Gate::new(ISSUER, Arc::clone(&jwt_codec))
+                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .grant_role(CustomRoleDefinition::Novice),
             ),
