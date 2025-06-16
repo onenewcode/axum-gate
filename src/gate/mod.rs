@@ -15,7 +15,30 @@ mod cookie_service;
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Clone)]
-pub struct Gate<Codec, R, G>
+pub struct Gate;
+
+impl Gate {
+    /// Creates a new instance of a gate that uses JWT cookies, denying all requests by default.
+    pub fn new_cookie<Codec, R, G>(issuer: &str, codec: Arc<Codec>) -> CookieGate<Codec, R, G>
+    where
+        Codec: CodecService,
+        R: AccessHierarchy + Eq,
+        G: Eq,
+    {
+        CookieGate {
+            issuer: issuer.to_string(),
+            role_scopes: vec![],
+            group_scope: vec![],
+            permissions: RoaringBitmap::new(),
+            codec,
+            cookie_template: CookieBuilder::new("axum-gate", ""),
+        }
+    }
+}
+
+/// The cookie gate uses JWT cookies for authorization.
+#[derive(Clone)]
+pub struct CookieGate<Codec, R, G>
 where
     Codec: CodecService,
     R: AccessHierarchy + Eq,
@@ -29,24 +52,12 @@ where
     cookie_template: CookieBuilder<'static>,
 }
 
-impl<Codec, R, G> Gate<Codec, R, G>
+impl<Codec, R, G> CookieGate<Codec, R, G>
 where
     Codec: CodecService,
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
-    /// Creates a new instance of a gate that uses JWT cookies, denying all requests by default.
-    pub fn new_cookie(issuer: &str, codec: Arc<Codec>) -> Self {
-        Self {
-            issuer: issuer.to_string(),
-            role_scopes: vec![],
-            group_scope: vec![],
-            permissions: RoaringBitmap::new(),
-            codec,
-            cookie_template: CookieBuilder::new("axum-gate", ""),
-        }
-    }
-
     /// Adds the cookie builder as a template for the cookie used for auth.
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
         self.cookie_template = template;
@@ -88,7 +99,7 @@ where
     }
 }
 
-impl<Codec, R, G, S> Layer<S> for Gate<Codec, R, G>
+impl<Codec, R, G, S> Layer<S> for CookieGate<Codec, R, G>
 where
     Codec: CodecService,
     R: AccessHierarchy + Eq + std::fmt::Display,

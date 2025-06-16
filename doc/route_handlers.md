@@ -18,9 +18,7 @@ let account_storage = Arc::new(MemoryAccountStorage::from(Vec::<Account<Role, Gr
 let secret_storage = Arc::new(MemorySecretStorage::from(Vec::<Secret>::new()));
 # let jwt_codec = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
-// let app = Router::new() is enough in the real world, this long type is to satisfy the compiler
-// for this example.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route(
         "/login",
         post({
@@ -57,9 +55,7 @@ route:
 # use axum_gate::route_handlers;
 # use axum::{routing::get, Router};
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
-// let app = Router::new() is enough in the real world, this long type is to satisfy the compiler
-// for this example.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route(
         "/logout",
         get({
@@ -88,9 +84,7 @@ let permission_set = Arc::new(PermissionSet::new(vec![
     "read:resource1".to_string(),
     "read:resource2".to_string()
 ]));
-// let app = Router::new() is enough in the real world, this long type is to satisfy the compiler
-// for this example.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route(
         "/extend-permissions",
         patch({

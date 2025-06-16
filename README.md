@@ -54,13 +54,12 @@ You can limit the access of a route to one or multiple specific role(s).
 # async fn admin() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
-// let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route(
         "/admin",
         // Please note, that the layer is applied directly to the route handler.
         get(admin).layer(
-            Gate::("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_role(Role::Admin)
                 .grant_role(Role::User)
@@ -83,12 +82,11 @@ roles, although this does not make much sense in a real world application.
 # async fn user() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
-// let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route("/user", get(user))
     // In contrast to granting access to user only, this layer is applied to the route.
     .layer(
-        Gate::("my-issuer-id", Arc::clone(&jwt_codec))
+        Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
             .with_cookie_template(cookie_template)
             .grant_role_and_supervisor(Role::User)
     );
@@ -106,13 +104,12 @@ You can limit the access of a route to one or more specific group(s).
 # async fn group_handler() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
-// let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route(
         "/group-scope",
         // Please note, that the layer is applied directly to the route handler.
         get(group_handler).layer(
-            Gate::("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_group(Group::new("my-group"))
                 .grant_group(Group::new("another-group"))
@@ -147,13 +144,12 @@ enum MyCustomPermission {
 # async fn read_api_handler() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
 let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
-// let app = Router::new() is enough in the real world, this long type is to satisfy compiler.
-let app = Router::<Gate<JsonWebToken<Account<Role, Group>>, Role, Group>>::new()
+let app = Router::<Gate>::new()
     .route(
         "/read-api",
         // Please note, that the layer is applied directly to the route handler.
         get(read_api_handler).layer(
-            Gate::("my-issuer-id", Arc::clone(&jwt_codec))
+            Gate::new_cookie("my-issuer-id", Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template)
                 .grant_permission(MyCustomPermission::ReadApi)
               // or use:
