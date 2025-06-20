@@ -113,6 +113,34 @@ impl Default for JsonWebTokenOptions {
     }
 }
 
+impl JsonWebTokenOptions {
+    /// Adds the given encoding key.
+    pub fn with_encoding_key(self, enc_key: EncodingKey) -> Self {
+        Self { enc_key, ..self }
+    }
+
+    /// Adds the given decoding key.
+    pub fn with_decoding_key(self, dec_key: DecodingKey) -> Self {
+        Self { dec_key, ..self }
+    }
+
+    /// Adds the given header.
+    pub fn with_header(self, header: Header) -> Self {
+        Self {
+            header: Some(header),
+            ..self
+        }
+    }
+
+    /// Adds the given validation.
+    pub fn with_validation(self, validation: Validation) -> Self {
+        Self {
+            validation: Some(validation),
+            ..self
+        }
+    }
+}
+
 /// Encrypts using the given keys as JWT using [jsonwebtoken].
 #[derive(Clone)]
 pub struct JsonWebToken<P> {
