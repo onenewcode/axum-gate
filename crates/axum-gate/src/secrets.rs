@@ -1,8 +1,8 @@
 //! Secrets hashing and verification models.
 use crate::{
-    Error,
     hashing::{HashedValue, VerificationResult},
     services::HashingService,
+    Error,
 };
 
 use anyhow::Result;

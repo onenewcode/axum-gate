@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = "0.8.3"
-axum-gate = { path = "../..", features = ["storage-surrealdb"] }
+axum-gate = { path = "../../crates/axum-gate", features = ["storage-surrealdb"] }
 chrono = { version = "0.4" }
 dotenv = "0.15.0"
 surrealdb = { version = "2", features = ["kv-mem"] }

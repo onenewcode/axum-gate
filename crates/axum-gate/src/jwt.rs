@@ -1,14 +1,14 @@
 //! Claims and JWT models.
-use crate::Error;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use crate::services::CodecService;
+use crate::Error;
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use chrono::Utc;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
 /// Registered/reserved claims by IANA/JWT spec, see
@@ -97,7 +97,7 @@ impl Default for JsonWebTokenOptions {
     /// Creates a random, alphanumeric 60 char key and uses it for en- and decoding (symmetric).
     /// [Header] and [Validation] are set with its default values.
     fn default() -> Self {
-        use rand::{Rng, distr::Alphanumeric, rng};
+        use rand::{distr::Alphanumeric, rng, Rng};
 
         let authentication_secret: String = rng()
             .sample_iter(&Alphanumeric)
