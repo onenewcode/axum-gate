@@ -18,8 +18,8 @@ for any specific use case. It provides a high-level API for role based access wi
 ## Planned features
 
 - Simple to use Bearer auth layer with support for rotating key set or using a custom function
-(for node to node authentication, see
-[DynamicPermissionService](crate::services::DynamicPermissionService))
+  (for node to node authentication, see
+  [DynamicPermissionService](crate::services::DynamicPermissionService))
 
 # Introduction
 
@@ -171,7 +171,7 @@ You can use them like any other extension:
 async fn reporter(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
     Ok(format!(
         "Hello {}, your roles are {:?} and you are member of groups {:?}!",
-        user.account_id, user.roles, user.groups
+        user.user_id, user.roles, user.groups
     ))
 }
 ```
