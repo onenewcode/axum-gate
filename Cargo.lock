@@ -1104,7 +1104,7 @@ dependencies = [
  "axum-gate",
  "chrono",
  "dotenv",
- "num_enum",
+ "roaring",
  "tokio",
  "tracing",
  "tracing-subscriber",

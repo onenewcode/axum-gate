@@ -23,5 +23,9 @@ pub use errors::Error;
 pub use gate::Gate;
 pub use groups::Group;
 pub use jsonwebtoken;
-pub use permissions::PermissionSet;
+pub use permissions::{
+    PermissionChecker, PermissionId, const_sha256_u32, validate_permission_uniqueness,
+};
 pub use roles::Role;
+#[allow(deprecated)]
+pub use services::LegacyPermissionSet as PermissionSet;

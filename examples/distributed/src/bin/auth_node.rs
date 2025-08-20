@@ -1,10 +1,10 @@
-use distributed::AdditionalPermission;
+use distributed::{AppPermissions, PermissionHelper};
 
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::services::AccountInsertService;
 use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
-use axum_gate::{Credentials, Group, Role, cookie};
+use axum_gate::{Credentials, Group, PermissionChecker, Role, cookie};
 
 use std::sync::Arc;
 
@@ -39,31 +39,44 @@ async fn main() {
     let secrets_storage = Arc::new(MemorySecretStorage::default());
     debug!("Secrets storage initialized.");
 
+    // Create admin with all permissions using new zero-sync system
+    let mut admin_permissions = roaring::RoaringBitmap::new();
+    PermissionHelper::grant_admin_access(&mut admin_permissions);
+
     AccountInsertService::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
-        .with_permissions(vec![AdditionalPermission::ReadApi])
+        .with_permissions_bitmap(admin_permissions)
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
-    debug!("Inserted Admin.");
+    debug!("Inserted Admin with full permissions.");
+
+    // Create reporter with repository access
+    let mut reporter_permissions = roaring::RoaringBitmap::new();
+    PermissionHelper::grant_repository_access(&mut reporter_permissions);
 
     AccountInsertService::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
+        .with_permissions_bitmap(reporter_permissions)
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
-    debug!("Inserted Reporter.");
+    debug!("Inserted Reporter with repository access.");
+
+    // Create user with API read access only
+    let mut user_permissions = roaring::RoaringBitmap::new();
+    PermissionChecker::grant_permission(&mut user_permissions, AppPermissions::READ_API);
 
     AccountInsertService::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
-        .with_permissions(vec![AdditionalPermission::ReadApi])
+        .with_permissions_bitmap(user_permissions)
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
-    debug!("Inserted User.");
+    debug!("Inserted User with API read access.");
 
     let cookie_template = cookie::CookieBuilder::new("axum-gate", "").secure(true);
 

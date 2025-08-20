@@ -1,8 +1,8 @@
-use distributed::AdditionalPermission;
+use distributed::{AppPermissions, PermissionHelper};
 
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use axum_gate::{Account, Gate, Group, Role, cookie};
+use axum_gate::{Account, Gate, Group, PermissionChecker, Role, cookie};
 
 use std::sync::Arc;
 
@@ -31,15 +31,35 @@ async fn user(Extension(user): Extension<Account<Role, Group>>) -> Result<String
 }
 
 async fn permissions(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
+    // Demonstrate zero-sync permission checking
+    let has_read_api =
+        PermissionChecker::has_permission(&user.permissions, AppPermissions::READ_API);
+    let has_write_api =
+        PermissionChecker::has_permission(&user.permissions, AppPermissions::WRITE_API);
+    let has_read_repo =
+        PermissionChecker::has_permission(&user.permissions, AppPermissions::READ_REPOSITORY);
+    let has_write_repo =
+        PermissionChecker::has_permission(&user.permissions, AppPermissions::WRITE_REPOSITORY);
+    let is_admin = PermissionHelper::is_admin(&user.permissions);
+
     Ok(format!(
-        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}! Your permissions are: {:?}",
+        "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!\n\
+        Zero-Sync Permission Analysis:\n\
+        - Read API: {}\n\
+        - Write API: {}\n\
+        - Read Repository: {}\n\
+        - Write Repository: {}\n\
+        - Admin Access: {}\n\
+        Raw permission bitmap: {:?}",
         user.user_id,
         user.roles,
         user.groups,
-        user.permissions
-            .iter()
-            .map(|p| AdditionalPermission::try_from(p).expect("Permission does not exist."))
-            .collect::<Vec<_>>()
+        has_read_api,
+        has_write_api,
+        has_read_repo,
+        has_write_repo,
+        is_admin,
+        user.permissions.iter().collect::<Vec<_>>()
     ))
 }
 
@@ -110,7 +130,7 @@ async fn main() {
             get(permissions).layer(
                 Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_permission(distributed::AdditionalPermission::ReadApi),
+                    .grant_permission(axum_gate::PermissionId::from_name(AppPermissions::READ_API)),
             ),
         )
         .route("/", get(index));

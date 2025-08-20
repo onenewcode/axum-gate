@@ -3,12 +3,24 @@ name = "distributed"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "demo"
+path = "src/bin/demo.rs"
+
+[[bin]]
+name = "auth_node"
+path = "src/bin/auth_node.rs"
+
+[[bin]]
+name = "consumer_node"
+path = "src/bin/consumer_node.rs"
+
 [dependencies]
 axum = "0.8.3"
 axum-gate = { path = "../../crates/axum-gate" }
 chrono = "0.4.41"
 dotenv = "0.15.0"
-num_enum = "0.7.3"
+roaring = "0.10"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"

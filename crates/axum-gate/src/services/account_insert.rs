@@ -60,6 +60,17 @@ where
         }
     }
 
+    /// Adds the given permission bitmap directly to the [Account].
+    ///
+    /// This method is useful when using the new zero-synchronization permission system
+    /// where permissions are managed as bitmaps directly.
+    pub fn with_permissions_bitmap(self, permissions: RoaringBitmap) -> Self {
+        Self {
+            permissions,
+            ..self
+        }
+    }
+
     /// Adds the created [Account] to the storages.
     pub async fn into_storages<AccStore, SecStore>(
         self,
