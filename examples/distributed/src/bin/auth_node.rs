@@ -46,7 +46,7 @@ async fn main() {
     AccountInsertService::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
-        .with_permissions_bitmap(admin_permissions)
+        .with_permissions(admin_permissions)
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
@@ -59,7 +59,7 @@ async fn main() {
     AccountInsertService::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
-        .with_permissions_bitmap(reporter_permissions)
+        .with_permissions(reporter_permissions)
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();
@@ -72,7 +72,7 @@ async fn main() {
     AccountInsertService::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
-        .with_permissions_bitmap(user_permissions)
+        .with_permissions(user_permissions)
         .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
         .await
         .unwrap();

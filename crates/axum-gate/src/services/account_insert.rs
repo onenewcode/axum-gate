@@ -51,20 +51,21 @@ where
         Self { groups, ..self }
     }
 
-    /// Adds the given permission list to the [Account].
-    pub fn with_permissions<P: Into<u32>>(self, permissions: Vec<P>) -> Self {
-        let permissions = RoaringBitmap::from_iter(permissions.into_iter().map(|p| p.into()));
-        Self {
-            permissions,
-            ..self
-        }
-    }
-
-    /// Adds the given permission bitmap directly to the [Account].
+    /// Adds the given permission bitmap to the [Account].
     ///
-    /// This method is useful when using the new zero-synchronization permission system
-    /// where permissions are managed as bitmaps directly.
-    pub fn with_permissions_bitmap(self, permissions: RoaringBitmap) -> Self {
+    /// Use this with the zero-synchronization permission system:
+    /// ```rust
+    /// use axum_gate::{PermissionChecker, services::AccountInsertService, Role, Group};
+    /// use roaring::RoaringBitmap;
+    ///
+    /// let mut permissions = RoaringBitmap::new();
+    /// PermissionChecker::grant_permission(&mut permissions, "read:file");
+    /// PermissionChecker::grant_permission(&mut permissions, "write:file");
+    ///
+    /// let service = AccountInsertService::<Role, Group>::insert("user@example.com", "password")
+    ///     .with_permissions(permissions);
+    /// ```
+    pub fn with_permissions(self, permissions: RoaringBitmap) -> Self {
         Self {
             permissions,
             ..self

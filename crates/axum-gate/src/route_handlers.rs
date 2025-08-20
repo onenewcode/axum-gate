@@ -1,15 +1,13 @@
 //! Pre-defined route handler for [axum] like `login` and `logout`.
 #![doc = include_str!("../doc/route_handlers.md")]
+use crate::Account;
 use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
 use crate::hashing::VerificationResult;
 use crate::jwt::{JwtClaims, RegisteredClaims};
 use crate::permissions::PermissionChecker;
-use crate::services::{
-    AccountStorageService, CodecService, CredentialsVerifierService, DynamicPermissionService,
-};
+use crate::services::{AccountStorageService, CodecService, CredentialsVerifierService};
 use crate::utils::AccessHierarchy;
-use crate::{Account, PermissionSet};
 
 use std::sync::Arc;
 
@@ -87,45 +85,13 @@ pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'stati
     cookie_jar.remove(cookie)
 }
 
-/// **DEPRECATED**: Uses `updated_permission_set` to update `permission_set`.
-///
-/// This handler is deprecated because the new zero-synchronization permission system
-/// eliminates the need for dynamic permission set management. Permissions are now
-/// automatically available when referenced by name using deterministic hashing.
-///
-/// ## Migration
-///
-/// Remove this endpoint from your routes. Instead of managing permission sets dynamically,
-/// simply use permission names directly in your application:
-///
-/// ```rust
-/// use axum_gate::permissions::PermissionChecker;
-///
-/// // Old way: Add permission to set, then grant to user
-/// // permission_set.append_permission("read:new_feature").await?;
-/// // user.grant_permission(permission_index);
-///
-/// // New way: Directly grant permission by name
-/// // PermissionChecker::grant_permission(&mut user.permissions, "read:new_feature");
-/// ```
-#[deprecated(
-    since = "0.5.0",
-    note = "The new zero-sync permission system eliminates the need for dynamic permission set management"
-)]
-#[allow(deprecated)]
-pub async fn extend_permission_set(
-    updated_permission_set: Json<Vec<String>>,
-    permission_set: Arc<PermissionSet>,
-) -> StatusCode {
-    if let Err(e) = permission_set
-        .extend_permission_set(updated_permission_set.0)
-        .await
-    {
-        error!("{e}");
-        return StatusCode::INTERNAL_SERVER_ERROR;
-    }
-    StatusCode::OK
-}
+// The old extend_permission_set handler has been removed.
+// The new zero-synchronization permission system eliminates the need
+// for dynamic permission set management. Permissions are now automatically
+// available when referenced by name using deterministic hashing.
+//
+// Migration: Remove calls to this endpoint and use PermissionChecker directly:
+//   PermissionChecker::grant_permission(&mut user.permissions, "permission_name");
 
 /// Grant permissions to a user by permission names.
 ///

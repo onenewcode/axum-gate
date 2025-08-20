@@ -66,31 +66,51 @@ let app = Router::<Gate>::new()
     );
 ```
 
-## Dynamic permission set
+## Zero-Sync Permission System
 
-There is also a pre-defined handler available for updating a dynamic permission set within your
-application.
+The permission system now uses deterministic hashing for zero-synchronization across distributed
+systems. No coordination between nodes is required - permissions work instantly everywhere.
 
-It can be used on distributed systems and enables creating a single source of truth
-for the permission set that is able to update all other nodes on demand. When using this handler,
-make sure that you also protect it properly.
+### Using Permissions in Your Application
+
 ```rust
-# use axum_gate::{Role, Account, Gate, Group, PermissionSet};
-# use axum_gate::jwt::JsonWebToken;
-# use axum_gate::route_handlers;
+# use axum_gate::{PermissionChecker, PermissionId, validate_permissions};
+# use roaring::RoaringBitmap;
+
+// 1. Validate permissions at compile time
+validate_permissions![
+    "read:resource1",
+    "write:resource1", 
+    "read:resource2",
+    "admin:system"
+];
+
+// 2. Grant permissions to users
+let mut user_permissions = RoaringBitmap::new();
+PermissionChecker::grant_permission(&mut user_permissions, "read:resource1");
+PermissionChecker::grant_permission(&mut user_permissions, "write:resource1");
+
+// 3. Check permissions in route handlers
+if PermissionChecker::has_permission(&user_permissions, "read:resource1") {
+    // Grant access
+}
+
+// 4. Use with Gates
+# use axum_gate::{Role, Account, Gate, Group};
+# use axum_gate::jwt::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
-# use axum::{routing::patch, Router};
-let permission_set = Arc::new(PermissionSet::new(vec![
-    "read:resource1".to_string(),
-    "read:resource2".to_string()
-]));
-let app = Router::<Gate>::new()
-    .route(
-        "/extend-permissions",
-        patch({
-            move |updated_permission_set| {
-                route_handlers::extend_permission_set(updated_permission_set, Arc::clone(&permission_set))
-            }
-        })
+# use axum::{routing::get, Router};
+# let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+# let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
+let app = Router::<()>::new()
+    .route("/protected", get(protected_handler))
+    .layer(
+        Gate::new_cookie("issuer", jwt_codec)
+            .with_cookie_template(cookie_template)
+            .grant_permission(PermissionId::from_name("read:resource1"))
     );
+
+async fn protected_handler() -> &'static str {
+    "Access granted!"
+}
 ```
