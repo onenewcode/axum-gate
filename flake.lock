@@ -27,7 +27,6 @@
       },
       "original": {
         "owner": "ipetkov",
-        "ref": "master",
         "repo": "crane",
         "type": "github"
       }
