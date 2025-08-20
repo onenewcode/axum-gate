@@ -19,35 +19,48 @@ fn main() {
     println!("   ");
     println!("   // Validate at compile time");
     println!("   validate_permissions![");
-    println!("       \"read:user:profile\",");
-    println!("       \"write:user:profile\",");
-    println!("       \"admin:system\"");
+    println!("       \"user:read\",");
+    println!("       \"user:write\",");
+    println!("       \"system:admin\"");
     println!("   ];");
     println!("   ```");
     println!();
-    println!("2. Grant permissions to users:");
+    println!("2. Define nested enum permissions:");
+    println!("   ```rust");
+    println!("   #[derive(Display, EnumString, Serialize, Deserialize)]");
+    println!("   pub enum AppPermissions {{");
+    println!("       User(UserPermission),");
+    println!("       System(SystemPermission),");
+    println!("   }}");
+    println!("   ```");
+    println!();
+    println!("3. Grant permissions to users:");
     println!("   ```rust");
     println!(
-        "   PermissionChecker::grant_permission(&mut user.permissions, \"read:user:profile\");"
+        "   PermissionHelper::grant_permission(&mut user.permissions, &AppPermissions::Repository(RepositoryPermission::Read));"
     );
     println!("   ```");
     println!();
-    println!("3. Check permissions in route handlers:");
+    println!("4. Check permissions in route handlers:");
     println!("   ```rust");
     println!(
-        "   if PermissionChecker::has_permission(&user.permissions, \"read:user:profile\") {{"
+        "   if PermissionHelper::has_permission(&user.permissions, &AppPermissions::Repository(RepositoryPermission::Read)) {{"
     );
     println!("       // Grant access");
     println!("   }}");
     println!("   ```");
     println!();
-    println!("4. Use with Gates:");
+    println!("5. Use with Gates:");
     println!("   ```rust");
     println!("   .layer(");
     println!("       Gate::new_cookie(issuer, codec)");
-    println!("           .grant_permission(PermissionId::from_name(\"read:user:profile\"))");
+    println!(
+        "           .grant_permission(PermissionId::from_name(&AppPermissions::Repository(RepositoryPermission::Read).as_str()))"
+    );
     println!("   )");
     println!("   ```");
     println!();
-    println!("✨ That's it! No synchronization, no coordination, just works!");
+    println!(
+        "✨ That's it! Type-safe, serializable, no synchronization, no coordination, just works!"
+    );
 }

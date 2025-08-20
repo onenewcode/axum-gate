@@ -1,8 +1,8 @@
-use distributed::{AppPermissions, PermissionHelper};
+use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use axum_gate::{Account, Gate, Group, PermissionChecker, Role, cookie};
+use axum_gate::{Account, Gate, Group, Role, cookie};
 
 use std::sync::Arc;
 
@@ -32,14 +32,22 @@ async fn user(Extension(user): Extension<Account<Role, Group>>) -> Result<String
 
 async fn permissions(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
     // Demonstrate zero-sync permission checking
-    let has_read_api =
-        PermissionChecker::has_permission(&user.permissions, AppPermissions::READ_API);
-    let has_write_api =
-        PermissionChecker::has_permission(&user.permissions, AppPermissions::WRITE_API);
-    let has_read_repo =
-        PermissionChecker::has_permission(&user.permissions, AppPermissions::READ_REPOSITORY);
-    let has_write_repo =
-        PermissionChecker::has_permission(&user.permissions, AppPermissions::WRITE_REPOSITORY);
+    let has_read_api = PermissionHelper::has_permission(
+        &user.permissions,
+        &AppPermissions::Api(ApiPermission::Read),
+    );
+    let has_write_api = PermissionHelper::has_permission(
+        &user.permissions,
+        &AppPermissions::Api(ApiPermission::Write),
+    );
+    let has_read_repo = PermissionHelper::has_permission(
+        &user.permissions,
+        &AppPermissions::Repository(RepositoryPermission::Read),
+    );
+    let has_write_repo = PermissionHelper::has_permission(
+        &user.permissions,
+        &AppPermissions::Repository(RepositoryPermission::Write),
+    );
     let is_admin = PermissionHelper::is_admin(&user.permissions);
 
     Ok(format!(
@@ -130,7 +138,9 @@ async fn main() {
             get(permissions).layer(
                 Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_permission(axum_gate::PermissionId::from_name(AppPermissions::READ_API)),
+                    .grant_permission(axum_gate::PermissionId::from_name(
+                        &AppPermissions::Api(ApiPermission::Read).as_str(),
+                    )),
             ),
         )
         .route("/", get(index));

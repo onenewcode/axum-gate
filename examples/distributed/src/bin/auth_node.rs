@@ -1,10 +1,10 @@
-use distributed::{AppPermissions, PermissionHelper};
+use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::services::AccountInsertService;
 use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
-use axum_gate::{Credentials, Group, PermissionChecker, Role, cookie};
+use axum_gate::{Credentials, Group, Role, cookie};
 
 use std::sync::Arc;
 
@@ -67,7 +67,10 @@ async fn main() {
 
     // Create user with API read access only
     let mut user_permissions = roaring::RoaringBitmap::new();
-    PermissionChecker::grant_permission(&mut user_permissions, AppPermissions::READ_API);
+    PermissionHelper::grant_permission(
+        &mut user_permissions,
+        &AppPermissions::Api(ApiPermission::Read),
+    );
 
     AccountInsertService::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
