@@ -4,6 +4,9 @@ members = [
     "examples/custom-roles",
     "examples/distributed",
     "examples/sea-orm",
-    "examples/surrealdb"
+    "examples/surrealdb",
 ]
-resolver = "2"
+resolver = "3"
+
+[workspace.package]
+version = "1.0.0-rc.0"
