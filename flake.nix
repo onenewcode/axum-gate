@@ -4,7 +4,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    crane.url = "github:ipetkov/crane?ref=master";
+    crane.url = "github:ipetkov/crane";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -34,68 +34,77 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-
         inherit (pkgs) lib;
 
-        craneLib = crane.mkLib pkgs;
-        src = craneLib.cleanCargoSource ./.;
+        # Use stable Rust toolchain
+        rustToolchain = fenix.packages.${system}.stable.toolchain;
+        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter =
+            path: type:
+            (lib.hasSuffix "\.rs" path)
+            || (lib.hasSuffix "\.toml" path)
+            || (lib.hasSuffix "\.lock" path)
+            || (lib.hasSuffix "\.md" path)
+            || (type == "directory");
+        };
 
         # Common arguments can be set here to avoid repeating them later
+        # For workspace projects, explicitly set metadata to avoid warnings
         commonArgs = {
           inherit src;
+          pname = "axum-gate";
+          version = "1.0.0-rc.0";
           strictDeps = true;
 
           nativeBuildInputs = with pkgs; [
-            rustup
-            nil
-            nixfmt-rfc-style
+            pkg-config
           ];
 
           buildInputs =
+            with pkgs;
             [
-              # Add additional build inputs here
+              openssl
             ]
             ++ lib.optionals pkgs.stdenv.isDarwin [
-              # Additional darwin specific inputs can be set here
-              pkgs.libiconv
+              libiconv
             ];
 
-          # Additional environment variables can be set directly
-          # MY_CUSTOM_VAR = "some value";
+          # Set environment variables for OpenSSL
+          OPENSSL_NO_VENDOR = 1;
+          OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+          OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
         };
 
+        # Toolchain with LLVM tools for coverage
         craneLibLLvmTools = craneLib.overrideToolchain (
-          fenix.packages.${system}.complete.withComponents [
+          fenix.packages.${system}.stable.withComponents [
             "cargo"
             "llvm-tools"
             "rustc"
           ]
         );
 
-        # Build *just* the cargo dependencies, so we can reuse
-        # all of that work (e.g. via cachix) when running in CI
+        # Build cargo dependencies
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-        # Build the actuaxum-gate itself, reusing the dependency
-        # artifacts from above.
+        # Build the library
         axum-gate = craneLib.buildPackage (
           commonArgs
           // {
             inherit cargoArtifacts;
+            doCheck = false; # Tests run separately in checks
           }
         );
       in
       {
         checks = {
-          # Build taxum-gate as part of `nix flake check` for convenience
+          # Build the package as part of `nix flake check`
           inherit axum-gate;
 
-          # Run clippy (and deny all warnings) on taxum-gate source,
-          # again, reusing the dependency artifacts from above.
-          #
-          # Note that this is done as a separate derivation so that
-          # we can block the CI if there are issues here, but not
-          # prevent downstream consumers from building oaxum-gate by itself.
+          # Run clippy with all warnings denied
           axum-gate-clippy = craneLib.cargoClippy (
             commonArgs
             // {
@@ -104,6 +113,7 @@
             }
           );
 
+          # Generate documentation
           axum-gate-doc = craneLib.cargoDoc (
             commonArgs
             // {
@@ -111,71 +121,105 @@
             }
           );
 
-          # Check formatting
+          # Check code formatting
           axum-gate-fmt = craneLib.cargoFmt {
             inherit src;
+            pname = "axum-gate";
           };
 
+          # Check TOML formatting
           axum-gate-toml-fmt = craneLib.taploFmt {
             src = pkgs.lib.sources.sourceFilesBySuffices src [ ".toml" ];
-            # taplo arguments can be further customized below as needed
-            # taploExtraArgs = "--config ./taplo.toml";
+            pname = "axum-gate";
+            taploExtraArgs = "--config ./taplo.toml";
           };
 
-          # Audit dependencies
+          # Security audit
           axum-gate-audit = craneLib.cargoAudit {
             inherit src advisory-db;
+            pname = "axum-gate";
           };
 
-          # Audit licenses
+          # License and dependency checks
           axum-gate-deny = craneLib.cargoDeny {
             inherit src;
+            pname = "axum-gate";
           };
 
           # Run tests with cargo-nextest
-          # Consider setting `doCheck = false` on `axum-gate` if you do not want
-          # the tests to run twice
           axum-gate-nextest = craneLib.cargoNextest (
             commonArgs
             // {
               inherit cargoArtifacts;
               partitions = 1;
               partitionType = "count";
-              cargoNextestPartitionsExtraArgs = "--no-tests=pass";
             }
           );
         };
 
-        packages =
-          {
-            default = axum-gate;
-          }
-          // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
-            axum-gate-llvm-coverage = craneLibLLvmTools.cargoLlvmCov (
-              commonArgs
-              // {
-                inherit cargoArtifacts;
-              }
-            );
-          };
-
-        apps.default = flake-utils.lib.mkApp {
-          drv = axum-gate;
+        packages = {
+          default = axum-gate;
+        }
+        // lib.optionalAttrs (!pkgs.stdenv.isDarwin) {
+          # LLVM coverage only on non-Darwin systems
+          axum-gate-llvm-coverage = craneLibLLvmTools.cargoLlvmCov (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+            }
+          );
         };
+
+        # No apps needed for a library crate
 
         devShells.default = craneLib.devShell {
-          name = "de.emirror.axum-gate";
-          # Inherit inputs from checks.
+          name = "axum-gate-dev";
+
+          # Inherit inputs from checks
           checks = self.checks.${system};
 
-          # Additional dev-shell environment variables can be set directly
-          # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
+          # Development packages for library development
+          packages =
+            with pkgs;
+            [
+              # Rust development tools
+              rust-analyzer
+              rustfmt
+              clippy
 
-          # Extra inputs can be added here; cargo and rustc are provided by default.
-          packages = [
-            # pkgs.ripgrep
-          ];
+              # Build tools
+              pkg-config
+
+              # Nix tools
+              nil
+              nixfmt-rfc-style
+
+              # TOML formatting
+              taplo
+
+              # Library development tools
+              cargo-audit
+              cargo-deny
+              cargo-nextest
+              cargo-watch
+              cargo-expand # For macro debugging
+
+              # Database tools for examples
+              sqlite
+            ]
+            ++ lib.optionals (!pkgs.stdenv.isDarwin) [
+              cargo-llvm-cov
+            ];
+
+          # Environment variables
+          RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
+          OPENSSL_NO_VENDOR = 1;
+          OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+          OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
         };
+
+        # Formatter for the flake itself
+        formatter = pkgs.nixfmt-rfc-style;
       }
     );
 }
