@@ -19,23 +19,32 @@ use axum_gate::permissions::ApplicationValidator;
 
 let permissions = [
     "user:read:profile",
-    "user:write:profile", 
+    "user:write:profile",
     "admin:manage:system"
 ];
 
-ApplicationValidator::new()
+let report = ApplicationValidator::new()
     .add_permissions(permissions)
     .validate()?;
+
+if !report.is_valid() {
+    return Err(anyhow::anyhow!("Permission validation failed: {}", report.summary()));
+}
+Ok(())
 ```
 
 ### 2. Application-Level Validation
 ```rust
 use axum_gate::permissions::ApplicationValidator;
 
-let validator = ApplicationValidator::new()
+let report = ApplicationValidator::new()
     .add_permissions(["user:read", "user:write"])
     .add_permission("admin:delete")
     .validate()?;
+
+if !report.is_valid() {
+    return Err(anyhow::anyhow!("Permission validation failed: {}", report.summary()));
+}
 ```
 
 ### 3. Detailed Collision Checking
@@ -73,7 +82,7 @@ cargo run --bin permission-validation-example
 ## Key Benefits
 
 1. **Fail-Fast**: Catches permission issues at startup rather than runtime
-2. **Comprehensive**: Checks both duplicate strings and hash collisions  
+2. **Comprehensive**: Checks both duplicate strings and hash collisions
 3. **Detailed Reporting**: Provides clear information about validation issues
 4. **Flexible**: Handles permissions from multiple sources
 5. **Zero Runtime Overhead**: Validation only runs when explicitly called
@@ -113,23 +122,26 @@ Example production integration:
 
 ```rust
 // Application startup
-ApplicationValidator::new()
+let report = ApplicationValidator::new()
     .add_permissions(load_config_permissions()?)
     .add_permissions(load_database_permissions().await?)
-    .validate()
-    .context("Failed to validate permissions at startup")?;
+    .validate()?;
+
+if !report.is_valid() {
+    return Err(anyhow::anyhow!("Permission validation failed: {}", report.summary()));
+}
 
 // Runtime permission updates
 fn update_user_permissions(new_permissions: Vec<String>) -> Result<()> {
     let mut checker = PermissionCollisionChecker::new(new_permissions);
     let report = checker.validate()?;
-    
+
     if !report.is_valid() {
         warn!("Permission issues detected: {}", report.summary());
         report.log_results();
         // Handle according to your application's requirements
     }
-    
+
     Ok(())
 }
 ```
@@ -156,7 +168,7 @@ This validation system works seamlessly with the existing `axum-gate` permission
 The validation system provides three main interfaces:
 
 1. **`ApplicationValidator`** - High-level interface for application startup
-2. **`PermissionCollisionChecker`** - Lower-level interface with detailed reporting  
+2. **`PermissionCollisionChecker`** - Lower-level interface with detailed reporting
 3. **`ValidationReport`** - Comprehensive validation results and analysis
 
 This clean, focused API ensures your variable permission strings don't cause security issues due to unexpected collisions while maintaining the zero-synchronization benefits of the deterministic hashing system.

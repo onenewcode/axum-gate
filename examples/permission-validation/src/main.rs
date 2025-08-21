@@ -71,7 +71,17 @@ fn example_static_validation() -> Result<()> {
         .add_permissions(valid_permissions)
         .validate()
     {
-        Ok(()) => info!("  ✅ Static validation passed"),
+        Ok(report) => {
+            if report.is_valid() {
+                info!("  ✅ Static validation passed");
+            } else {
+                error!("  ❌ Static validation failed: {}", report.summary());
+                return Err(anyhow::anyhow!(
+                    "Static validation failed: {}",
+                    report.summary()
+                ));
+            }
+        }
         Err(e) => {
             error!("  ❌ Static validation failed: {}", e);
             return Err(e);
@@ -85,7 +95,20 @@ fn example_static_validation() -> Result<()> {
         .validate();
 
     match result {
-        Ok(()) => info!("  ✅ ApplicationValidator validation passed"),
+        Ok(report) => {
+            if report.is_valid() {
+                info!("  ✅ ApplicationValidator validation passed");
+            } else {
+                error!(
+                    "  ❌ ApplicationValidator validation failed: {}",
+                    report.summary()
+                );
+                return Err(anyhow::anyhow!(
+                    "ApplicationValidator validation failed: {}",
+                    report.summary()
+                ));
+            }
+        }
         Err(e) => {
             error!("  ❌ ApplicationValidator validation failed: {}", e);
             return Err(e);
@@ -114,11 +137,20 @@ async fn example_config_validation() -> Result<()> {
     let validator = ApplicationValidator::new().add_permission_strings(permissions);
 
     match validator.validate() {
-        Ok(()) => info!("  ✅ Configuration-based validation passed"),
+        Ok(report) => {
+            if report.is_valid() {
+                info!("  ✅ Configuration-based validation passed");
+            } else {
+                warn!(
+                    "  ⚠️  Configuration validation issues: {}",
+                    report.summary()
+                );
+                // In a real application, you might want to continue with warnings
+                // rather than failing completely, depending on your requirements
+            }
+        }
         Err(e) => {
-            warn!("  ⚠️  Configuration validation issues: {}", e);
-            // In a real application, you might want to continue with warnings
-            // rather than failing completely, depending on your requirements
+            warn!("  ⚠️  Configuration validation failed: {}", e);
         }
     }
 
@@ -361,7 +393,7 @@ fn generate_complex_permission_set() -> Vec<String> {
 async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()> {
     let validator = ApplicationValidator::new().add_permission_strings(permissions);
 
-    match validator.validate_with_report() {
+    match validator.validate() {
         Ok(report) => {
             if report.is_valid() {
                 info!("    Validation passed on first attempt");

@@ -248,6 +248,7 @@ For dynamic permissions loaded from configuration:
 
 ```rust
 use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker, ValidationReport};
+use tracing::error;
 
 // Permission conflicts handler
 fn handle_permission_conflicts(report: &ValidationReport) {}
@@ -256,11 +257,16 @@ let config_permissions = ["user:read", "admin:write"];
 let dynamic_permissions = ["dynamic:access"];
 
 // Application startup validation
-ApplicationValidator::new()
+let report = ApplicationValidator::new()
     .add_permissions(config_permissions)
     .add_permissions(dynamic_permissions)
     .validate()
     .expect("Validation failed.");
+
+if !report.is_valid() {
+    error!("Permission validation failed: {}", report.summary());
+    return;
+}
 
 let updated_permissions = ["dynamic:updated", "user:read"]
     .iter()
@@ -292,10 +298,14 @@ capabilities to check for permission duplicates and hash collisions:
 use axum_gate::permissions::ApplicationValidator;
 
 // Application startup validation
-ApplicationValidator::new()
+let report = ApplicationValidator::new()
     .add_permissions(["user:read", "user:write"])
     .add_permission("admin:delete")
     .validate()?;
+
+if !report.is_valid() {
+    return Err(anyhow::anyhow!("Permission validation failed: {}", report.summary()));
+}
 # Ok::<(), anyhow::Error>(())
 ```
 

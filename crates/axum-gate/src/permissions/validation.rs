@@ -349,7 +349,13 @@ impl ValidationReport {
 ///     .add_permissions(vec!["admin:delete".to_string()]);
 ///
 /// match validator.validate() {
-///     Ok(()) => println!("All permissions validated successfully"),
+///     Ok(report) => {
+///         if report.is_valid() {
+///             println!("All permissions validated successfully");
+///         } else {
+///             eprintln!("Validation issues found: {}", report.summary());
+///         }
+///     },
 ///     Err(e) => eprintln!("Validation failed: {}", e),
 /// }
 /// # Ok(())
@@ -405,16 +411,17 @@ impl ApplicationValidator {
         self
     }
 
-    /// Validate all permissions and return success/failure.
+    /// Validate all permissions and return detailed report.
     ///
     /// This method performs validation and logs results automatically.
-    /// It returns `Ok(())` only if all validations pass.
+    /// It returns a ValidationReport containing all validation details,
+    /// regardless of whether validation passed or failed.
     ///
     /// # Returns
     ///
-    /// * `Ok(())` - All permissions are valid
-    /// * `Err(anyhow::Error)` - Validation failed with details
-    pub fn validate(self) -> Result<()> {
+    /// * `Ok(ValidationReport)` - Complete validation report
+    /// * `Err(anyhow::Error)` - Validation process failed
+    pub fn validate(self) -> Result<ValidationReport> {
         let mut checker = PermissionCollisionChecker::new(self.permissions);
         let report = checker
             .validate()
@@ -422,28 +429,11 @@ impl ApplicationValidator {
 
         report.log_results();
 
-        if !report.is_valid() {
-            anyhow::bail!("Permission validation failed: {}", report.summary());
+        if report.is_valid() {
+            info!("✓ Permission validation completed successfully");
         }
 
-        info!("✓ Permission validation completed successfully");
-        Ok(())
-    }
-
-    /// Validate permissions and return detailed report.
-    ///
-    /// Unlike `validate()`, this method returns the full validation report
-    /// rather than just success/failure, allowing for custom handling of results.
-    ///
-    /// # Returns
-    ///
-    /// * `Ok(ValidationReport)` - Complete validation report
-    /// * `Err(anyhow::Error)` - Validation process failed
-    pub fn validate_with_report(self) -> Result<ValidationReport> {
-        let mut checker = PermissionCollisionChecker::new(self.permissions);
-        checker
-            .validate()
-            .context("Permission validation process failed")
+        Ok(report)
     }
 
     /// Returns the current number of permissions to be validated.
@@ -536,6 +526,8 @@ mod tests {
             .validate();
 
         assert!(result.is_ok());
+        let report = result.unwrap();
+        assert!(report.is_valid());
     }
 
     #[test]
@@ -544,8 +536,10 @@ mod tests {
             .add_permissions(["user:read", "user:read"])
             .validate();
 
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("duplicate"));
+        assert!(result.is_ok());
+        let report = result.unwrap();
+        assert!(!report.is_valid());
+        assert!(!report.duplicates().is_empty());
     }
 
     #[test]
