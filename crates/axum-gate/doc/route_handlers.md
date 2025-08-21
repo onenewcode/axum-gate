@@ -74,13 +74,13 @@ systems. No coordination between nodes is required - permissions work instantly 
 ### Using Permissions in Your Application
 
 ```rust
-# use axum_gate::{PermissionChecker, PermissionId, validate_permissions};
+# use axum_gate::{permissions::{PermissionChecker, PermissionId}, validate_permissions};
 # use roaring::RoaringBitmap;
 
 // 1. Validate permissions at compile time
 validate_permissions![
     "read:resource1",
-    "write:resource1", 
+    "write:resource1",
     "read:resource2",
     "admin:system"
 ];

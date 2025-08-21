@@ -1,0 +1,571 @@
+//! Validation utilities for permission collision checking.
+//!
+//! This module provides runtime validation capabilities for permission strings,
+//! complementing the compile-time validation provided by the `validate_permissions!` macro.
+//! It's particularly useful when dealing with dynamic permission strings loaded from
+//! configuration files, databases, or other runtime sources.
+
+use crate::permissions::PermissionId;
+use anyhow::{Context, Result};
+use std::collections::{HashMap, HashSet};
+use tracing::{info, warn};
+
+/// Application-wide permission collision checker that runs at startup or on demand.
+///
+/// This checker validates permission strings for duplicates and hash collisions,
+/// providing detailed reports about any issues found. Unlike the compile-time
+/// validation, this can handle dynamic permission strings.
+///
+/// # Examples
+///
+/// ```
+/// use axum_gate::permissions::validation::PermissionCollisionChecker;
+///
+/// let permissions = vec![
+///     "user:read".to_string(),
+///     "user:write".to_string(),
+///     "admin:full_access".to_string(),
+/// ];
+///
+/// let mut checker = PermissionCollisionChecker::new(permissions);
+/// match checker.validate() {
+///     Ok(report) => {
+///         if report.is_valid() {
+///             println!("All permissions are valid!");
+///         } else {
+///             println!("Issues found: {}", report.summary());
+///         }
+///     }
+///     Err(e) => eprintln!("Validation error: {}", e),
+/// }
+/// ```
+pub struct PermissionCollisionChecker {
+    permissions: Vec<String>,
+    collision_map: HashMap<u32, Vec<String>>,
+}
+
+impl PermissionCollisionChecker {
+    /// Creates a new collision checker with the given permission strings.
+    ///
+    /// # Arguments
+    ///
+    /// * `permissions` - Vector of permission strings to validate
+    pub fn new(permissions: Vec<String>) -> Self {
+        Self {
+            permissions,
+            collision_map: HashMap::new(),
+        }
+    }
+
+    /// Validates all permissions for uniqueness and collision-free hashing.
+    ///
+    /// This method performs comprehensive validation including:
+    /// - Duplicate string detection
+    /// - Hash collision detection
+    /// - Internal collision map building
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(ValidationReport)` - Detailed report of validation results
+    /// * `Err(anyhow::Error)` - If validation process itself fails
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use axum_gate::permissions::validation::PermissionCollisionChecker;
+    ///
+    /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
+    /// let mut checker = PermissionCollisionChecker::new(permissions);
+    ///
+    /// match checker.validate() {
+    ///     Ok(report) => {
+    ///         if report.is_valid() {
+    ///             println!("Validation passed!");
+    ///         } else {
+    ///             eprintln!("Validation failed: {}", report.summary());
+    ///         }
+    ///     }
+    ///     Err(e) => eprintln!("Validation error: {}", e),
+    /// }
+    /// ```
+    pub fn validate(&mut self) -> Result<ValidationReport> {
+        let mut report = ValidationReport::default();
+
+        // Check for exact duplicates first
+        self.check_duplicate_strings(&mut report)
+            .context("Failed to check for duplicate permission strings")?;
+
+        // Check for hash collisions
+        self.check_hash_collisions(&mut report)
+            .context("Failed to check for hash collisions")?;
+
+        // Generate collision map for inspection
+        self.build_collision_map();
+
+        Ok(report)
+    }
+
+    fn check_duplicate_strings(&self, report: &mut ValidationReport) -> Result<()> {
+        let mut seen = HashSet::new();
+
+        for permission in &self.permissions {
+            if !seen.insert(permission) {
+                report.duplicates.push(permission.clone());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_hash_collisions(&self, report: &mut ValidationReport) -> Result<()> {
+        let mut id_to_permission: HashMap<u32, String> = HashMap::new();
+
+        for permission in &self.permissions {
+            let id = PermissionId::from_name(permission);
+
+            if let Some(existing) = id_to_permission.get(&id.as_u32()) {
+                report.collisions.push(PermissionCollision {
+                    id: id.as_u32(),
+                    permissions: vec![existing.clone(), permission.clone()],
+                });
+            } else {
+                id_to_permission.insert(id.as_u32(), permission.clone());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn build_collision_map(&mut self) {
+        self.collision_map.clear();
+
+        for permission in &self.permissions {
+            let id = PermissionId::from_name(permission).as_u32();
+            self.collision_map
+                .entry(id)
+                .or_insert_with(Vec::new)
+                .push(permission.clone());
+        }
+    }
+
+    /// Returns permissions that hash to the same ID as the given permission.
+    ///
+    /// This method is useful for debugging collision issues or understanding
+    /// how permissions map to hash IDs.
+    ///
+    /// # Arguments
+    ///
+    /// * `permission` - The permission string to check for conflicts
+    ///
+    /// # Returns
+    ///
+    /// Vector of permission strings that conflict with the given permission.
+    /// The returned vector will not include the input permission itself.
+    pub fn get_conflicting_permissions(&self, permission: &str) -> Vec<String> {
+        let id = PermissionId::from_name(permission).as_u32();
+        self.collision_map
+            .get(&id)
+            .map(|perms| perms.iter().filter(|p| *p != permission).cloned().collect())
+            .unwrap_or_default()
+    }
+
+    /// Returns a summary of all permissions grouped by their hash ID.
+    ///
+    /// This method provides a complete view of how permissions are distributed
+    /// across hash IDs, which can be useful for analysis and debugging.
+    ///
+    /// # Returns
+    ///
+    /// HashMap where keys are hash IDs and values are vectors of permission strings
+    /// that hash to that ID.
+    pub fn get_permission_summary(&self) -> HashMap<u32, Vec<String>> {
+        self.collision_map.clone()
+    }
+
+    /// Returns the total number of permissions being validated.
+    pub fn permission_count(&self) -> usize {
+        self.permissions.len()
+    }
+
+    /// Returns the number of unique hash IDs generated from the permissions.
+    pub fn unique_id_count(&self) -> usize {
+        self.collision_map.len()
+    }
+}
+
+/// Detailed report of permission validation results.
+///
+/// This struct contains comprehensive information about validation results,
+/// including any duplicates found and hash collisions detected.
+#[derive(Debug, Default)]
+pub struct ValidationReport {
+    /// List of duplicate permission strings found.
+    pub duplicates: Vec<String>,
+    /// List of hash collisions detected.
+    pub collisions: Vec<PermissionCollision>,
+}
+
+/// Information about a detected hash collision.
+///
+/// Contains the colliding hash ID and all permission strings that hash to that ID.
+#[derive(Debug, Clone)]
+pub struct PermissionCollision {
+    /// The hash ID that has multiple permissions mapping to it.
+    pub id: u32,
+    /// List of permission strings that all hash to the same ID.
+    pub permissions: Vec<String>,
+}
+
+impl ValidationReport {
+    /// Returns true if validation passed without any issues.
+    ///
+    /// A validation is considered successful if there are no duplicate
+    /// permission strings and no hash collisions.
+    pub fn is_valid(&self) -> bool {
+        self.duplicates.is_empty() && self.collisions.is_empty()
+    }
+
+    /// Returns a human-readable summary of validation results.
+    ///
+    /// For successful validations, returns a success message.
+    /// For failed validations, provides details about what issues were found.
+    pub fn summary(&self) -> String {
+        if self.is_valid() {
+            return "All permissions are valid and collision-free".to_string();
+        }
+
+        let mut parts = Vec::new();
+
+        if !self.duplicates.is_empty() {
+            parts.push(format!(
+                "{} duplicate permission string(s)",
+                self.duplicates.len()
+            ));
+        }
+
+        if !self.collisions.is_empty() {
+            let total_colliding = self
+                .collisions
+                .iter()
+                .map(|c| c.permissions.len())
+                .sum::<usize>();
+            parts.push(format!(
+                "{} hash collision(s) affecting {} permission(s)",
+                self.collisions.len(),
+                total_colliding
+            ));
+        }
+
+        parts.join(", ")
+    }
+
+    /// Logs validation results using the tracing crate.
+    ///
+    /// This method will log at INFO level for successful validations
+    /// and WARN level for any issues found.
+    pub fn log_results(&self) {
+        if self.is_valid() {
+            info!("Permission validation passed: all permissions are valid");
+            return;
+        }
+
+        for duplicate in &self.duplicates {
+            warn!("Duplicate permission string found: '{}'", duplicate);
+        }
+
+        for collision in &self.collisions {
+            warn!(
+                "Hash collision detected (ID: {}): permissions {:?} all hash to the same value",
+                collision.id, collision.permissions
+            );
+        }
+    }
+
+    /// Returns detailed information about all issues found.
+    ///
+    /// This method provides comprehensive details suitable for debugging
+    /// or detailed error reporting.
+    pub fn detailed_errors(&self) -> Vec<String> {
+        let mut errors = Vec::new();
+
+        for duplicate in &self.duplicates {
+            errors.push(format!("Duplicate permission: '{}'", duplicate));
+        }
+
+        for collision in &self.collisions {
+            errors.push(format!(
+                "Hash collision (ID {}): {} -> {:?}",
+                collision.id,
+                collision.permissions.join(", "),
+                collision.permissions
+            ));
+        }
+
+        errors
+    }
+
+    /// Returns the total number of issues found.
+    pub fn total_issues(&self) -> usize {
+        self.duplicates.len() + self.collisions.len()
+    }
+}
+
+/// Application startup validator that checks permissions before server starts.
+///
+/// This is a high-level interface for validating permissions from multiple sources
+/// during application initialization.
+///
+/// # Examples
+///
+/// ```
+/// use axum_gate::permissions::validation::ApplicationValidator;
+///
+/// # async fn example() -> anyhow::Result<()> {
+/// let validator = ApplicationValidator::new()
+///     .add_permissions(["user:read", "user:write"])
+///     .add_permissions(vec!["admin:delete".to_string()]);
+///
+/// match validator.validate() {
+///     Ok(()) => println!("All permissions validated successfully"),
+///     Err(e) => eprintln!("Validation failed: {}", e),
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub struct ApplicationValidator {
+    permissions: Vec<String>,
+}
+
+impl ApplicationValidator {
+    /// Creates a new application validator.
+    pub fn new() -> Self {
+        Self {
+            permissions: Vec::new(),
+        }
+    }
+
+    /// Add permissions from an iterator of string-like types.
+    ///
+    /// # Arguments
+    ///
+    /// * `permissions` - Iterator of items that can be converted to String
+    pub fn add_permissions<I, S>(mut self, permissions: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.permissions
+            .extend(permissions.into_iter().map(|s| s.into()));
+        self
+    }
+
+    /// Add permissions from a vector of strings.
+    ///
+    /// This is a convenience method for adding permissions that are already
+    /// in String format.
+    ///
+    /// # Arguments
+    ///
+    /// * `permissions` - Vector of permission strings
+    pub fn add_permission_strings(mut self, permissions: Vec<String>) -> Self {
+        self.permissions.extend(permissions);
+        self
+    }
+
+    /// Add a single permission string.
+    ///
+    /// # Arguments
+    ///
+    /// * `permission` - A single permission string to add
+    pub fn add_permission<S: Into<String>>(mut self, permission: S) -> Self {
+        self.permissions.push(permission.into());
+        self
+    }
+
+    /// Validate all permissions and return success/failure.
+    ///
+    /// This method performs validation and logs results automatically.
+    /// It returns `Ok(())` only if all validations pass.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` - All permissions are valid
+    /// * `Err(anyhow::Error)` - Validation failed with details
+    pub fn validate(self) -> Result<()> {
+        let mut checker = PermissionCollisionChecker::new(self.permissions);
+        let report = checker
+            .validate()
+            .context("Permission validation process failed")?;
+
+        report.log_results();
+
+        if !report.is_valid() {
+            anyhow::bail!("Permission validation failed: {}", report.summary());
+        }
+
+        info!("✓ Permission validation completed successfully");
+        Ok(())
+    }
+
+    /// Validate permissions and return detailed report.
+    ///
+    /// Unlike `validate()`, this method returns the full validation report
+    /// rather than just success/failure, allowing for custom handling of results.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(ValidationReport)` - Complete validation report
+    /// * `Err(anyhow::Error)` - Validation process failed
+    pub fn validate_with_report(self) -> Result<ValidationReport> {
+        let mut checker = PermissionCollisionChecker::new(self.permissions);
+        checker
+            .validate()
+            .context("Permission validation process failed")
+    }
+
+    /// Returns the current number of permissions to be validated.
+    pub fn permission_count(&self) -> usize {
+        self.permissions.len()
+    }
+}
+
+impl Default for ApplicationValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collision_checker_valid_permissions() {
+        let permissions = vec![
+            "user:read".to_string(),
+            "user:write".to_string(),
+            "admin:delete".to_string(),
+        ];
+
+        let mut checker = PermissionCollisionChecker::new(permissions);
+        let report = checker.validate().unwrap();
+
+        assert!(report.is_valid());
+        assert!(report.duplicates.is_empty());
+        assert!(report.collisions.is_empty());
+    }
+
+    #[test]
+    fn collision_checker_duplicate_strings() {
+        let permissions = vec![
+            "user:read".to_string(),
+            "user:write".to_string(),
+            "user:read".to_string(), // Duplicate
+        ];
+
+        let mut checker = PermissionCollisionChecker::new(permissions);
+        let report = checker.validate().unwrap();
+
+        assert!(!report.is_valid());
+        assert_eq!(report.duplicates.len(), 1);
+        assert_eq!(report.duplicates[0], "user:read");
+        // Note: collisions may or may not be empty depending on how duplicates are processed
+    }
+
+    #[test]
+    fn collision_checker_strict_validation() {
+        let permissions = vec![
+            "user:read".to_string(),
+            "user:read".to_string(), // Duplicate
+        ];
+
+        let mut checker = PermissionCollisionChecker::new(permissions);
+        let result = checker.validate();
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("duplicate"));
+    }
+
+    #[test]
+    fn collision_checker_conflicting_permissions() {
+        let permissions = vec!["user:read".to_string(), "user:write".to_string()];
+
+        let mut checker = PermissionCollisionChecker::new(permissions);
+        checker.validate().unwrap();
+
+        let conflicts = checker.get_conflicting_permissions("user:read");
+        // Since these shouldn't hash to the same value, conflicts should be empty
+        assert!(conflicts.is_empty());
+    }
+
+    #[test]
+    fn validation_report_summary() {
+        let mut report = ValidationReport::default();
+        assert!(report.is_valid());
+        assert!(report.summary().contains("valid"));
+
+        report.duplicates.push("test".to_string());
+        assert!(!report.is_valid());
+        assert!(report.summary().contains("duplicate"));
+
+        report.collisions.push(PermissionCollision {
+            id: 12345,
+            permissions: vec!["perm1".to_string(), "perm2".to_string()],
+        });
+        assert!(report.summary().contains("collision"));
+    }
+
+    #[test]
+    fn application_validator_basic() {
+        let result = ApplicationValidator::new()
+            .add_permissions(["user:read", "user:write"])
+            .add_permission("admin:delete")
+            .validate();
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn application_validator_with_duplicates() {
+        let result = ApplicationValidator::new()
+            .add_permissions(["user:read", "user:read"])
+            .validate();
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("duplicate"));
+    }
+
+    #[test]
+    fn validation_report_detailed_errors() {
+        let mut report = ValidationReport::default();
+        report.duplicates.push("test:duplicate".to_string());
+        report.collisions.push(PermissionCollision {
+            id: 12345,
+            permissions: vec!["perm1".to_string(), "perm2".to_string()],
+        });
+
+        let errors = report.detailed_errors();
+        assert_eq!(errors.len(), 2);
+        assert!(errors[0].contains("Duplicate"));
+        assert!(errors[1].contains("Hash collision"));
+    }
+
+    #[test]
+    fn permission_collision_checker_summary() {
+        let permissions = vec![
+            "user:read".to_string(),
+            "user:write".to_string(),
+            "admin:delete".to_string(),
+        ];
+
+        let mut checker = PermissionCollisionChecker::new(permissions);
+        checker.validate().unwrap();
+
+        assert_eq!(checker.permission_count(), 3);
+        // Should have 3 unique IDs (assuming no collisions)
+        assert_eq!(checker.unique_id_count(), 3);
+
+        let summary = checker.get_permission_summary();
+        assert_eq!(summary.len(), 3);
+    }
+}

@@ -3,6 +3,7 @@ members = [
     "crates/axum-gate",
     "examples/custom-roles",
     "examples/distributed",
+    "examples/permission-validation",
     "examples/sea-orm",
     "examples/surrealdb",
 ]

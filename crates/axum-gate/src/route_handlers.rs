@@ -101,7 +101,7 @@ pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'stati
 /// # Example Usage
 ///
 /// ```
-/// use axum_gate::PermissionChecker;
+/// use axum_gate::permissions::PermissionChecker;
 /// use roaring::RoaringBitmap;
 ///
 /// let mut user_permissions = RoaringBitmap::new();

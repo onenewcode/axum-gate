@@ -55,7 +55,7 @@ where
     ///
     /// Use this with the zero-synchronization permission system:
     /// ```rust
-    /// use axum_gate::{PermissionChecker, services::AccountInsertService, Role, Group};
+    /// use axum_gate::{permissions::PermissionChecker, services::AccountInsertService, Role, Group};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut permissions = RoaringBitmap::new();

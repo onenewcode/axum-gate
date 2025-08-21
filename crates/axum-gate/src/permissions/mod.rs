@@ -4,10 +4,17 @@
 //! from permission names using cryptographic hashing. This eliminates the need for synchronization
 //! between distributed nodes while maintaining high performance through bitmap operations.
 
+mod validation;
+
+pub use validation::{
+    ApplicationValidator, PermissionCollision, PermissionCollisionChecker, ValidationReport,
+};
+
+use std::collections::HashSet;
+
 use anyhow::Result;
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
 /// A deterministic permission identifier computed from permission names.
 ///
@@ -32,7 +39,7 @@ impl PermissionId {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::PermissionId;
+    /// use axum_gate::permissions::PermissionId;
     ///
     /// let read_id = PermissionId::from_name("read:file");
     /// let write_id = PermissionId::from_name("write:file");
@@ -83,7 +90,7 @@ impl PermissionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::{PermissionChecker, PermissionId};
+    /// use axum_gate::permissions::{PermissionChecker, PermissionId};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut user_permissions = RoaringBitmap::new();
@@ -102,7 +109,7 @@ impl PermissionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::{PermissionChecker, PermissionId};
+    /// use axum_gate::permissions::{PermissionChecker, PermissionId};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut user_permissions = RoaringBitmap::new();
@@ -147,7 +154,7 @@ impl PermissionChecker {
 /// # Examples
 ///
 /// ```
-/// use axum_gate::validate_permission_uniqueness;
+/// use axum_gate::permissions::validate_permission_uniqueness;
 ///
 /// // This should pass
 /// validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();
@@ -180,10 +187,15 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<(), String
     Ok(())
 }
 
-/// Compile-time permission validation macro.
+/// Compile-time permission validation macro with detailed error reporting.
 ///
 /// This macro validates that the provided permission names don't have hash collisions
-/// and generates a compile error if they do.
+/// and generates a compile error with detailed information if they do.
+/// When issues are found, the panic message will include all permissions being validated
+/// to help you identify which ones are causing conflicts.
+///
+/// Note: This macro uses compile-time panics to signal validation failures.
+/// For runtime validation with proper error handling, use the validation module.
 ///
 /// # Examples
 ///
@@ -197,6 +209,9 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<(), String
 ///     "admin:system:config"
 /// ];
 /// ```
+///
+/// If there are issues, the compiler will show the permissions being validated
+/// to help you identify duplicates or collisions.
 #[macro_export]
 macro_rules! validate_permissions {
     ($($perm:literal),* $(,)?) => {
@@ -211,14 +226,25 @@ macro_rules! validate_permissions {
                     while j < PERMISSIONS.len() {
                         // Check for duplicate names
                         if str_eq(PERMISSIONS[i], PERMISSIONS[j]) {
-                            panic!("Duplicate permission name found");
+                            panic!(concat!(
+                                "Duplicate permission name found in: ",
+                                stringify!([$($perm),*]),
+                                ". All permission names must be unique. ",
+                                "Check for duplicate entries and remove or rename them."
+                            ));
                         }
 
                         // Check for hash collisions
-                        let id1 = $crate::const_sha256_u32(PERMISSIONS[i]);
-                        let id2 = $crate::const_sha256_u32(PERMISSIONS[j]);
+                        let id1 = $crate::permissions::const_sha256_u32(PERMISSIONS[i]);
+                        let id2 = $crate::permissions::const_sha256_u32(PERMISSIONS[j]);
                         if id1 == id2 {
-                            panic!("Hash collision detected between permissions");
+                            panic!(concat!(
+                                "Hash collision detected in permissions: ",
+                                stringify!([$($perm),*]),
+                                ". Two different permission strings are hashing to the same u32 value. ",
+                                "This is extremely rare with SHA-256, but you need to rename one of the colliding permissions. ",
+                                "Look for permissions that might have similar patterns or try adding suffixes to differentiate them."
+                            ));
                         }
                         j += 1;
                     }

@@ -8,7 +8,7 @@ mod gate;
 mod groups;
 pub mod hashing;
 pub mod jwt;
-mod permissions;
+pub mod permissions;
 mod roles;
 pub mod route_handlers;
 pub mod secrets;
@@ -23,7 +23,5 @@ pub use errors::Error;
 pub use gate::Gate;
 pub use groups::Group;
 pub use jsonwebtoken;
-pub use permissions::{
-    PermissionChecker, PermissionId, const_sha256_u32, validate_permission_uniqueness,
-};
+
 pub use roles::Role;

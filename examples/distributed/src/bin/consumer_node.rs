@@ -138,7 +138,7 @@ async fn main() {
             get(permissions).layer(
                 Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_permission(axum_gate::PermissionId::from_name(
+                    .grant_permission(axum_gate::permissions::PermissionId::from_name(
                         &AppPermissions::Api(ApiPermission::Read).as_str(),
                     )),
             ),

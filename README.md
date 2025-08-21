@@ -14,6 +14,7 @@ for any specific use case. It provides a high-level API for role based access wi
 - Pre-defined handler for fast and easy integration
 - Static permission set for fine-grained resource control
 - Dynamic permission set for resource control that changes during runtime
+- Runtime validation for permission collision checking with detailed error reporting
 
 ## Planned features
 
@@ -215,6 +216,92 @@ AccountDeleteService::delete(user_account)
 
 `axum-gate` provides pre-defined [route_handler](crate::route_handlers) for login and logout
 using [Credentials].
+
+# Permission Validation
+
+For applications with variable permission strings, `axum-gate` provides comprehensive validation capabilities:
+
+## Compile-time Validation
+
+Use the `validate_permissions!` macro with enhanced error reporting:
+
+```rust
+use axum_gate::validate_permissions;
+
+validate_permissions![
+    "user:read:profile",
+    "user:write:profile",
+    "admin:manage:system"
+];
+```
+
+If there are duplicates or hash collisions, you'll get detailed error messages showing all permissions being validated:
+
+```text,no_run
+Duplicate permission name found in: ["user:read", "admin:write", "user:read"].
+All permission names must be unique. Check for duplicate entries and remove or rename them.
+```
+
+## Runtime Validation
+
+For dynamic permissions loaded from configuration:
+
+```rust
+use axum_gate::permissions::validation::{ApplicationValidator, PermissionCollisionChecker, ValidationReport};
+
+// Permission conflicts handler
+fn handle_permission_conflicts(report: &ValidationReport) {}
+
+let config_permissions = ["user:read", "admin:write"];
+let dynamic_permissions = ["dynamic:access"];
+
+// Application startup validation
+ApplicationValidator::new()
+    .add_permissions(config_permissions)
+    .add_permissions(dynamic_permissions)
+    .validate()
+    .expect("Validation failed.");
+
+let updated_permissions = ["dynamic:updated", "user:read"]
+    .iter()
+    .map(|s| s.to_string())
+    .collect::<Vec<String>>();
+
+// Runtime validation during application events
+let mut checker = PermissionCollisionChecker::new(updated_permissions);
+let report = checker.validate().expect("Runtime validation failed.");
+if !report.is_valid() {
+    // Handle validation issues appropriately
+    handle_permission_conflicts(&report);
+}
+```
+
+The validation system provides:
+- Duplicate string detection
+- Hash collision detection (extremely rare but possible)
+- Detailed reporting for debugging
+- Flexible error handling (no panics in runtime validation)
+- Zero overhead once validation completes
+
+# Permission Validation
+
+For applications with variable permission strings, `axum-gate` provides runtime validation
+capabilities to check for permission duplicates and hash collisions:
+
+```rust
+use axum_gate::permissions::validation::ApplicationValidator;
+
+// Application startup validation
+ApplicationValidator::new()
+    .add_permissions(["user:read", "user:write"])
+    .add_permission("admin:delete")
+    .validate()?;
+# Ok::<(), anyhow::Error>(())
+```
+
+This complements the compile-time validation provided by [`validate_permissions!`]
+and is particularly useful for dynamic permission strings loaded from configuration
+files or generated at runtime.
 
 # License
 This project is licensed under the **MIT** license.
