@@ -6,29 +6,23 @@
 //!
 //! # Using Permissions in Your Application
 //!
+//! ## 1. Validating Permissions at Compile Time
+//!
 //! ```rust
 //! # use axum_gate::{permissions::{PermissionChecker, PermissionId}, validate_permissions};
 //! # use roaring::RoaringBitmap;
-//!
-//! // 1. Validate permissions at compile time
 //! validate_permissions![
 //!     "read:resource1",
 //!     "write:resource1",
 //!     "read:resource2",
 //!     "admin:system"
 //! ];
+//! ```
 //!
-//! // 2. Grant permissions to users
-//! let mut user_permissions = RoaringBitmap::new();
-//! PermissionChecker::grant_permission(&mut user_permissions, "read:resource1");
-//! PermissionChecker::grant_permission(&mut user_permissions, "write:resource1");
+//! ## 2. Working with Account Permissions (recommended)
 //!
-//! // 3. Check permissions in route handlers
-//! if PermissionChecker::has_permission(&user_permissions, "read:resource1") {
-//!     // Grant access
-//! }
-//!
-//! // 4. Work with Account permissions
+//! ```rust
+//! # use axum_gate::{permissions::{PermissionChecker, PermissionId}, Account};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyRole { User, Admin }
 //! # impl std::fmt::Display for MyRole {
@@ -71,13 +65,42 @@
 //!
 //! // Note: After modifying account permissions, you would typically
 //! // save the account back to your storage system using your chosen
-//! // storage implementation (e.g., AccountStorageService).
+//! // storage implementation (see AccountStorageService).
+//! ```
 //!
-//! // 5. Use with Gates
-//! # use axum_gate::{Account, Gate, Group};
+//! ## 3. Using Permissions with Gates (recommended)
+//!
+//! ```rust
+//! # use axum_gate::{Account, Gate, Group, permissions::PermissionId};
 //! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 //! # use std::sync::Arc;
 //! # use axum::{routing::get, Router};
+//! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+//! # enum MyRole { User, Admin }
+//! # impl std::fmt::Display for MyRole {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//! #         match self {
+//! #             MyRole::User => write!(f, "User"),
+//! #             MyRole::Admin => write!(f, "Admin"),
+//! #         }
+//! #     }
+//! # }
+//! # impl axum_gate::utils::AccessHierarchy for MyRole {
+//! #     fn supervisor(&self) -> Option<Self> {
+//! #         match self {
+//! #             Self::Admin => None,
+//! #             Self::User => Some(Self::Admin),
+//! #         }
+//! #     }
+//! #     fn subordinate(&self) -> Option<Self> {
+//! #         match self {
+//! #             Self::Admin => Some(Self::User),
+//! #             Self::User => None,
+//! #         }
+//! #     }
+//! # }
+//! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+//! # enum MyGroup { Staff, Premium }
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<MyRole, MyGroup>>>::default());
 //! # let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
 //! let app = Router::<()>::new()
@@ -90,6 +113,18 @@
 //!
 //! async fn protected_handler() -> &'static str {
 //!     "Access granted!"
+//! }
+//! ```
+//!
+//! ## 4. Checking Permissions in Route Handlers
+//!
+//! ```rust
+//! # use axum_gate::permissions::PermissionChecker;
+//! # use roaring::RoaringBitmap;
+//! # let mut user_permissions = RoaringBitmap::new();
+//! # PermissionChecker::grant_permission(&mut user_permissions, "read:resource1");
+//! if PermissionChecker::has_permission(&user_permissions, "read:resource1") {
+//!     // Grant access
 //! }
 //! ```
 //!
