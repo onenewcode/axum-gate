@@ -7,7 +7,7 @@
 
 use crate::permissions::PermissionId;
 use anyhow::{Context, Result};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use tracing::{info, warn};
 
 /// Application-wide permission collision checker that runs at startup or on demand.
@@ -19,7 +19,7 @@ use tracing::{info, warn};
 /// # Examples
 ///
 /// ```
-/// use axum_gate::permissions::validation::PermissionCollisionChecker;
+/// use axum_gate::permissions::PermissionCollisionChecker;
 ///
 /// let permissions = vec![
 ///     "user:read".to_string(),
@@ -72,7 +72,7 @@ impl PermissionCollisionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::permissions::validation::PermissionCollisionChecker;
+    /// use axum_gate::permissions::PermissionCollisionChecker;
     ///
     /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
     /// let mut checker = PermissionCollisionChecker::new(permissions);
@@ -91,11 +91,7 @@ impl PermissionCollisionChecker {
     pub fn validate(&mut self) -> Result<ValidationReport> {
         let mut report = ValidationReport::default();
 
-        // Check for exact duplicates first
-        self.check_duplicate_strings(&mut report)
-            .context("Failed to check for duplicate permission strings")?;
-
-        // Check for hash collisions
+        // Check for hash collisions (including duplicates)
         self.check_hash_collisions(&mut report)
             .context("Failed to check for hash collisions")?;
 
@@ -105,31 +101,24 @@ impl PermissionCollisionChecker {
         Ok(report)
     }
 
-    fn check_duplicate_strings(&self, report: &mut ValidationReport) -> Result<()> {
-        let mut seen = HashSet::new();
-
-        for permission in &self.permissions {
-            if !seen.insert(permission) {
-                report.duplicates.push(permission.clone());
-            }
-        }
-
-        Ok(())
-    }
-
     fn check_hash_collisions(&self, report: &mut ValidationReport) -> Result<()> {
-        let mut id_to_permission: HashMap<u32, String> = HashMap::new();
+        let mut id_to_permissions: HashMap<u32, Vec<String>> = HashMap::new();
 
+        // Group permissions by their hash ID
         for permission in &self.permissions {
             let id = PermissionId::from_name(permission);
+            id_to_permissions
+                .entry(id.as_u32())
+                .or_insert_with(Vec::new)
+                .push(permission.clone());
+        }
 
-            if let Some(existing) = id_to_permission.get(&id.as_u32()) {
-                report.collisions.push(PermissionCollision {
-                    id: id.as_u32(),
-                    permissions: vec![existing.clone(), permission.clone()],
-                });
-            } else {
-                id_to_permission.insert(id.as_u32(), permission.clone());
+        // Find all hash IDs with multiple permissions
+        for (id, permissions) in id_to_permissions {
+            if permissions.len() > 1 {
+                report
+                    .collisions
+                    .push(PermissionCollision { id, permissions });
             }
         }
 
@@ -199,8 +188,6 @@ impl PermissionCollisionChecker {
 /// including any duplicates found and hash collisions detected.
 #[derive(Debug, Default)]
 pub struct ValidationReport {
-    /// List of duplicate permission strings found.
-    pub duplicates: Vec<String>,
     /// List of hash collisions detected.
     pub collisions: Vec<PermissionCollision>,
 }
@@ -219,10 +206,23 @@ pub struct PermissionCollision {
 impl ValidationReport {
     /// Returns true if validation passed without any issues.
     ///
-    /// A validation is considered successful if there are no duplicate
-    /// permission strings and no hash collisions.
+    /// A validation is considered successful if there are no hash collisions.
     pub fn is_valid(&self) -> bool {
-        self.duplicates.is_empty() && self.collisions.is_empty()
+        self.collisions.is_empty()
+    }
+
+    /// Returns duplicate permission strings found.
+    ///
+    /// Duplicates are derived from collisions where all permissions are identical.
+    pub fn duplicates(&self) -> Vec<String> {
+        self.collisions
+            .iter()
+            .filter(|collision| {
+                collision.permissions.len() > 1
+                    && collision.permissions.windows(2).all(|w| w[0] == w[1])
+            })
+            .map(|collision| collision.permissions[0].clone())
+            .collect()
     }
 
     /// Returns a human-readable summary of validation results.
@@ -235,24 +235,37 @@ impl ValidationReport {
         }
 
         let mut parts = Vec::new();
+        let duplicates = self.duplicates();
 
-        if !self.duplicates.is_empty() {
+        if !duplicates.is_empty() {
             parts.push(format!(
                 "{} duplicate permission string(s)",
-                self.duplicates.len()
+                duplicates.len()
             ));
         }
 
-        if !self.collisions.is_empty() {
+        let non_duplicate_collisions = self
+            .collisions
+            .iter()
+            .filter(|collision| {
+                !(collision.permissions.len() > 1
+                    && collision.permissions.windows(2).all(|w| w[0] == w[1]))
+            })
+            .count();
+
+        if non_duplicate_collisions > 0 {
             let total_colliding = self
                 .collisions
                 .iter()
+                .filter(|collision| {
+                    !(collision.permissions.len() > 1
+                        && collision.permissions.windows(2).all(|w| w[0] == w[1]))
+                })
                 .map(|c| c.permissions.len())
                 .sum::<usize>();
             parts.push(format!(
                 "{} hash collision(s) affecting {} permission(s)",
-                self.collisions.len(),
-                total_colliding
+                non_duplicate_collisions, total_colliding
             ));
         }
 
@@ -269,15 +282,20 @@ impl ValidationReport {
             return;
         }
 
-        for duplicate in &self.duplicates {
+        let duplicates = self.duplicates();
+        for duplicate in &duplicates {
             warn!("Duplicate permission string found: '{}'", duplicate);
         }
 
         for collision in &self.collisions {
-            warn!(
-                "Hash collision detected (ID: {}): permissions {:?} all hash to the same value",
-                collision.id, collision.permissions
-            );
+            let is_duplicate = collision.permissions.len() > 1
+                && collision.permissions.windows(2).all(|w| w[0] == w[1]);
+            if !is_duplicate {
+                warn!(
+                    "Hash collision detected (ID: {}): permissions {:?} all hash to the same value",
+                    collision.id, collision.permissions
+                );
+            }
         }
     }
 
@@ -287,18 +305,23 @@ impl ValidationReport {
     /// or detailed error reporting.
     pub fn detailed_errors(&self) -> Vec<String> {
         let mut errors = Vec::new();
+        let duplicates = self.duplicates();
 
-        for duplicate in &self.duplicates {
+        for duplicate in &duplicates {
             errors.push(format!("Duplicate permission: '{}'", duplicate));
         }
 
         for collision in &self.collisions {
-            errors.push(format!(
-                "Hash collision (ID {}): {} -> {:?}",
-                collision.id,
-                collision.permissions.join(", "),
-                collision.permissions
-            ));
+            let is_duplicate = collision.permissions.len() > 1
+                && collision.permissions.windows(2).all(|w| w[0] == w[1]);
+            if !is_duplicate {
+                errors.push(format!(
+                    "Hash collision (ID {}): {} -> {:?}",
+                    collision.id,
+                    collision.permissions.join(", "),
+                    collision.permissions
+                ));
+            }
         }
 
         errors
@@ -306,7 +329,7 @@ impl ValidationReport {
 
     /// Returns the total number of issues found.
     pub fn total_issues(&self) -> usize {
-        self.duplicates.len() + self.collisions.len()
+        self.collisions.len()
     }
 }
 
@@ -318,7 +341,7 @@ impl ValidationReport {
 /// # Examples
 ///
 /// ```
-/// use axum_gate::permissions::validation::ApplicationValidator;
+/// use axum_gate::permissions::ApplicationValidator;
 ///
 /// # async fn example() -> anyhow::Result<()> {
 /// let validator = ApplicationValidator::new()
@@ -451,7 +474,7 @@ mod tests {
         let report = checker.validate().unwrap();
 
         assert!(report.is_valid());
-        assert!(report.duplicates.is_empty());
+        assert!(report.duplicates().is_empty());
         assert!(report.collisions.is_empty());
     }
 
@@ -467,23 +490,10 @@ mod tests {
         let report = checker.validate().unwrap();
 
         assert!(!report.is_valid());
-        assert_eq!(report.duplicates.len(), 1);
-        assert_eq!(report.duplicates[0], "user:read");
-        // Note: collisions may or may not be empty depending on how duplicates are processed
-    }
-
-    #[test]
-    fn collision_checker_strict_validation() {
-        let permissions = vec![
-            "user:read".to_string(),
-            "user:read".to_string(), // Duplicate
-        ];
-
-        let mut checker = PermissionCollisionChecker::new(permissions);
-        let result = checker.validate();
-
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("duplicate"));
+        let duplicates = report.duplicates();
+        assert_eq!(duplicates.len(), 1);
+        assert_eq!(duplicates[0], "user:read");
+        assert_eq!(report.collisions.len(), 1);
     }
 
     #[test]
@@ -504,7 +514,10 @@ mod tests {
         assert!(report.is_valid());
         assert!(report.summary().contains("valid"));
 
-        report.duplicates.push("test".to_string());
+        report.collisions.push(PermissionCollision {
+            id: 12345,
+            permissions: vec!["test".to_string(), "test".to_string()],
+        });
         assert!(!report.is_valid());
         assert!(report.summary().contains("duplicate"));
 
@@ -538,7 +551,10 @@ mod tests {
     #[test]
     fn validation_report_detailed_errors() {
         let mut report = ValidationReport::default();
-        report.duplicates.push("test:duplicate".to_string());
+        report.collisions.push(PermissionCollision {
+            id: 54321,
+            permissions: vec!["test:duplicate".to_string(), "test:duplicate".to_string()],
+        });
         report.collisions.push(PermissionCollision {
             id: 12345,
             permissions: vec!["perm1".to_string(), "perm2".to_string()],

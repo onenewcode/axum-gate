@@ -15,7 +15,7 @@ The validation system in `axum-gate` provides runtime validation capabilities th
 
 ### 1. Static Permission Validation
 ```rust
-use axum_gate::permissions::validation::ApplicationValidator;
+use axum_gate::permissions::ApplicationValidator;
 
 let permissions = [
     "user:read:profile",
@@ -30,7 +30,7 @@ ApplicationValidator::new()
 
 ### 2. Application-Level Validation
 ```rust
-use axum_gate::permissions::validation::ApplicationValidator;
+use axum_gate::permissions::ApplicationValidator;
 
 let validator = ApplicationValidator::new()
     .add_permissions(["user:read", "user:write"])
@@ -40,7 +40,7 @@ let validator = ApplicationValidator::new()
 
 ### 3. Detailed Collision Checking
 ```rust
-use axum_gate::permissions::validation::PermissionCollisionChecker;
+use axum_gate::permissions::PermissionCollisionChecker;
 
 let mut checker = PermissionCollisionChecker::new(permissions);
 let report = checker.validate()?;

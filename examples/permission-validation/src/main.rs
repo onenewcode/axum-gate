@@ -369,12 +369,13 @@ async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()>
             }
 
             // Handle duplicates by deduplication
+            let duplicates = report.duplicates();
             warn!(
                 "    Found {} duplicates, attempting recovery",
-                report.duplicates.len()
+                duplicates.len()
             );
 
-            if !report.duplicates.is_empty() {
+            if !duplicates.is_empty() {
                 info!("    Applying automatic deduplication...");
                 // In a real application, you might implement deduplication logic here
                 return Err(anyhow::anyhow!(

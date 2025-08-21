@@ -247,7 +247,7 @@ All permission names must be unique. Check for duplicate entries and remove or r
 For dynamic permissions loaded from configuration:
 
 ```rust
-use axum_gate::permissions::validation::{ApplicationValidator, PermissionCollisionChecker, ValidationReport};
+use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker, ValidationReport};
 
 // Permission conflicts handler
 fn handle_permission_conflicts(report: &ValidationReport) {}
@@ -289,7 +289,7 @@ For applications with variable permission strings, `axum-gate` provides runtime 
 capabilities to check for permission duplicates and hash collisions:
 
 ```rust
-use axum_gate::permissions::validation::ApplicationValidator;
+use axum_gate::permissions::ApplicationValidator;
 
 // Application startup validation
 ApplicationValidator::new()
