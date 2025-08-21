@@ -100,7 +100,7 @@ where
     G: Eq,
 {
     /// Queries the axum-gate auth cookie from the request.
-    pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie> {
+    pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie<'_>> {
         let cookie_jar = CookieJar::from_headers(req.headers());
         let cookie = self.cookie_template.clone().build();
         cookie_jar.get(cookie.name()).cloned()
