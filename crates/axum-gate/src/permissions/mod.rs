@@ -4,11 +4,100 @@
 //! from permission names using cryptographic hashing. This eliminates the need for synchronization
 //! between distributed nodes while maintaining high performance through bitmap operations.
 //!
+//! # Using Permissions in Your Application
+//!
+//! ```rust
+//! # use axum_gate::{permissions::{PermissionChecker, PermissionId}, validate_permissions};
+//! # use roaring::RoaringBitmap;
+//!
+//! // 1. Validate permissions at compile time
+//! validate_permissions![
+//!     "read:resource1",
+//!     "write:resource1",
+//!     "read:resource2",
+//!     "admin:system"
+//! ];
+//!
+//! // 2. Grant permissions to users
+//! let mut user_permissions = RoaringBitmap::new();
+//! PermissionChecker::grant_permission(&mut user_permissions, "read:resource1");
+//! PermissionChecker::grant_permission(&mut user_permissions, "write:resource1");
+//!
+//! // 3. Check permissions in route handlers
+//! if PermissionChecker::has_permission(&user_permissions, "read:resource1") {
+//!     // Grant access
+//! }
+//!
+//! // 4. Work with Account permissions
+//! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+//! # enum MyRole { User, Admin }
+//! # impl std::fmt::Display for MyRole {
+//! #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//! #         match self {
+//! #             MyRole::User => write!(f, "User"),
+//! #             MyRole::Admin => write!(f, "Admin"),
+//! #         }
+//! #     }
+//! # }
+//! # impl axum_gate::utils::AccessHierarchy for MyRole {
+//! #     fn supervisor(&self) -> Option<Self> {
+//! #         match self {
+//! #             Self::Admin => None,
+//! #             Self::User => Some(Self::Admin),
+//! #         }
+//! #     }
+//! #     fn subordinate(&self) -> Option<Self> {
+//! #         match self {
+//! #             Self::Admin => Some(Self::User),
+//! #             Self::User => None,
+//! #         }
+//! #     }
+//! # }
+//! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+//! # enum MyGroup { Staff, Premium }
+//! let mut account = Account::<MyRole, MyGroup>::new("user123", &[MyRole::User], &[MyGroup::Staff]);
+//!
+//! // Add permissions to an account
+//! account.grant_permission(PermissionId::from_name("read:resource1"));
+//! account.grant_permission(PermissionId::from_name("write:resource1"));
+//!
+//! // Check if account has permission
+//! if PermissionChecker::has_permission(&account.permissions, "read:resource1") {
+//!     // Account has permission
+//! }
+//!
+//! // Remove permissions from an account
+//! account.revoke_permission(PermissionId::from_name("write:resource1"));
+//!
+//! // Note: After modifying account permissions, you would typically
+//! // save the account back to your storage system using your chosen
+//! // storage implementation (e.g., AccountStorageService).
+//!
+//! // 5. Use with Gates
+//! # use axum_gate::{Account, Gate, Group};
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use std::sync::Arc;
+//! # use axum::{routing::get, Router};
+//! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<MyRole, MyGroup>>>::default());
+//! # let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
+//! let app = Router::<()>::new()
+//!     .route("/protected", get(protected_handler))
+//!     .layer(
+//!         Gate::new_cookie("issuer", jwt_codec)
+//!             .with_cookie_template(cookie_template)
+//!             .grant_permission(PermissionId::from_name("read:resource1"))
+//!     );
+//!
+//! async fn protected_handler() -> &'static str {
+//!     "Access granted!"
+//! }
+//! ```
+//!
+//! # Validation Approaches
+//!
 //! While the core permission system handles authorization at runtime, it's crucial to validate
 //! that your permission strings don't have hash collisions before deployment. This module provides
 //! comprehensive validation tools to ensure your permission system works reliably in production.
-//!
-//! # Validation Approaches
 //!
 //! This module provides two complementary validators for different use cases:
 //!
