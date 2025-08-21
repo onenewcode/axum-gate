@@ -4,19 +4,41 @@
 //! complementing the compile-time validation provided by the `validate_permissions!` macro.
 //! It's particularly useful when dealing with dynamic permission strings loaded from
 //! configuration files, databases, or other runtime sources.
-
 use crate::permissions::PermissionId;
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use tracing::{info, warn};
 
-/// Application-wide permission collision checker that runs at startup or on demand.
+/// Low-level permission collision checker for runtime validation and analysis.
 ///
 /// This checker validates permission strings for duplicates and hash collisions,
 /// providing detailed reports about any issues found. Unlike the compile-time
 /// validation, this can handle dynamic permission strings.
 ///
+/// ## Use Cases
+///
+/// - **Runtime validation**: When permissions change during application lifecycle
+/// - **Debugging and analysis**: Need to inspect collision maps and conflicts
+/// - **Custom validation workflows**: Require fine-grained control over validation process
+/// - **Performance-critical paths**: Direct validation without builder overhead
+///
+/// ## Compared to ApplicationValidator
+///
+/// - **State**: Stateful - maintains collision map for post-validation analysis
+/// - **Usage**: Direct instantiation with complete permission set
+/// - **Methods**: Provides introspection methods like `get_conflicting_permissions()`
+/// - **Lifecycle**: Can be reused after validation for analysis
+///
+/// For simple application startup validation, consider using [`ApplicationValidator`]
+/// which provides a more ergonomic builder pattern API.
+///
+/// # See Also
+///
+/// - [`ApplicationValidator`] - High-level builder pattern validator for startup validation
+///
 /// # Examples
+///
+/// ## Basic validation with post-analysis
 ///
 /// ```
 /// use axum_gate::permissions::PermissionCollisionChecker;
@@ -28,15 +50,45 @@ use tracing::{info, warn};
 /// ];
 ///
 /// let mut checker = PermissionCollisionChecker::new(permissions);
-/// match checker.validate() {
-///     Ok(report) => {
-///         if report.is_valid() {
-///             println!("All permissions are valid!");
-///         } else {
-///             println!("Issues found: {}", report.summary());
-///         }
+/// let report = checker.validate()?;
+///
+/// if report.is_valid() {
+///     println!("All permissions are valid!");
+///     // Can still use checker for analysis after validation
+///     println!("Total permissions: {}", checker.permission_count());
+///     println!("Unique IDs: {}", checker.unique_id_count());
+/// } else {
+///     println!("Issues found: {}", report.summary());
+///     // Check for specific conflicts
+///     let conflicts = checker.get_conflicting_permissions("user:read");
+///     if !conflicts.is_empty() {
+///         println!("Conflicts with user:read: {:?}", conflicts);
 ///     }
-///     Err(e) => eprintln!("Validation error: {}", e),
+/// }
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// ## Runtime permission updates
+///
+/// ```
+/// use axum_gate::permissions::PermissionCollisionChecker;
+///
+/// fn update_permissions(new_permissions: Vec<String>) -> anyhow::Result<()> {
+///     let mut checker = PermissionCollisionChecker::new(new_permissions);
+///     let report = checker.validate()?;
+///
+///     if !report.is_valid() {
+///         // Can analyze specific issues
+///         for collision in &report.collisions {
+///             println!("Hash ID {} has conflicts: {:?}", collision.id, collision.permissions);
+///         }
+///         return Err(anyhow::anyhow!("Permission validation failed"));
+///     }
+///
+///     // Validation passed - can still inspect the checker
+///     let summary = checker.get_permission_summary();
+///     println!("Permission distribution: {:?}", summary);
+///     Ok(())
 /// }
 /// ```
 pub struct PermissionCollisionChecker {
@@ -333,33 +385,103 @@ impl ValidationReport {
     }
 }
 
-/// Application startup validator that checks permissions before server starts.
+/// High-level builder pattern validator for application startup validation.
 ///
 /// This is a high-level interface for validating permissions from multiple sources
-/// during application initialization.
+/// during application initialization. It provides an ergonomic API for collecting
+/// permissions incrementally before validation.
+///
+/// ## Use Cases
+///
+/// - **Application startup**: Validate permissions loaded from config, database, etc.
+/// - **Simple validation workflows**: Need basic validation with automatic logging
+/// - **Builder pattern preference**: Want to incrementally add permissions from different sources
+/// - **One-time validation**: Don't need post-validation analysis
+///
+/// ## Compared to PermissionCollisionChecker
+///
+/// - **State**: Stateless builder - consumed during validation
+/// - **Usage**: Builder pattern with incremental permission addition
+/// - **Methods**: Focus on building and validating, no post-validation introspection
+/// - **Lifecycle**: Single-use - transforms into validation report
+/// - **Logging**: Automatically logs validation results
+///
+/// For runtime validation or when you need to analyze collision details after validation,
+/// use [`PermissionCollisionChecker`] directly.
+///
+/// # See Also
+///
+/// - [`PermissionCollisionChecker`] - Low-level validator with detailed analysis capabilities
 ///
 /// # Examples
+///
+/// ## Application startup validation
 ///
 /// ```
 /// use axum_gate::permissions::ApplicationValidator;
 ///
+/// # fn load_config_permissions() -> Vec<String> { vec!["user:read".to_string()] }
+/// # async fn load_db_permissions() -> anyhow::Result<Vec<String>> { Ok(vec!["admin:write".to_string()]) }
 /// # async fn example() -> anyhow::Result<()> {
-/// let validator = ApplicationValidator::new()
-///     .add_permissions(["user:read", "user:write"])
-///     .add_permissions(vec!["admin:delete".to_string()]);
+/// // Collect permissions from multiple sources during startup
+/// let config_permissions = load_config_permissions();
+/// let db_permissions = load_db_permissions().await?;
 ///
-/// match validator.validate() {
-///     Ok(report) => {
-///         if report.is_valid() {
-///             println!("All permissions validated successfully");
-///         } else {
-///             eprintln!("Validation issues found: {}", report.summary());
-///         }
-///     },
-///     Err(e) => eprintln!("Validation failed: {}", e),
+/// let report = ApplicationValidator::new()
+///     .add_permissions(config_permissions)
+///     .add_permissions(db_permissions)
+///     .add_permission("system:health")  // Add individual permissions
+///     .validate()?;  // Automatically logs results
+///
+/// if report.is_valid() {
+///     println!("✓ All permissions validated - server can start");
+/// } else {
+///     return Err(anyhow::anyhow!("Permission validation failed: {}", report.summary()));
 /// }
 /// # Ok(())
 /// # }
+/// ```
+///
+/// ## Simple validation workflow
+///
+/// ```
+/// use axum_gate::permissions::ApplicationValidator;
+///
+/// // For simple cases where you just need pass/fail validation
+/// let report = ApplicationValidator::new()
+///     .add_permissions(["user:read", "user:write", "admin:delete"])
+///     .validate()?;
+///
+/// // Report is automatically logged, just check if valid
+/// if !report.is_valid() {
+///     panic!("Invalid permissions detected during startup");
+/// }
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// ## Comparison with PermissionCollisionChecker
+///
+/// ```
+/// use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker};
+///
+/// let permissions = vec!["user:read".to_string(), "user:write".to_string()];
+///
+/// // ApplicationValidator: Builder pattern, single-use, automatic logging
+/// let report1 = ApplicationValidator::new()
+///     .add_permissions(permissions.clone())
+///     .validate()?;  // Validator is consumed here
+/// // Can't use validator anymore, but don't need to
+///
+/// // PermissionCollisionChecker: Direct instantiation, reusable, manual control
+/// let mut checker = PermissionCollisionChecker::new(permissions);
+/// let report2 = checker.validate()?;  // Checker is still available
+///
+/// // Can continue using checker for analysis
+/// if !report2.is_valid() {
+///     let conflicts = checker.get_conflicting_permissions("user:read");
+///     println!("Conflicts found: {:?}", conflicts);
+/// }
+/// # Ok::<(), anyhow::Error>(())
 /// ```
 pub struct ApplicationValidator {
     permissions: Vec<String>,

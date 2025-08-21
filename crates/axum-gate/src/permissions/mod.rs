@@ -3,6 +3,92 @@
 //! This module provides a permission system where permission IDs are computed deterministically
 //! from permission names using cryptographic hashing. This eliminates the need for synchronization
 //! between distributed nodes while maintaining high performance through bitmap operations.
+//!
+//! While the core permission system handles authorization at runtime, it's crucial to validate
+//! that your permission strings don't have hash collisions before deployment. This module provides
+//! comprehensive validation tools to ensure your permission system works reliably in production.
+//!
+//! # Validation Approaches
+//!
+//! This module provides two complementary validators for different use cases:
+//!
+//! ## [`ApplicationValidator`] - High-level Builder Pattern
+//!
+//! Best for **application startup validation** where you need to collect permissions
+//! from multiple sources and validate them once:
+//!
+//! ```rust
+//! use axum_gate::permissions::ApplicationValidator;
+//!
+//! # fn example() -> anyhow::Result<()> {
+//! let report = ApplicationValidator::new()
+//!     .add_permissions(load_config_permissions())
+//!     .add_permissions(load_database_permissions())
+//!     .add_permission("system:health")
+//!     .validate()?;  // Automatically logs results
+//!
+//! if !report.is_valid() {
+//!     return Err(anyhow::anyhow!("Startup validation failed"));
+//! }
+//! # Ok(())
+//! # }
+//! # fn load_config_permissions() -> Vec<String> { vec![] }
+//! # fn load_database_permissions() -> Vec<String> { vec![] }
+//! ```
+//!
+//! **Characteristics:**
+//! - Builder pattern for incremental permission addition
+//! - Single-use (consumed during validation)
+//! - Automatic logging of results
+//! - Simple pass/fail workflow
+//!
+//! ## [`PermissionCollisionChecker`] - Low-level Direct Control
+//!
+//! Best for **runtime validation and analysis** where you need detailed inspection
+//! and debugging capabilities:
+//!
+//! ```rust
+//! use axum_gate::permissions::PermissionCollisionChecker;
+//!
+//! # fn example() -> anyhow::Result<()> {
+//! let mut checker = PermissionCollisionChecker::new(dynamic_permissions());
+//! let report = checker.validate()?;
+//!
+//! if !report.is_valid() {
+//!     // Detailed analysis capabilities
+//!     for collision in &report.collisions {
+//!         println!("Hash collision: {:?}", collision.permissions);
+//!     }
+//!
+//!     // Check specific permission conflicts
+//!     let conflicts = checker.get_conflicting_permissions("user:read");
+//!     println!("Conflicts with user:read: {:?}", conflicts);
+//! }
+//!
+//! // Reusable for further analysis
+//! let summary = checker.get_permission_summary();
+//! # Ok(())
+//! # }
+//! # fn dynamic_permissions() -> Vec<String> { vec![] }
+//! ```
+//!
+//! **Characteristics:**
+//! - Direct instantiation with complete permission set
+//! - Stateful and reusable after validation
+//! - Detailed introspection methods
+//! - Manual control over logging and error handling
+//!
+//! # Choosing the Right Validator
+//!
+//! | Use Case | Recommended Validator |
+//! |----------|----------------------|
+//! | Application startup validation | [`ApplicationValidator`] |
+//! | Configuration loading | [`ApplicationValidator`] |
+//! | Simple pass/fail validation | [`ApplicationValidator`] |
+//! | Runtime permission updates | [`PermissionCollisionChecker`] |
+//! | Debugging collision issues | [`PermissionCollisionChecker`] |
+//! | Performance-critical validation | [`PermissionCollisionChecker`] |
+//! | Custom validation workflows | [`PermissionCollisionChecker`] |
 
 mod validation;
 
