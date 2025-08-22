@@ -1,8 +1,8 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use axum_gate::{Account, Gate, Group, Role, cookie};
+use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 
 use std::sync::Arc;
 
@@ -138,7 +138,7 @@ async fn main() {
             get(permissions).layer(
                 Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_permission(axum_gate::permissions::PermissionId::from_name(
+                    .grant_permission(axum_gate::PermissionId::from_name(
                         &AppPermissions::Api(ApiPermission::Read).as_str(),
                     )),
             ),

@@ -3,8 +3,8 @@
 //! This example shows how the new permission system works seamlessly across
 //! distributed nodes without any coordination or synchronization.
 
-use axum_gate::permissions::{PermissionChecker, PermissionId};
 use axum_gate::validate_permissions;
+use axum_gate::{PermissionChecker, PermissionId};
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};

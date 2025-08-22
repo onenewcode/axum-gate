@@ -1,27 +1,58 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../../../README.md")]
 
-mod accounts;
-mod credentials;
+mod application;
+mod domain;
 mod errors;
-mod gate;
-mod groups;
-pub mod hashing;
-pub mod jwt;
-pub mod permissions;
-mod roles;
-pub mod route_handlers;
-pub mod secrets;
-pub mod services;
-pub mod storage;
-pub mod utils;
+mod infrastructure;
+mod ports;
 
-pub use accounts::Account;
-pub use cookie;
-pub use credentials::Credentials;
+// Core domain entities that users work with directly
+pub use domain::entities::{Account, Credentials, Group, Role};
+
+// Domain traits needed for custom implementations
+pub use domain::traits::AccessHierarchy;
+
+// Domain services that users interact with
+pub use domain::services::permissions::{
+    PermissionChecker,
+    PermissionId,
+    const_sha256_u32, // Needed for validate_permissions! macro
+    validate_permission_uniqueness,
+};
+
+// Permission validation utilities
+pub use domain::services::permissions::validation::{
+    ApplicationValidator, PermissionCollisionChecker,
+};
+
+// Infrastructure services users need
+pub use infrastructure::services::{
+    AccountInsertService, AccountStorageService, CodecService, CredentialsVerifierService,
+    SecretStorageService,
+};
+
+// Storage implementations
+#[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
+pub use infrastructure::storage::TableNames;
+pub use infrastructure::storage::memory;
+#[cfg(feature = "storage-seaorm")]
+pub use infrastructure::storage::sea_orm;
+#[cfg(feature = "storage-surrealdb")]
+pub use infrastructure::storage::surrealdb;
+
+// Web components - the main user-facing API
+pub use infrastructure::web::{Gate, route_handlers};
+
+// JWT and authentication utilities
+pub use infrastructure::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+
+// Hashing utilities
+pub use infrastructure::hashing::{Argon2Hasher, HashedValue, VerificationResult};
+
+// Error types
 pub use errors::Error;
-pub use gate::Gate;
-pub use groups::Group;
-pub use jsonwebtoken;
 
-pub use roles::Role;
+// Re-export external dependencies users need
+pub use cookie;
+pub use jsonwebtoken;

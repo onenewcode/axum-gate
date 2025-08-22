@@ -8,7 +8,7 @@
 //! - Error handling and reporting
 
 use anyhow::{Context, Result};
-use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker};
+use axum_gate::{ApplicationValidator, PermissionCollisionChecker};
 use serde::{Deserialize, Serialize};
 
 use tracing::{error, info, warn};

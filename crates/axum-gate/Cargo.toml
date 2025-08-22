@@ -18,6 +18,7 @@ storage-seaorm = ["sea-orm/uuid"]
 [dependencies]
 anyhow = "1.0.98"
 argon2 = { version = "0.5.3", features = ["std"] }
+async-trait = "0.1.83"
 axum = "0.8.3"
 axum-extra = { version = "0.10.1", features = ["cookie"] }
 chrono = { version = "0.4.40", features = ["serde"] }
