@@ -45,7 +45,7 @@ pub use infrastructure::storage::sea_orm;
 pub use infrastructure::storage::surrealdb;
 
 // Web components - the main user-facing API
-pub use infrastructure::web::{Gate, route_handlers};
+pub use infrastructure::web::{gate::Gate, route_handlers};
 
 // JWT and authentication utilities
 pub use infrastructure::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
