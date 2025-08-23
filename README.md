@@ -25,9 +25,9 @@ for any specific use case. It provides a high-level API for role based access wi
 # Introduction
 
 To protect your application with `axum-gate` you need to use storages that implement
-[SecretStorageService](crate::services::SecretStorageService),
-[CredentialsVerifierService](crate::services::CredentialsVerifierService) and
-[AccountStorageService](crate::services::AccountStorageService). It is possible to implement
+[SecretRepository](crate::ports::repositories::SecretRepository),
+[CredentialsVerifier](crate::ports::auth::CredentialsVerifier) and
+[AccountRepository](crate::ports::repositories::AccountRepository). It is possible to implement
 all on the same storage if it is responsible
 for [`Account`] as well as the [`Secret`](crate::secrets::Secret) of a user.
 See [storage] module for pre-implemented storages.

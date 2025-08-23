@@ -2,7 +2,7 @@
 use crate::{
     Error,
     infrastructure::hashing::{HashedValue, VerificationResult},
-    infrastructure::services::HashingService,
+    ports::auth::HashingService,
 };
 
 use anyhow::Result;

@@ -4,7 +4,13 @@
 //! external dependencies. These ports are implemented by adapters in
 //! the infrastructure layer.
 
-// TODO: Define authentication ports such as:
+mod credentials_verifier;
+mod hashing;
+
+pub use credentials_verifier::CredentialsVerifier;
+pub use hashing::HashingService;
+
+// TODO: Define additional authentication ports such as:
 // - AuthenticationPort: For external authentication providers
 // - TokenValidationPort: For token validation services
 // - CredentialStoragePort: For credential storage systems

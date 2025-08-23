@@ -1,6 +1,6 @@
 //! Value hashing implementations.
 use crate::Error;
-use crate::infrastructure::services::HashingService;
+use crate::ports::auth::HashingService;
 
 use anyhow::Result;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};

@@ -4,7 +4,7 @@ use crate::Credentials;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
-use crate::infrastructure::services::CredentialsVerifierService;
+use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{
     Account, Error, infrastructure::storage::sea_orm::models::account as seaorm_account,
@@ -146,7 +146,7 @@ impl SecretRepository for SeaOrmRepository {
     }
 }
 
-impl CredentialsVerifierService<Uuid> for SeaOrmRepository {
+impl CredentialsVerifier<Uuid> for SeaOrmRepository {
     async fn verify_credentials(
         &self,
         credentials: Credentials<Uuid>,

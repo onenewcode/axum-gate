@@ -4,7 +4,7 @@ use super::TableNames;
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::VerificationResult;
-use crate::infrastructure::services::CredentialsVerifierService;
+use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{Account, Credentials, Error};
 
@@ -169,7 +169,7 @@ where
     }
 }
 
-impl<S, Id> CredentialsVerifierService<Id> for SurrealDbRepository<S>
+impl<S, Id> CredentialsVerifier<Id> for SurrealDbRepository<S>
 where
     S: Connection,
     Id: Into<RecordIdKey>,

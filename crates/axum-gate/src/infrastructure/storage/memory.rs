@@ -3,7 +3,7 @@
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
-use crate::infrastructure::services::CredentialsVerifierService;
+use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{Account, Credentials, Error};
 
@@ -164,7 +164,7 @@ impl SecretRepository for MemorySecretRepository {
     }
 }
 
-impl CredentialsVerifierService<Uuid> for MemorySecretRepository {
+impl CredentialsVerifier<Uuid> for MemorySecretRepository {
     async fn verify_credentials(
         &self,
         credentials: Credentials<Uuid>,

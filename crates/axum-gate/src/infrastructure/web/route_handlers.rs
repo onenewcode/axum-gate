@@ -7,7 +7,8 @@ use crate::domain::services::permissions::PermissionChecker;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::hashing::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
-use crate::infrastructure::services::{CodecService, CredentialsVerifierService};
+use crate::infrastructure::services::CodecService;
+use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::AccountRepository;
 
 use std::sync::Arc;
@@ -31,7 +32,7 @@ pub async fn login<CredVeri, AccRepo, Codec, R, G>(
 where
     R: AccessHierarchy + Eq,
     G: Eq,
-    CredVeri: CredentialsVerifierService<Uuid>,
+    CredVeri: CredentialsVerifier<Uuid>,
     AccRepo: AccountRepository<R, G>,
     Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
 {
