@@ -7,6 +7,10 @@
 pub mod auth;
 pub mod repositories;
 
+mod codecs;
+
+pub use codecs::Codec;
+
 // Re-exports will be added here when auth and repositories modules have content
 // pub use auth::*;
 // pub use repositories::*;

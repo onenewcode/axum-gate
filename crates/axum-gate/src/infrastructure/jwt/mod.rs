@@ -1,7 +1,7 @@
 //! Claims and JWT models.
 use crate::Error;
-use crate::infrastructure::services::CodecService;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use crate::ports::Codec;
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
@@ -180,7 +180,7 @@ impl<P> Default for JsonWebToken<P> {
     }
 }
 
-impl<P> CodecService for JsonWebToken<P>
+impl<P> Codec for JsonWebToken<P>
 where
     P: Serialize + DeserializeOwned + Clone,
 {

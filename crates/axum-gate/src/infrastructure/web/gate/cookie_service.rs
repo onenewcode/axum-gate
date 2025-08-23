@@ -2,7 +2,7 @@ use super::AccessScope;
 use crate::Account;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::jwt::JwtClaims;
-use crate::infrastructure::services::CodecService;
+use crate::ports::Codec;
 
 use std::convert::Infallible;
 use std::fmt::Debug;
@@ -20,9 +20,9 @@ use tracing::{debug, trace, warn};
 
 /// The gate is protecting your application from unauthorized access.
 #[derive(Debug, Clone)]
-pub struct CookieGateService<Codec, R, G, S>
+pub struct CookieGateService<C, R, G, S>
 where
-    Codec: CodecService,
+    C: Codec,
     R: AccessHierarchy + Eq,
     G: Eq,
 {
@@ -31,13 +31,13 @@ where
     role_scopes: Vec<AccessScope<R>>,
     group_scope: Vec<G>,
     permissions: RoaringBitmap,
-    codec: Arc<Codec>,
+    codec: Arc<C>,
     cookie_template: CookieBuilder<'static>,
 }
 
-impl<Codec, R, G, S> CookieGateService<Codec, R, G, S>
+impl<C, R, G, S> CookieGateService<C, R, G, S>
 where
-    Codec: CodecService,
+    C: Codec,
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
@@ -48,7 +48,7 @@ where
         role_scopes: Vec<AccessScope<R>>,
         group_scope: Vec<G>,
         permissions: RoaringBitmap,
-        codec: Arc<Codec>,
+        codec: Arc<C>,
         cookie_template: CookieBuilder<'static>,
     ) -> Self {
         Self {
@@ -93,9 +93,9 @@ where
     }
 }
 
-impl<Codec, R, G, S> CookieGateService<Codec, R, G, S>
+impl<C, R, G, S> CookieGateService<C, R, G, S>
 where
-    Codec: CodecService,
+    C: Codec,
     R: AccessHierarchy + Eq,
     G: Eq,
 {
@@ -115,12 +115,12 @@ where
     }
 }
 
-impl<Codec, R, G, S> Service<Request<Body>> for CookieGateService<Codec, R, G, S>
+impl<C, R, G, S> Service<Request<Body>> for CookieGateService<C, R, G, S>
 where
     S: Service<Request<Body>, Response = Response<Body>, Error = Infallible> + Send + 'static,
     S::Future: Send + 'static,
     Account<R, G>: Clone,
-    Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display + Sync + Send + 'static,
     G: Eq + Sync + Send + 'static,
 {

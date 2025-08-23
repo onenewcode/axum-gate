@@ -7,7 +7,7 @@ use crate::domain::services::permissions::PermissionChecker;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::hashing::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
-use crate::infrastructure::services::CodecService;
+use crate::ports::Codec;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::AccountRepository;
 
@@ -20,13 +20,13 @@ use tracing::{debug, error};
 use uuid::Uuid;
 
 /// Can be used to log a user in.
-pub async fn login<CredVeri, AccRepo, Codec, R, G>(
+pub async fn login<CredVeri, AccRepo, C, R, G>(
     cookie_jar: CookieJar,
     request_credentials: Json<Credentials<String>>,
     registered_claims: RegisteredClaims,
     secret_verifier: Arc<CredVeri>,
     account_repository: Arc<AccRepo>,
-    codec: Arc<Codec>,
+    codec: Arc<C>,
     cookie_template: CookieBuilder<'static>,
 ) -> Result<CookieJar, StatusCode>
 where
@@ -34,7 +34,7 @@ where
     G: Eq,
     CredVeri: CredentialsVerifier<Uuid>,
     AccRepo: AccountRepository<R, G>,
-    Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
+    C: Codec<Payload = JwtClaims<Account<R, G>>>,
 {
     let creds = request_credentials.0;
 

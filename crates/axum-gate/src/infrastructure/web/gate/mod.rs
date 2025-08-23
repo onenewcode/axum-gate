@@ -3,7 +3,7 @@ use self::access_scope::AccessScope;
 use self::cookie_service::CookieGateService;
 use crate::cookie::CookieBuilder;
 use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::services::CodecService;
+use crate::ports::Codec;
 
 use std::sync::Arc;
 
@@ -19,9 +19,9 @@ pub struct Gate;
 
 impl Gate {
     /// Creates a new instance of a gate that uses JWT cookies, denying all requests by default.
-    pub fn new_cookie<Codec, R, G>(issuer: &str, codec: Arc<Codec>) -> CookieGate<Codec, R, G>
+    pub fn new_cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
     where
-        Codec: CodecService,
+        C: Codec,
         R: AccessHierarchy + Eq,
         G: Eq,
     {
@@ -38,9 +38,9 @@ impl Gate {
 
 /// The cookie gate uses JWT cookies for authorization.
 #[derive(Clone)]
-pub struct CookieGate<Codec, R, G>
+pub struct CookieGate<C, R, G>
 where
-    Codec: CodecService,
+    C: Codec,
     R: AccessHierarchy + Eq,
     G: Eq,
 {
@@ -48,13 +48,13 @@ where
     role_scopes: Vec<AccessScope<R>>,
     group_scope: Vec<G>,
     permissions: RoaringBitmap,
-    codec: Arc<Codec>,
+    codec: Arc<C>,
     cookie_template: CookieBuilder<'static>,
 }
 
-impl<Codec, R, G> CookieGate<Codec, R, G>
+impl<C, R, G> CookieGate<C, R, G>
 where
-    Codec: CodecService,
+    C: Codec,
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
@@ -99,16 +99,16 @@ where
     }
 }
 
-impl<Codec, R, G, S> Layer<S> for CookieGate<Codec, R, G>
+impl<S, C, R, G> Layer<S> for CookieGate<C, R, G>
 where
-    Codec: CodecService,
+    C: Codec,
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq + Clone,
 {
-    type Service = CookieGateService<Codec, R, G, S>;
+    type Service = CookieGateService<C, R, G, S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        Self::Service::new(
+        CookieGateService::new(
             inner,
             &self.issuer,
             self.role_scopes.clone(),

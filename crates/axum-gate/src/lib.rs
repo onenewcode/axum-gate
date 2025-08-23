@@ -28,11 +28,12 @@ pub use domain::services::permissions::validation::{
 };
 
 // Port definitions
+pub use ports::Codec;
 pub use ports::auth::{CredentialsVerifier, HashingService};
 pub use ports::repositories::{AccountRepository, SecretRepository};
 
 // Infrastructure services users need
-pub use infrastructure::services::{AccountDeleteService, AccountInsertService, CodecService};
+pub use infrastructure::services::{AccountDeleteService, AccountInsertService};
 
 // Repository implementations
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]

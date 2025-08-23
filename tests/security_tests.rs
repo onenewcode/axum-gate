@@ -2,7 +2,7 @@ use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use axum_gate::{Argon2Hasher, VerificationResult};
 use axum_gate::Secret;
-use axum_gate::{CodecService, HashingService};
+use axum_gate::{Codec, HashingService};
 use axum_gate::{Account, Credentials, Group, Role};
 
 use std::sync::Arc;
