@@ -65,7 +65,7 @@
 //!
 //! // Note: After modifying account permissions, you would typically
 //! // save the account back to your repository system using your chosen
-//! // repository implementation (see AccountRepositoryService).
+//! // repository implementation (see AccountRepository).
 //! ```
 //!
 //! ## 3. Using Permissions with Gates (recommended)

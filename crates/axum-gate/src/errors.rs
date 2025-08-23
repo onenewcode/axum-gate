@@ -15,8 +15,8 @@ pub enum Error {
     #[error("SecretRepositoryService error: {0}")]
     SecretRepository(String),
     /// This error occurs in combination with a
-    /// [AccountRepositoryService](crate::services::AccountRepositoryService) operation.
-    #[error("AccountRepositoryService error: {0}")]
+    /// [AccountRepository](crate::ports::repositories::AccountRepository) operation.
+    #[error("AccountRepository error: {0}")]
     AccountRepository(String),
     /// This error occurs in combination with a generic Repository operation.
     #[error("Repository error: {0}")]

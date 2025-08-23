@@ -1,10 +1,11 @@
 use crate::{domain::entities::Account, domain::traits::AccessHierarchy};
 
 use anyhow::Result;
+use std::future::Future;
 
-/// An account repository service has access to the collection of [Account]s
+/// An account repository has access to the collection of [Account]s
 /// known to your application.
-pub trait AccountRepositoryService<R, G>
+pub trait AccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
     G: Eq,

@@ -4,9 +4,8 @@ use super::TableNames;
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::VerificationResult;
-use crate::infrastructure::services::{
-    AccountRepositoryService, CredentialsVerifierService, SecretRepositoryService,
-};
+use crate::infrastructure::services::{CredentialsVerifierService, SecretRepositoryService};
+use crate::ports::repositories::AccountRepository;
 use crate::{Account, Credentials, Error};
 
 use std::default::Default;
@@ -67,7 +66,7 @@ where
     }
 }
 
-impl<R, G, S> AccountRepositoryService<R, G> for SurrealDbRepository<S>
+impl<R, G, S> AccountRepository<R, G> for SurrealDbRepository<S>
 where
     R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
     G: Serialize + DeserializeOwned + Eq + 'static,

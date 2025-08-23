@@ -27,10 +27,13 @@ pub use domain::services::permissions::validation::{
     ApplicationValidator, PermissionCollision, PermissionCollisionChecker, ValidationReport,
 };
 
+// Port definitions
+pub use ports::repositories::AccountRepository;
+
 // Infrastructure services users need
 pub use infrastructure::services::{
-    AccountDeleteService, AccountInsertService, AccountRepositoryService, CodecService,
-    CredentialsVerifierService, SecretRepositoryService,
+    AccountDeleteService, AccountInsertService, CodecService, CredentialsVerifierService,
+    SecretRepositoryService,
 };
 
 // Repository implementations

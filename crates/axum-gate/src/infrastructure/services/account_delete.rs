@@ -1,5 +1,6 @@
 use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::services::{AccountRepositoryService, SecretRepositoryService};
+use crate::infrastructure::services::SecretRepositoryService;
+use crate::ports::repositories::AccountRepository;
 use crate::{Account, Error};
 
 use std::sync::Arc;
@@ -32,7 +33,7 @@ where
         secret_repository: Arc<SecRepo>,
     ) -> Result<()>
     where
-        AccRepo: AccountRepositoryService<R, G>,
+        AccRepo: AccountRepository<R, G>,
         SecRepo: SecretRepositoryService,
     {
         if !secret_repository

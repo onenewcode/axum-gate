@@ -4,9 +4,8 @@ use crate::Credentials;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
-use crate::infrastructure::services::{
-    AccountRepositoryService, CredentialsVerifierService, SecretRepositoryService,
-};
+use crate::infrastructure::services::{CredentialsVerifierService, SecretRepositoryService};
+use crate::ports::repositories::AccountRepository;
 use crate::{
     Account, Error, infrastructure::storage::sea_orm::models::account as seaorm_account,
     infrastructure::storage::sea_orm::models::credentials as seaorm_credentials,
@@ -34,7 +33,7 @@ impl SeaOrmRepository {
     }
 }
 
-impl<R, G> AccountRepositoryService<R, G> for SeaOrmRepository
+impl<R, G> AccountRepository<R, G> for SeaOrmRepository
 where
     R: AccessHierarchy + Eq + Serialize + DeserializeOwned + std::fmt::Display + Clone,
     G: Eq + Clone,

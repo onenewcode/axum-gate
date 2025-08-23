@@ -7,9 +7,8 @@ use crate::domain::services::permissions::PermissionChecker;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::hashing::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
-use crate::infrastructure::services::{
-    AccountRepositoryService, CodecService, CredentialsVerifierService,
-};
+use crate::infrastructure::services::{CodecService, CredentialsVerifierService};
+use crate::ports::repositories::AccountRepository;
 
 use std::sync::Arc;
 
@@ -33,7 +32,7 @@ where
     R: AccessHierarchy + Eq,
     G: Eq,
     CredVeri: CredentialsVerifierService<Uuid>,
-    AccRepo: AccountRepositoryService<R, G>,
+    AccRepo: AccountRepository<R, G>,
     Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
 {
     let creds = request_credentials.0;

@@ -3,9 +3,8 @@
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
-use crate::infrastructure::services::{
-    AccountRepositoryService, CredentialsVerifierService, SecretRepositoryService,
-};
+use crate::infrastructure::services::{CredentialsVerifierService, SecretRepositoryService};
+use crate::ports::repositories::AccountRepository;
 use crate::{Account, Credentials, Error};
 
 use std::collections::HashMap;
@@ -54,7 +53,7 @@ where
     }
 }
 
-impl<R, G> AccountRepositoryService<R, G> for MemoryAccountRepository<R, G>
+impl<R, G> AccountRepository<R, G> for MemoryAccountRepository<R, G>
 where
     Account<R, G>: Clone,
     R: AccessHierarchy + Eq,
@@ -90,7 +89,7 @@ where
 /// # use axum_gate::{VerificationResult, Argon2Hasher};
 /// # use axum_gate::memory::MemorySecretRepository;
 /// # use uuid::Uuid;
-/// // The account id needs to be queried from an AccountRepositoryService.
+/// // The account id needs to be queried from an AccountRepository.
 /// // We generate it for this easy example.
 /// let account_id = Uuid::now_v7();
 /// let password = "admin_password";
