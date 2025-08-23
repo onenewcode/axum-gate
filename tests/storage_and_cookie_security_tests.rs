@@ -1,6 +1,6 @@
 use axum_gate::cookie::CookieBuilder;
 use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
-use axum_gate::{AccountInsertService, AccountDeleteService, AccountRepository, SecretRepositoryService, CredentialsVerifierService};
+use axum_gate::{AccountInsertService, AccountDeleteService, AccountRepository, SecretRepository, CredentialsVerifierService};
 use axum_gate::{Argon2Hasher, VerificationResult};
 use axum_gate::Secret;
 use axum_gate::AccessHierarchy;

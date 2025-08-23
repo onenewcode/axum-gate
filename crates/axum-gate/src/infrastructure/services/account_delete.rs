@@ -1,6 +1,6 @@
 use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::services::SecretRepositoryService;
 use crate::ports::repositories::AccountRepository;
+use crate::ports::repositories::SecretRepository;
 use crate::{Account, Error};
 
 use std::sync::Arc;
@@ -34,7 +34,7 @@ where
     ) -> Result<()>
     where
         AccRepo: AccountRepository<R, G>,
-        SecRepo: SecretRepositoryService,
+        SecRepo: SecretRepository,
     {
         if !secret_repository
             .delete_secret(&self.account.account_id)

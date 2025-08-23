@@ -3,8 +3,8 @@
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
-use crate::infrastructure::services::{CredentialsVerifierService, SecretRepositoryService};
-use crate::ports::repositories::AccountRepository;
+use crate::infrastructure::services::CredentialsVerifierService;
+use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{Account, Credentials, Error};
 
 use std::collections::HashMap;
@@ -85,7 +85,7 @@ where
 /// # Create and use a credential repository for authentication
 /// ```rust
 /// # tokio_test::block_on(async move {
-/// # use axum_gate::{Credentials, SecretRepositoryService, Secret};
+/// # use axum_gate::{Credentials, SecretRepository, Secret};
 /// # use axum_gate::{VerificationResult, Argon2Hasher};
 /// # use axum_gate::memory::MemorySecretRepository;
 /// # use uuid::Uuid;
@@ -130,7 +130,7 @@ impl From<Vec<Secret>> for MemorySecretRepository {
     }
 }
 
-impl SecretRepositoryService for MemorySecretRepository {
+impl SecretRepository for MemorySecretRepository {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let already_present = {
             let read = self.store.read().await;

@@ -11,8 +11,8 @@ pub enum Error {
     #[error("Hashing error: {0}")]
     Hashing(String),
     /// This error occurs in combination with a
-    /// [SecretRepository](crate::services::SecretRepositoryService) operation.
-    #[error("SecretRepositoryService error: {0}")]
+    /// [SecretRepository](crate::ports::repositories::SecretRepository) operation.
+    #[error("SecretRepository error: {0}")]
     SecretRepository(String),
     /// This error occurs in combination with a
     /// [AccountRepository](crate::ports::repositories::AccountRepository) operation.

@@ -5,8 +5,10 @@
 //! must be implemented by infrastructure layer adapters.
 
 mod account;
+mod secret;
 
 pub use account::AccountRepository;
+pub use secret::SecretRepository;
 
 // TODO: Define additional repository traits
 // - CredentialsRepository: For credential storage and retrieval

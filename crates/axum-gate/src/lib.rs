@@ -28,12 +28,11 @@ pub use domain::services::permissions::validation::{
 };
 
 // Port definitions
-pub use ports::repositories::AccountRepository;
+pub use ports::repositories::{AccountRepository, SecretRepository};
 
 // Infrastructure services users need
 pub use infrastructure::services::{
     AccountDeleteService, AccountInsertService, CodecService, CredentialsVerifierService,
-    SecretRepositoryService,
 };
 
 // Repository implementations

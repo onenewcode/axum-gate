@@ -16,7 +16,7 @@ where
     /// The unique identifier of the account which has been generated on registration.
     ///
     /// This identifier is the loose connection to the [Secret](crate::secrets::Secret) in
-    /// a [SecretRepositoryService](crate::services::SecretRepositoryService).
+    /// a [SecretRepository](crate::ports::repositories::SecretRepository).
     pub account_id: Uuid,
     /// The user id for this account. This should be unique within your application.
     pub user_id: String,

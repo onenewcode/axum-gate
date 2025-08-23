@@ -1,7 +1,7 @@
 use crate::{
     Account, Error, domain::traits::AccessHierarchy, domain::values::secrets::Secret,
-    infrastructure::hashing::Argon2Hasher, infrastructure::services::SecretRepositoryService,
-    ports::repositories::AccountRepository,
+    infrastructure::hashing::Argon2Hasher, ports::repositories::AccountRepository,
+    ports::repositories::SecretRepository,
 };
 
 use std::sync::Arc;
@@ -78,7 +78,7 @@ where
     ) -> Result<Option<Account<R, G>>>
     where
         AccRepo: AccountRepository<R, G>,
-        SecRepo: SecretRepositoryService,
+        SecRepo: SecretRepository,
     {
         let account = Account::new(&self.user_id, &self.roles, &self.groups)
             .with_permissions(self.permissions);

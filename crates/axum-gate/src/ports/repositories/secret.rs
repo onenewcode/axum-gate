@@ -1,10 +1,11 @@
 use crate::domain::values::secrets::Secret;
 
 use anyhow::Result;
+use std::future::Future;
 use uuid::Uuid;
 
 /// Responsible for the repository of secrets.
-pub trait SecretRepositoryService {
+pub trait SecretRepository {
     /// Stores the secret.
     ///
     /// Returns `true` on success, `false` if the [Secret::account_id]

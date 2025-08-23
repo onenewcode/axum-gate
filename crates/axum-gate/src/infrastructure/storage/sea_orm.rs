@@ -4,8 +4,8 @@ use crate::Credentials;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
-use crate::infrastructure::services::{CredentialsVerifierService, SecretRepositoryService};
-use crate::ports::repositories::AccountRepository;
+use crate::infrastructure::services::CredentialsVerifierService;
+use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{
     Account, Error, infrastructure::storage::sea_orm::models::account as seaorm_account,
     infrastructure::storage::sea_orm::models::credentials as seaorm_credentials,
@@ -108,7 +108,7 @@ where
     }
 }
 
-impl SecretRepositoryService for SeaOrmRepository {
+impl SecretRepository for SeaOrmRepository {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let model = seaorm_credentials::ActiveModel::from(secret);
         let _ = model
