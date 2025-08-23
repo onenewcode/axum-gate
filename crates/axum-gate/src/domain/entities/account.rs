@@ -16,7 +16,7 @@ where
     /// The unique identifier of the account which has been generated on registration.
     ///
     /// This identifier is the loose connection to the [Secret](crate::secrets::Secret) in
-    /// a [SecretStorageService](crate::services::SecretStorageService).
+    /// a [SecretRepositoryService](crate::services::SecretRepositoryService).
     pub account_id: Uuid,
     /// The user id for this account. This should be unique within your application.
     pub user_id: String,
@@ -49,7 +49,7 @@ where
 
     /// Creates a new account with the given `account_id`.
     ///
-    /// This is only used to transform the result of a storage query into the [Account] model.
+    /// This is only used to transform the result of a repository query into the [Account] model.
     pub fn new_with_account_id(
         account_id: &Uuid,
         user_id: &str,

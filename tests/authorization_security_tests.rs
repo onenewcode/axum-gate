@@ -1,7 +1,7 @@
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use axum_gate::services::AccountInsertService;
-use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
+use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use axum_gate::AccountInsertService;
+use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
 use axum_gate::{Account, Credentials, Gate, Group, Role, cookie};
 
 use std::sync::Arc;
@@ -52,15 +52,15 @@ async fn setup_test_app() -> Router {
         }),
     );
 
-    let account_storage = Arc::new(MemoryAccountStorage::default());
-    let secrets_storage = Arc::new(MemorySecretStorage::default());
+    let account_repository = Arc::new(MemoryAccountRepository::default());
+    let secrets_repository = Arc::new(MemorySecretRepository::default());
 
     // Create test users with different roles and permissions
     AccountInsertService::insert("admin@test.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
         .with_permissions(vec![TestPermission::AdminAccess])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(Arc::clone(&account_repository), Arc::clone(&secrets_repository))
         .await
         .unwrap();
 
@@ -68,7 +68,7 @@ async fn setup_test_app() -> Router {
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("users")])
         .with_permissions(vec![TestPermission::ReadData])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(Arc::clone(&account_repository), Arc::clone(&secrets_repository))
         .await
         .unwrap();
 
@@ -115,8 +115,8 @@ async fn setup_test_app() -> Router {
                     ISSUER,
                     (Utc::now() + TimeDelta::hours(1)).timestamp() as u64,
                 );
-                let secrets_storage = Arc::clone(&secrets_storage);
-                let account_storage = Arc::clone(&account_storage);
+                let secrets_repository = Arc::clone(&secrets_repository);
+                let account_repository = Arc::clone(&account_repository);
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String>>| {
@@ -124,8 +124,8 @@ async fn setup_test_app() -> Router {
                         cookie_jar,
                         request_credentials,
                         registered_claims,
-                        secrets_storage,
-                        account_storage,
+                        secrets_repository,
+                        account_repository,
                         jwt_codec,
                         cookie_template,
                     )
@@ -297,7 +297,7 @@ mod authorization_bypass_tests {
             .unwrap();
 
         let cookie_header = login_response.headers().get("set-cookie").unwrap().to_str().unwrap();
-        
+
         // Extract the JWT value from the Set-Cookie header
         let jwt_start = cookie_header.find('=').unwrap() + 1;
         let jwt_end = cookie_header.find(';').unwrap_or(cookie_header.len());
@@ -363,7 +363,7 @@ mod input_validation_tests {
 
             // Should return 400 Bad Request or 422 Unprocessable Entity
             assert!(
-                response.status() == StatusCode::BAD_REQUEST || 
+                response.status() == StatusCode::BAD_REQUEST ||
                 response.status() == StatusCode::UNPROCESSABLE_ENTITY,
                 "Malformed JSON '{}' should be rejected", payload
             );
@@ -403,7 +403,7 @@ mod input_validation_tests {
 
             // Should return NOT_FOUND (user doesn't exist) or UNAUTHORIZED
             assert!(
-                response.status() == StatusCode::NOT_FOUND || 
+                response.status() == StatusCode::NOT_FOUND ||
                 response.status() == StatusCode::UNAUTHORIZED,
                 "SQL injection attempt '{}' should be safely handled", injection_attempt
             );
@@ -435,7 +435,7 @@ mod input_validation_tests {
 
         // Should handle gracefully without crashing
         assert!(
-            response.status() == StatusCode::NOT_FOUND || 
+            response.status() == StatusCode::NOT_FOUND ||
             response.status() == StatusCode::UNAUTHORIZED ||
             response.status() == StatusCode::BAD_REQUEST
         );
@@ -470,7 +470,7 @@ mod input_validation_tests {
 
             // Should handle Unicode gracefully
             assert!(
-                response.status() == StatusCode::NOT_FOUND || 
+                response.status() == StatusCode::NOT_FOUND ||
                 response.status() == StatusCode::UNAUTHORIZED,
                 "Unicode credentials should be handled safely"
             );

@@ -3,8 +3,8 @@ use crate::domain::values::secrets::Secret;
 use anyhow::Result;
 use uuid::Uuid;
 
-/// Responsible for the storage of secrets.
-pub trait SecretStorageService {
+/// Responsible for the repository of secrets.
+pub trait SecretRepositoryService {
     /// Stores the secret.
     ///
     /// Returns `true` on success, `false` if the [Secret::account_id]

@@ -1,7 +1,7 @@
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use axum_gate::services::AccountInsertService;
-use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
+use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use axum_gate::AccountInsertService;
+use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
 use axum_gate::{Account, Credentials, Gate, Group, Role, cookie};
 use http::HeaderValue;
 use http::header;
@@ -72,19 +72,19 @@ async fn admin(Extension(user): Extension<Account<Role, Group>>) -> Result<Strin
 }
 
 async fn build_storages() -> (
-    Arc<MemoryAccountStorage<Role, Group>>,
-    Arc<MemorySecretStorage>,
+    Arc<MemoryAccountRepository<Role, Group>>,
+    Arc<MemorySecretRepository>,
 ) {
-    let account_storage = Arc::new(MemoryAccountStorage::default());
-    debug!("Account storage initialized.");
-    let secrets_storage = Arc::new(MemorySecretStorage::default());
-    debug!("Secrets storage initialized.");
+    let account_repository = Arc::new(MemoryAccountRepository::from(vec![]));
+    debug!("Account repository initialized.");
+    let secrets_repository = Arc::new(MemorySecretRepository::default());
+    debug!("Secrets repository initialized.");
 
     AccountInsertService::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
         .with_permissions(vec![AdditionalPermission::ReadApi])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(Arc::clone(&account_repository), Arc::clone(&secrets_repository))
         .await
         .unwrap();
     debug!("Inserted Admin.");
@@ -101,12 +101,12 @@ async fn build_storages() -> (
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
         .with_permissions(vec![AdditionalPermission::ReadApi])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(Arc::clone(&account_repository), Arc::clone(&secrets_repository))
         .await
         .unwrap();
     debug!("Inserted User.");
 
-    (account_storage, secrets_storage)
+    (account_repository, secrets_repository)
 }
 
 async fn setup_dummy_app() -> Router {
@@ -120,7 +120,7 @@ async fn setup_dummy_app() -> Router {
         }),
     );
 
-    let (account_storage, secrets_storage) = build_storages().await;
+    let (account_repository, secrets_repository) = build_storages().await;
 
     let cookie_template = cookie::CookieBuilder::new(COOKIE_NAME, "").secure(true);
 
@@ -177,8 +177,8 @@ async fn setup_dummy_app() -> Router {
                         cookie_jar,
                         request_credentials,
                         registered_claims,
-                        secrets_storage,
-                        account_storage,
+                        secrets_repository,
+                        account_repository,
                         jwt_codec,
                         cookie_template,
                     )

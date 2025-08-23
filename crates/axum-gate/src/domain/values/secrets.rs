@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 /// Represents a secret that is bound to an [Account](crate::Account) by its [account_id](crate::Account::account_id).
 ///
-/// The `account_id` needs to be queried from an [AccountStorage](crate::services::AccountStorageService) to be able to create a correct secret.
+/// The `account_id` needs to be queried from an [AccountRepository](crate::services::AccountRepositoryService) to be able to create a correct secret.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Secret {
     /// The [account id](crate::Account::account_id) that this secret belongs to.

@@ -41,7 +41,7 @@ use tracing::{info, warn};
 /// ## Basic validation with post-analysis
 ///
 /// ```
-/// use axum_gate::permissions::PermissionCollisionChecker;
+/// use axum_gate::PermissionCollisionChecker;
 ///
 /// let permissions = vec![
 ///     "user:read".to_string(),
@@ -71,7 +71,7 @@ use tracing::{info, warn};
 /// ## Runtime permission updates
 ///
 /// ```
-/// use axum_gate::permissions::PermissionCollisionChecker;
+/// use axum_gate::PermissionCollisionChecker;
 ///
 /// fn update_permissions(new_permissions: Vec<String>) -> anyhow::Result<()> {
 ///     let mut checker = PermissionCollisionChecker::new(new_permissions);
@@ -124,7 +124,7 @@ impl PermissionCollisionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::permissions::PermissionCollisionChecker;
+    /// use axum_gate::PermissionCollisionChecker;
     ///
     /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
     /// let mut checker = PermissionCollisionChecker::new(permissions);
@@ -418,7 +418,7 @@ impl ValidationReport {
 /// ## Application startup validation
 ///
 /// ```
-/// use axum_gate::permissions::ApplicationValidator;
+/// use axum_gate::ApplicationValidator;
 ///
 /// # fn load_config_permissions() -> Vec<String> { vec!["user:read".to_string()] }
 /// # async fn load_db_permissions() -> anyhow::Result<Vec<String>> { Ok(vec!["admin:write".to_string()]) }
@@ -445,7 +445,7 @@ impl ValidationReport {
 /// ## Simple validation workflow
 ///
 /// ```
-/// use axum_gate::permissions::ApplicationValidator;
+/// use axum_gate::ApplicationValidator;
 ///
 /// // For simple cases where you just need pass/fail validation
 /// let report = ApplicationValidator::new()
@@ -462,7 +462,7 @@ impl ValidationReport {
 /// ## Comparison with PermissionCollisionChecker
 ///
 /// ```
-/// use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker};
+/// use axum_gate::{ApplicationValidator, PermissionCollisionChecker};
 ///
 /// let permissions = vec!["user:read".to_string(), "user:write".to_string()];
 ///

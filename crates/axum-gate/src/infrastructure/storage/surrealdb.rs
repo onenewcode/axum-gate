@@ -1,11 +1,11 @@
-//! Storage implementations that use surrealdb as backend.
+//! Repository implementations that use surrealdb as backend.
 
 use super::TableNames;
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::VerificationResult;
 use crate::infrastructure::services::{
-    AccountStorageService, CredentialsVerifierService, SecretStorageService,
+    AccountRepositoryService, CredentialsVerifierService, SecretRepositoryService,
 };
 use crate::{Account, Credentials, Error};
 
@@ -38,9 +38,9 @@ impl Default for DatabaseScope {
     }
 }
 
-/// A storage that uses [surrealdb] as backend.
+/// A repository that uses [surrealdb] as backend.
 #[derive(Clone)]
-pub struct SurrealDbStorage<S>
+pub struct SurrealDbRepository<S>
 where
     S: Connection,
 {
@@ -48,11 +48,11 @@ where
     scope_settings: DatabaseScope,
 }
 
-impl<S> SurrealDbStorage<S>
+impl<S> SurrealDbRepository<S>
 where
     S: Connection,
 {
-    /// Creates a new storage that uses the given database connection limited by the given scope.
+    /// Creates a new repository that uses the given database connection limited by the given scope.
     pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Self {
         Self { db, scope_settings }
     }
@@ -63,11 +63,11 @@ where
             .use_ns(&self.scope_settings.namespace)
             .use_db(&self.scope_settings.database)
             .await
-            .map_err(|e| anyhow!(Error::Storage(e.to_string())))
+            .map_err(|e| anyhow!(Error::Repository(e.to_string())))
     }
 }
 
-impl<R, G, S> AccountStorageService<R, G> for SurrealDbStorage<S>
+impl<R, G, S> AccountRepositoryService<R, G> for SurrealDbRepository<S>
 where
     R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
     G: Serialize + DeserializeOwned + Eq + 'static,
@@ -82,7 +82,7 @@ where
                 user_id,
             ))
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+            .map_err(|e| Error::AccountRepository(e.to_string()))?;
         Ok(db_account)
     }
 
@@ -95,7 +95,7 @@ where
             .insert(record_id)
             .content(account)
             .await
-            .map_err(|e| Error::AccountStorage(format!("Could not insert account: {e}")))?;
+            .map_err(|e| Error::AccountRepository(format!("Could not insert account: {e}")))?;
         Ok(db_account)
     }
 
@@ -108,7 +108,7 @@ where
                 user_id,
             ))
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+            .map_err(|e| Error::AccountRepository(e.to_string()))?;
         Ok(db_account)
     }
 
@@ -121,7 +121,7 @@ where
     }
 }
 
-impl<S> SecretStorageService for SurrealDbStorage<S>
+impl<S> SecretRepositoryService for SurrealDbRepository<S>
 where
     S: Connection,
 {
@@ -138,7 +138,7 @@ where
             .insert(&record_id)
             .content(secret)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         Ok(db_credentials.is_some())
     }
 
@@ -149,7 +149,7 @@ where
             .db
             .delete(record_id)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         Ok(result.is_some())
     }
 
@@ -165,12 +165,12 @@ where
             .update(record_id)
             .content(secret)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         Ok(())
     }
 }
 
-impl<S, Id> CredentialsVerifierService<Id> for SurrealDbStorage<S>
+impl<S, Id> CredentialsVerifierService<Id> for SurrealDbRepository<S>
 where
     S: Connection,
     Id: Into<RecordIdKey>,
@@ -187,41 +187,44 @@ where
             .bind(("record_id", record_id))
             .bind(("request_secret", credentials.secret))
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         let result: Option<bool> = response
             .take(0)
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
 
         Ok(VerificationResult::from(result.unwrap_or(false)))
     }
 }
 
 #[test]
-fn secret_storage() {
+fn secret_repository() {
     tokio_test::block_on(async move {
         use crate::infrastructure::hashing::Argon2Hasher;
         use surrealdb::engine::local::Mem;
 
-        // create a storage
+        // create a repository
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
-        let creds_storage = SurrealDbStorage::new(db, DatabaseScope::default());
+        let creds_repository = SurrealDbRepository::new(db, DatabaseScope::default());
         let id = Uuid::now_v7();
 
         let creds = Secret::new(&id, "admin_password", Argon2Hasher).unwrap();
 
-        creds_storage.store_secret(creds).await.unwrap();
+        creds_repository.store_secret(creds).await.unwrap();
 
         let creds_to_verify = Credentials::new(&id, "admin_password");
         let wrong_creds = Credentials::new(&id, "admin_passwordwrong");
         assert_eq!(
             VerificationResult::Unauthorized,
-            creds_storage.verify_credentials(wrong_creds).await.unwrap()
+            creds_repository
+                .verify_credentials(wrong_creds)
+                .await
+                .unwrap()
         );
         assert_eq!(
             VerificationResult::Ok,
-            creds_storage
+            creds_repository
                 .verify_credentials(creds_to_verify)
                 .await
                 .unwrap()
@@ -230,7 +233,7 @@ fn secret_storage() {
 }
 
 #[test]
-fn account_storage() {
+fn account_repository() {
     tokio_test::block_on(async move {
         use crate::{Account, Group, Role};
         use surrealdb::engine::local::Mem;
@@ -238,20 +241,20 @@ fn account_storage() {
         let db = Surreal::new::<Mem>(())
             .await
             .expect("Could not create in memory database.");
-        let account_storage = SurrealDbStorage::new(db, DatabaseScope::default());
+        let account_repository = SurrealDbRepository::new(db, DatabaseScope::default());
 
         let account = Account::new(
             "mymail@accountid-example.com",
             &[Role::Admin],
             &[Group::new("admin"), Group::new("audio")],
         );
-        let account = account_storage
+        let account = account_repository
             .store_account(account)
             .await
             .unwrap()
             .unwrap();
 
-        let Some(db_account): Option<Account<Role, Group>> = account_storage
+        let Some(db_account): Option<Account<Role, Group>> = account_repository
             .query_account_by_user_id(&account.user_id)
             .await
             .unwrap()
@@ -261,7 +264,7 @@ fn account_storage() {
 
         assert_eq!(account.account_id, db_account.account_id);
 
-        let Some(account): Option<Account<Role, Group>> = account_storage
+        let Some(account): Option<Account<Role, Group>> = account_repository
             .delete_account(&account.user_id)
             .await
             .unwrap()
@@ -269,7 +272,7 @@ fn account_storage() {
             panic!("Removing passport was not successful.");
         };
 
-        let account: Option<Account<Role, Group>> = account_storage
+        let account: Option<Account<Role, Group>> = account_repository
             .query_account_by_user_id(&account.user_id)
             .await
             .unwrap();

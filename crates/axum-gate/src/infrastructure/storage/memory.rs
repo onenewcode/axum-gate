@@ -1,10 +1,10 @@
-//! Storage implementations using the memory as backend.
+//! Repository implementations using the memory as backend.
 
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
 use crate::infrastructure::services::{
-    AccountStorageService, CredentialsVerifierService, SecretStorageService,
+    AccountRepositoryService, CredentialsVerifierService, SecretRepositoryService,
 };
 use crate::{Account, Credentials, Error};
 
@@ -16,9 +16,9 @@ use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
-/// A [MemoryAccountStorage] is a data structure where all [Account]s are stored in memory.
+/// A [MemoryAccountRepository] is a data structure where all [Account]s are stored in memory.
 #[derive(Clone)]
-pub struct MemoryAccountStorage<R, G>
+pub struct MemoryAccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
     G: Eq,
@@ -26,7 +26,7 @@ where
     accounts: Arc<RwLock<HashMap<String, Account<R, G>>>>,
 }
 
-impl<R, G> Default for MemoryAccountStorage<R, G>
+impl<R, G> Default for MemoryAccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
     G: Eq,
@@ -38,7 +38,7 @@ where
     }
 }
 
-impl<R, G> From<Vec<Account<R, G>>> for MemoryAccountStorage<R, G>
+impl<R, G> From<Vec<Account<R, G>>> for MemoryAccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
     G: Eq,
@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<R, G> AccountStorageService<R, G> for MemoryAccountStorage<R, G>
+impl<R, G> AccountRepositoryService<R, G> for MemoryAccountRepository<R, G>
 where
     Account<R, G>: Clone,
     R: AccessHierarchy + Eq,
@@ -83,38 +83,36 @@ where
 }
 /// Stores secrets in memory for authentication.
 ///
-/// # Create and use a credential storage for authentication
+/// # Create and use a credential repository for authentication
 /// ```rust
 /// # tokio_test::block_on(async move {
-/// # use axum_gate::Credentials;
-/// # use axum_gate::hashing::{VerificationResult, Argon2Hasher};
-/// # use axum_gate::services::SecretStorageService;
-/// # use axum_gate::secrets::Secret;
-/// # use axum_gate::storage::memory::MemorySecretStorage;
+/// # use axum_gate::{Credentials, SecretRepositoryService, Secret};
+/// # use axum_gate::{VerificationResult, Argon2Hasher};
+/// # use axum_gate::memory::MemorySecretRepository;
 /// # use uuid::Uuid;
-/// // The account id needs to be queried from an AccountStorageService.
+/// // The account id needs to be queried from an AccountRepositoryService.
 /// // We generate it for this easy example.
 /// let account_id = Uuid::now_v7();
 /// let password = "admin_password";
 /// let creds = Secret::new(&account_id, password, Argon2Hasher).unwrap();
-/// // We can create a storage from a Vec<Secret>.
-/// let creds_storage = MemorySecretStorage::try_from(vec![creds.clone()]).unwrap();
+/// // We can create a repository from a Vec<Secret>.
+/// let creds_repository = MemorySecretRepository::try_from(vec![creds.clone()]).unwrap();
 /// // We can add another secret.
 /// let creds = Secret::new(&Uuid::now_v7(), "changed-admin-password", Argon2Hasher).unwrap();
-/// creds_storage.store_secret(creds).await.unwrap();
+/// creds_repository.store_secret(creds).await.unwrap();
 /// let creds = Secret::new(&account_id, "changed-admin-password", Argon2Hasher).unwrap();
-/// // We can update the secret in the storage.
-/// creds_storage.update_secret(creds).await.unwrap();
+/// // We can update the secret in the repository.
+/// creds_repository.update_secret(creds).await.unwrap();
 /// // Or we can delete it if we want to.
-/// creds_storage.delete_secret(&account_id).await.unwrap();
+/// creds_repository.delete_secret(&account_id).await.unwrap();
 /// # });
 /// ```
 #[derive(Clone)]
-pub struct MemorySecretStorage {
+pub struct MemorySecretRepository {
     store: Arc<RwLock<HashMap<Uuid, Secret>>>,
 }
 
-impl Default for MemorySecretStorage {
+impl Default for MemorySecretRepository {
     fn default() -> Self {
         Self {
             store: Arc::new(RwLock::new(HashMap::new())),
@@ -122,7 +120,7 @@ impl Default for MemorySecretStorage {
     }
 }
 
-impl From<Vec<Secret>> for MemorySecretStorage {
+impl From<Vec<Secret>> for MemorySecretRepository {
     fn from(value: Vec<Secret>) -> Self {
         let mut store = HashMap::with_capacity(value.len());
         value.into_iter().for_each(|v| {
@@ -133,7 +131,7 @@ impl From<Vec<Secret>> for MemorySecretStorage {
     }
 }
 
-impl SecretStorageService for MemorySecretStorage {
+impl SecretRepositoryService for MemorySecretRepository {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let already_present = {
             let read = self.store.read().await;
@@ -141,16 +139,16 @@ impl SecretStorageService for MemorySecretStorage {
         };
 
         if already_present {
-            return Err(anyhow!(Error::SecretStorage(
+            return Err(anyhow!(Error::SecretRepository(
                 "AccountID is already present.".to_string()
             )));
         }
 
         let mut write = self.store.write().await;
-        debug!("Got write lock on secret storage.");
+        debug!("Got write lock on secret repository.");
 
         if write.insert(secret.account_id, secret).is_some() {
-            return Err(anyhow!(Error::SecretStorage("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
+            return Err(anyhow!(Error::SecretRepository("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
         };
         Ok(true)
     }
@@ -167,7 +165,7 @@ impl SecretStorageService for MemorySecretStorage {
     }
 }
 
-impl CredentialsVerifierService<Uuid> for MemorySecretStorage {
+impl CredentialsVerifierService<Uuid> for MemorySecretRepository {
     async fn verify_credentials(
         &self,
         credentials: Credentials<Uuid>,

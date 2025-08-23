@@ -2,7 +2,7 @@ use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::{Account, Credentials, Group, Role, cookie};
 use axum_gate::{
     AccountInsertService,
-    surrealdb::{DatabaseScope, SurrealDbStorage},
+    surrealdb::{DatabaseScope, SurrealDbRepository},
 };
 use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 
@@ -38,15 +38,18 @@ async fn main() {
         .await
         .expect(&format!("Could not connect to surrealdb memory database."));
 
-    let account_storage = Arc::new(SurrealDbStorage::new(db, DatabaseScope::default()));
-    debug!("Account storage initialized.");
-    let secrets_storage = Arc::clone(&account_storage);
-    debug!("Secrets storage initialized.");
+    let account_repository = Arc::new(SurrealDbRepository::new(db, DatabaseScope::default()));
+    debug!("Account repository initialized.");
+    let secrets_repository = Arc::clone(&account_repository);
+    debug!("Secrets repository initialized.");
 
     AccountInsertService::insert("admin@example.com", "admin_password")
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(
+            Arc::clone(&account_repository),
+            Arc::clone(&secrets_repository),
+        )
         .await
         .unwrap();
     debug!("Inserted Admin.");
@@ -54,7 +57,10 @@ async fn main() {
     AccountInsertService::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(
+            Arc::clone(&account_repository),
+            Arc::clone(&secrets_repository),
+        )
         .await
         .unwrap();
     debug!("Inserted Reporter.");
@@ -62,7 +68,10 @@ async fn main() {
     AccountInsertService::insert("user@example.com", "user_password")
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(
+            Arc::clone(&account_repository),
+            Arc::clone(&secrets_repository),
+        )
         .await
         .unwrap();
     debug!("Inserted User.");
@@ -78,8 +87,8 @@ async fn main() {
                     "auth-node",
                     (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
                 );
-                let secrets_storage = Arc::clone(&secrets_storage);
-                let account_storage = Arc::clone(&account_storage);
+                let secrets_repository = Arc::clone(&secrets_repository);
+                let account_repository = Arc::clone(&account_repository);
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String>>| {
@@ -87,8 +96,8 @@ async fn main() {
                         cookie_jar,
                         request_credentials,
                         registered_claims,
-                        secrets_storage,
-                        account_storage,
+                        secrets_repository,
+                        account_repository,
                         jwt_codec,
                         cookie_template,
                     )

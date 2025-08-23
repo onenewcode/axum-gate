@@ -1,11 +1,11 @@
-//! Support for SQL database storage through [sea-orm](sea_orm).
+//! Support for SQL database repository through [sea-orm](sea_orm).
 
 use crate::Credentials;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use crate::domain::values::secrets::Secret;
 use crate::infrastructure::hashing::{Argon2Hasher, VerificationResult};
 use crate::infrastructure::services::{
-    AccountStorageService, CredentialsVerifierService, SecretStorageService,
+    AccountRepositoryService, CredentialsVerifierService, SecretRepositoryService,
 };
 use crate::{
     Account, Error, infrastructure::storage::sea_orm::models::account as seaorm_account,
@@ -22,19 +22,19 @@ use uuid::Uuid;
 
 pub mod models;
 
-/// Storage implementation for [sea-orm](sea_orm).
-pub struct SeaOrmStorage {
+/// Repository implementation for [sea-orm](sea_orm).
+pub struct SeaOrmRepository {
     db: DatabaseConnection,
 }
 
-impl SeaOrmStorage {
-    /// Creates a new storage that uses the given database connection as backend.
+impl SeaOrmRepository {
+    /// Creates a new repository that uses the given database connection as backend.
     pub fn new(db: &DatabaseConnection) -> Self {
         Self { db: db.clone() }
     }
 }
 
-impl<R, G> AccountStorageService<R, G> for SeaOrmStorage
+impl<R, G> AccountRepositoryService<R, G> for SeaOrmRepository
 where
     R: AccessHierarchy + Eq + Serialize + DeserializeOwned + std::fmt::Display + Clone,
     G: Eq + Clone,
@@ -46,13 +46,13 @@ where
             .filter(seaorm_account::Column::UserId.eq(user_id))
             .one(&self.db)
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?
+            .map_err(|e| Error::AccountRepository(e.to_string()))?
         else {
             return Ok(None);
         };
 
         Ok(Some(
-            Account::try_from(model).map_err(|e| Error::Storage(e.to_string()))?,
+            Account::try_from(model).map_err(|e| Error::Repository(e.to_string()))?,
         ))
     }
 
@@ -62,9 +62,9 @@ where
         let model = model
             .insert(&self.db)
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+            .map_err(|e| Error::AccountRepository(e.to_string()))?;
         Ok(Some(
-            Account::try_from(model).map_err(|e| Error::Storage(e.to_string()))?,
+            Account::try_from(model).map_err(|e| Error::Repository(e.to_string()))?,
         ))
     }
 
@@ -73,7 +73,7 @@ where
             .filter(seaorm_account::Column::UserId.eq(user_id))
             .one(&self.db)
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?
+            .map_err(|e| Error::AccountRepository(e.to_string()))?
         else {
             return Ok(None);
         };
@@ -81,10 +81,10 @@ where
         seaorm_account::Entity::delete_by_id(model.id)
             .exec(&self.db)
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+            .map_err(|e| Error::AccountRepository(e.to_string()))?;
 
         Ok(Some(
-            Account::try_from(model).map_err(|e| Error::AccountStorage(e.to_string()))?,
+            Account::try_from(model).map_err(|e| Error::AccountRepository(e.to_string()))?,
         ))
     }
 
@@ -102,30 +102,30 @@ where
         let model = db_account
             .update(&self.db)
             .await
-            .map_err(|e| Error::AccountStorage(e.to_string()))?;
+            .map_err(|e| Error::AccountRepository(e.to_string()))?;
         Ok(Some(
-            Account::try_from(model).map_err(|e| Error::AccountStorage(e.to_string()))?,
+            Account::try_from(model).map_err(|e| Error::AccountRepository(e.to_string()))?,
         ))
     }
 }
 
-impl SecretStorageService for SeaOrmStorage {
+impl SecretRepositoryService for SeaOrmRepository {
     async fn store_secret(&self, secret: Secret) -> Result<bool> {
         let model = seaorm_credentials::ActiveModel::from(secret);
         let _ = model
             .insert(&self.db)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         Ok(true)
     }
 
-    /// The credentials `account_id` needs to be queried from the account storage.
+    /// The credentials `account_id` needs to be queried from the account repository.
     async fn delete_secret(&self, account_id: &Uuid) -> Result<bool> {
         let Some(model) = seaorm_credentials::Entity::find()
             .filter(seaorm_credentials::Column::AccountId.eq(*account_id))
             .one(&self.db)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?
+            .map_err(|e| Error::SecretRepository(e.to_string()))?
         else {
             return Ok(false);
         };
@@ -133,7 +133,7 @@ impl SecretStorageService for SeaOrmStorage {
         seaorm_credentials::Entity::delete_by_id(model.id)
             .exec(&self.db)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         Ok(true)
     }
 
@@ -142,12 +142,12 @@ impl SecretStorageService for SeaOrmStorage {
         model
             .update(&self.db)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?;
+            .map_err(|e| Error::SecretRepository(e.to_string()))?;
         Ok(())
     }
 }
 
-impl CredentialsVerifierService<Uuid> for SeaOrmStorage {
+impl CredentialsVerifierService<Uuid> for SeaOrmRepository {
     async fn verify_credentials(
         &self,
         credentials: Credentials<Uuid>,
@@ -156,7 +156,7 @@ impl CredentialsVerifierService<Uuid> for SeaOrmStorage {
             .filter(seaorm_credentials::Column::AccountId.eq(credentials.id))
             .one(&self.db)
             .await
-            .map_err(|e| Error::SecretStorage(e.to_string()))?
+            .map_err(|e| Error::SecretRepository(e.to_string()))?
         else {
             return Ok(VerificationResult::Unauthorized);
         };

@@ -2,7 +2,7 @@ use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
 use axum_gate::AccountInsertService;
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::memory::{MemoryAccountStorage, MemorySecretStorage};
+use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
 use axum_gate::{Credentials, Group, Role, cookie};
 use axum_gate::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 
@@ -34,10 +34,10 @@ async fn main() {
     }));
     debug!("JWT codec initialized.");
 
-    let account_storage = Arc::new(MemoryAccountStorage::default());
-    debug!("Account storage initialized.");
-    let secrets_storage = Arc::new(MemorySecretStorage::default());
-    debug!("Secrets storage initialized.");
+    let account_repository = Arc::new(MemoryAccountRepository::default());
+    debug!("Account repository initialized.");
+    let secrets_repository = Arc::new(MemorySecretRepository::default());
+    debug!("Secrets repository initialized.");
 
     // Create admin with all permissions using new zero-sync system
     let mut admin_permissions = roaring::RoaringBitmap::new();
@@ -47,7 +47,10 @@ async fn main() {
         .with_roles(vec![Role::Admin])
         .with_groups(vec![Group::new("admin")])
         .with_permissions(admin_permissions)
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(
+            Arc::clone(&account_repository),
+            Arc::clone(&secrets_repository),
+        )
         .await
         .unwrap();
     debug!("Inserted Admin with full permissions.");
@@ -60,7 +63,10 @@ async fn main() {
         .with_roles(vec![Role::Reporter])
         .with_groups(vec![Group::new("reporter")])
         .with_permissions(reporter_permissions)
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(
+            Arc::clone(&account_repository),
+            Arc::clone(&secrets_repository),
+        )
         .await
         .unwrap();
     debug!("Inserted Reporter with repository access.");
@@ -76,7 +82,10 @@ async fn main() {
         .with_roles(vec![Role::User])
         .with_groups(vec![Group::new("user")])
         .with_permissions(user_permissions)
-        .into_storages(Arc::clone(&account_storage), Arc::clone(&secrets_storage))
+        .into_repositories(
+            Arc::clone(&account_repository),
+            Arc::clone(&secrets_repository),
+        )
         .await
         .unwrap();
     debug!("Inserted User with API read access.");
@@ -91,8 +100,8 @@ async fn main() {
                     ISSUER,
                     (Utc::now() + TimeDelta::weeks(1)).timestamp() as u64,
                 );
-                let secrets_storage = Arc::clone(&secrets_storage);
-                let account_storage = Arc::clone(&account_storage);
+                let secrets_repository = Arc::clone(&secrets_repository);
+                let account_repository = Arc::clone(&account_repository);
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String>>| {
@@ -100,8 +109,8 @@ async fn main() {
                         cookie_jar,
                         request_credentials,
                         registered_claims,
-                        secrets_storage,
-                        account_storage,
+                        secrets_repository,
+                        account_repository,
                         jwt_codec,
                         cookie_template,
                     )

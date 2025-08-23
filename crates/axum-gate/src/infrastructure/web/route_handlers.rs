@@ -8,7 +8,7 @@ use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::hashing::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
 use crate::infrastructure::services::{
-    AccountStorageService, CodecService, CredentialsVerifierService,
+    AccountRepositoryService, CodecService, CredentialsVerifierService,
 };
 
 use std::sync::Arc;
@@ -20,12 +20,12 @@ use tracing::{debug, error};
 use uuid::Uuid;
 
 /// Can be used to log a user in.
-pub async fn login<CredVeri, AccStore, Codec, R, G>(
+pub async fn login<CredVeri, AccRepo, Codec, R, G>(
     cookie_jar: CookieJar,
     request_credentials: Json<Credentials<String>>,
     registered_claims: RegisteredClaims,
     secret_verifier: Arc<CredVeri>,
-    account_storage: Arc<AccStore>,
+    account_repository: Arc<AccRepo>,
     codec: Arc<Codec>,
     cookie_template: CookieBuilder<'static>,
 ) -> Result<CookieJar, StatusCode>
@@ -33,12 +33,12 @@ where
     R: AccessHierarchy + Eq,
     G: Eq,
     CredVeri: CredentialsVerifierService<Uuid>,
-    AccStore: AccountStorageService<R, G>,
+    AccRepo: AccountRepositoryService<R, G>,
     Codec: CodecService<Payload = JwtClaims<Account<R, G>>>,
 {
     let creds = request_credentials.0;
 
-    let account = match account_storage.query_account_by_user_id(&creds.id).await {
+    let account = match account_repository.query_account_by_user_id(&creds.id).await {
         Ok(Some(acc)) => acc,
         Ok(_) => return Err(StatusCode::NOT_FOUND),
         Err(e) => {
@@ -103,7 +103,7 @@ pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'stati
 /// # Example Usage
 ///
 /// ```
-/// use axum_gate::permissions::PermissionChecker;
+/// use axum_gate::PermissionChecker;
 /// use roaring::RoaringBitmap;
 ///
 /// let mut user_permissions = RoaringBitmap::new();

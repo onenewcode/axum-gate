@@ -1,9 +1,9 @@
-//! Credentials definitions used for API, or storage.
+//! Credentials definitions used for API, or repository.
 use serde::{Deserialize, Serialize};
 
 /// The credentials contain login data such as eg. user id and password.
 ///
-/// These values are plain values. If you need to store the password in a storage, you will be
+/// These values are plain values. If you need to store the password in a repository, you will be
 /// required to put it in a [Secret](crate::secrets::Secret).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {

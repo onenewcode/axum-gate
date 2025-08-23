@@ -3,7 +3,7 @@ use crate::{
     domain::traits::AccessHierarchy,
     domain::values::secrets::Secret,
     infrastructure::hashing::Argon2Hasher,
-    infrastructure::services::{AccountStorageService, SecretStorageService},
+    infrastructure::services::{AccountRepositoryService, SecretRepositoryService},
 };
 
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use anyhow::{Result, anyhow};
 use roaring::RoaringBitmap;
 use tracing::debug;
 
-/// Ergonomic service that is able to insert/register a new [Account] to the storages.
+/// Ergonomic service that is able to insert/register a new [Account] to the repositories.
 pub struct AccountInsertService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -55,7 +55,7 @@ where
     ///
     /// Use this with the zero-synchronization permission system:
     /// ```rust
-    /// use axum_gate::{permissions::PermissionChecker, services::AccountInsertService, Role, Group};
+    /// use axum_gate::{PermissionChecker, AccountInsertService, Role, Group};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut permissions = RoaringBitmap::new();
@@ -72,33 +72,33 @@ where
         }
     }
 
-    /// Adds the created [Account] to the storages.
-    pub async fn into_storages<AccStore, SecStore>(
+    /// Adds the created [Account] to the repositories.
+    pub async fn into_repositories<AccRepo, SecRepo>(
         self,
-        account_storage: Arc<AccStore>,
-        secret_storage: Arc<SecStore>,
+        account_repository: Arc<AccRepo>,
+        secret_repository: Arc<SecRepo>,
     ) -> Result<Option<Account<R, G>>>
     where
-        AccStore: AccountStorageService<R, G>,
-        SecStore: SecretStorageService,
+        AccRepo: AccountRepositoryService<R, G>,
+        SecRepo: SecretRepositoryService,
     {
         let account = Account::new(&self.user_id, &self.roles, &self.groups)
             .with_permissions(self.permissions);
         debug!("Created account.");
-        let Some(account) = account_storage.store_account(account).await? else {
-            return Err(anyhow!(Error::AccountStorage(
-                "Account storage returned None on insertion.".to_string()
+        let Some(account) = account_repository.store_account(account).await? else {
+            return Err(anyhow!(Error::AccountRepository(
+                "Account repository returned None on insertion.".to_string()
             )));
         };
-        debug!("Stored account in account storage.");
+        debug!("Stored account in account repository.");
         let id = &account.account_id;
         let secret = Secret::new(id, &self.secret, Argon2Hasher)?;
-        if !secret_storage.store_secret(secret).await? {
-            Err(anyhow!(Error::SecretStorage(
-                "Storing secret in storage returned false.".to_string()
+        if !secret_repository.store_secret(secret).await? {
+            Err(anyhow!(Error::SecretRepository(
+                "Storing secret in repository returned false.".to_string()
             )))
         } else {
-            debug!("Stored secret in secret storage.");
+            debug!("Stored secret in secret repository.");
             Ok(Some(account))
         }
     }

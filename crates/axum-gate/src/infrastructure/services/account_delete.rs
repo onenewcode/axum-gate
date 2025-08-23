@@ -1,12 +1,12 @@
 use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::services::{AccountStorageService, SecretStorageService};
+use crate::infrastructure::services::{AccountRepositoryService, SecretRepositoryService};
 use crate::{Account, Error};
 
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 
-/// Removes the given account and its corresponding secret from storages.
+/// Removes the given account and its corresponding secret from repositories.
 pub struct AccountDeleteService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -25,32 +25,32 @@ where
         Self { account }
     }
 
-    /// Removes the account and its secret from the given storages.
-    pub async fn from_storages<AccStore, SecStore>(
+    /// Removes the account and its secret from the given repositories.
+    pub async fn from_repositories<AccRepo, SecRepo>(
         self,
-        account_storage: Arc<AccStore>,
-        secret_storage: Arc<SecStore>,
+        account_repository: Arc<AccRepo>,
+        secret_repository: Arc<SecRepo>,
     ) -> Result<()>
     where
-        AccStore: AccountStorageService<R, G>,
-        SecStore: SecretStorageService,
+        AccRepo: AccountRepositoryService<R, G>,
+        SecRepo: SecretRepositoryService,
     {
-        if !secret_storage
+        if !secret_repository
             .delete_secret(&self.account.account_id)
             .await?
         {
-            return Err(anyhow!(Error::SecretStorage(
-                "Deleting secret in storage returned false.".to_string()
+            return Err(anyhow!(Error::SecretRepository(
+                "Deleting secret in repository returned false.".to_string()
             )));
         };
 
-        if account_storage
+        if account_repository
             .delete_account(&self.account.user_id)
             .await?
             .is_none()
         {
-            return Err(anyhow!(Error::AccountStorage(
-                "Account storage returned None on insertion.".to_string()
+            return Err(anyhow!(Error::AccountRepository(
+                "Account repository returned None on insertion.".to_string()
             )));
         };
         Ok(())

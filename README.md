@@ -50,7 +50,7 @@ You can limit the access of a route to one or multiple specific role(s).
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::{Account, Gate, Role, Group};
-# use axum_gate::jwt::{JsonWebToken, JwtClaims};
+# use axum_gate::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn admin() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
@@ -78,7 +78,7 @@ roles, although this does not make much sense in a real world application.
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::{Account, Gate, Role, Group};
-# use axum_gate::jwt::{JsonWebToken, JwtClaims};
+# use axum_gate::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn user() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
@@ -100,7 +100,7 @@ You can limit the access of a route to one or more specific group(s).
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::{Account, Gate, Group, Role};
-# use axum_gate::jwt::{JsonWebToken, JwtClaims};
+# use axum_gate::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 # async fn group_handler() -> () {}
 # let jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>> = Arc::new(JsonWebToken::default());
@@ -130,7 +130,7 @@ If your resources do not change over time, the following example should fit your
 ```rust
 # use axum::routing::{Router, get};
 # use axum_gate::{Account, Gate, Group, Role};
-# use axum_gate::jwt::{JsonWebToken, JwtClaims};
+# use axum_gate::{JsonWebToken, JwtClaims};
 # use std::sync::Arc;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
@@ -185,28 +185,27 @@ of user accounts and their secrets.
 
 ```rust
 # use axum_gate::{Account, Role, Group};
-# use axum_gate::secrets::Secret;
-# use axum_gate::hashing::Argon2Hasher;
-# use axum_gate::storage::memory::{MemorySecretStorage, MemoryAccountStorage};
-# use axum_gate::services::{AccountInsertService, AccountDeleteService};
+# use axum_gate::Secret;
+# use axum_gate::Argon2Hasher;
+# use axum_gate::memory::{MemorySecretRepository, MemoryAccountRepository};
+# use axum_gate::{AccountInsertService, AccountDeleteService};
 # use std::sync::Arc;
 # async fn example_storage() {
 // We first instantiate both memory storages.
-let acc_store = Arc::new(MemoryAccountStorage::from(Vec::<Account<Role, Group>>::new()));
-let sec_store = Arc::new(MemorySecretStorage::from(Vec::<Secret>::new()));
+let acc_store = Arc::new(MemoryAccountRepository::from(Vec::<Account<Role, Group>>::new()));
+let sec_store = Arc::new(MemorySecretRepository::from(Vec::<Secret>::new()));
 
-// The AccountInsertService provides an ergonomic way of inserting the account into the storages.
+// The AccountInsertService provides an ergonomic way of inserting the account into the repositories.
 let user_account = AccountInsertService::insert("user@example.com", "my-user-password")
     .with_roles(vec![Role::User])
-    .with_groups(vec![Group::new("staff")])
-    .into_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
+    .into_repositories(Arc::clone(&acc_store), Arc::clone(&sec_store))
     .await
     .unwrap()
     .unwrap();
 
 /// You can also remove a combination of account and secret using the AccountDeleteService.
 AccountDeleteService::delete(user_account)
-    .from_storages(Arc::clone(&acc_store), Arc::clone(&sec_store))
+    .from_repositories(Arc::clone(&acc_store), Arc::clone(&sec_store))
     .await
     .unwrap();
 # }
@@ -247,7 +246,7 @@ All permission names must be unique. Check for duplicate entries and remove or r
 For dynamic permissions loaded from configuration:
 
 ```rust
-use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker, ValidationReport};
+use axum_gate::{ApplicationValidator, PermissionCollisionChecker, ValidationReport};
 use tracing::error;
 
 // Permission conflicts handler
@@ -295,7 +294,7 @@ For applications with variable permission strings, `axum-gate` provides runtime 
 capabilities to check for permission duplicates and hash collisions:
 
 ```rust
-use axum_gate::permissions::ApplicationValidator;
+use axum_gate::ApplicationValidator;
 
 // Application startup validation
 let report = ApplicationValidator::new()

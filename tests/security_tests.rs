@@ -1,8 +1,8 @@
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-use axum_gate::hashing::{Argon2Hasher, VerificationResult};
-use axum_gate::secrets::Secret;
-use axum_gate::services::{CodecService, HashingService};
+use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use axum_gate::{Argon2Hasher, VerificationResult};
+use axum_gate::Secret;
+use axum_gate::{CodecService, HashingService};
 use axum_gate::{Account, Credentials, Group, Role};
 
 use std::sync::Arc;
@@ -104,7 +104,7 @@ mod jwt_security_tests {
     async fn test_jwt_with_different_secret() {
         let secret1 = "SECRET_KEY_1";
         let secret2 = "SECRET_KEY_2";
-        
+
         let jwt_codec1 = Arc::new(
             JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(JsonWebTokenOptions {
                 enc_key: EncodingKey::from_secret(secret1.as_bytes()),
@@ -175,10 +175,10 @@ mod password_security_tests {
     #[tokio::test]
     async fn test_empty_password_handling() {
         let hasher = Argon2Hasher::default();
-        
+
         // Empty password should still be hashable
         let hash = hasher.hash_value("").unwrap();
-        
+
         // And should verify correctly
         assert_eq!(hasher.verify_value("", &hash).unwrap(), VerificationResult::Ok);
         assert_eq!(hasher.verify_value("non-empty", &hash).unwrap(), VerificationResult::Unauthorized);
@@ -187,7 +187,7 @@ mod password_security_tests {
     #[tokio::test]
     async fn test_malformed_hash_handling() {
         let hasher = Argon2Hasher::default();
-        
+
         // Test with various malformed hashes
         let malformed_hashes = vec![
             "not_a_hash",
@@ -205,13 +205,13 @@ mod password_security_tests {
     #[tokio::test]
     async fn test_very_long_password() {
         let hasher = Argon2Hasher::default();
-        
+
         // Test with a very long password (10KB)
         let long_password = "a".repeat(10_000);
-        
+
         let hash = hasher.hash_value(&long_password).unwrap();
         assert_eq!(hasher.verify_value(&long_password, &hash).unwrap(), VerificationResult::Ok);
-        
+
         // Different long password should fail
         let different_long_password = "b".repeat(10_000);
         assert_eq!(hasher.verify_value(&different_long_password, &hash).unwrap(), VerificationResult::Unauthorized);
@@ -229,7 +229,7 @@ mod secret_security_tests {
         let hasher = Argon2Hasher::default();
 
         let secret = Secret::new(&account_id, password, hasher).unwrap();
-        
+
         assert_eq!(secret.account_id, account_id);
         assert_eq!(secret.verify(password, Argon2Hasher).unwrap(), VerificationResult::Ok);
         assert_eq!(secret.verify("wrong_password", Argon2Hasher).unwrap(), VerificationResult::Unauthorized);
@@ -240,10 +240,10 @@ mod secret_security_tests {
         let account_id = Uuid::now_v7();
         let hasher = Argon2Hasher::default();
         let password = "test_password";
-        
+
         let hashed_value = hasher.hash_value(password).unwrap();
         let secret = Secret::from_hashed(&account_id, &hashed_value);
-        
+
         assert_eq!(secret.account_id, account_id);
         assert_eq!(secret.secret, hashed_value);
         assert_eq!(secret.verify(password, Argon2Hasher).unwrap(), VerificationResult::Ok);
@@ -256,7 +256,7 @@ mod secret_security_tests {
         let hasher = Argon2Hasher::default();
 
         let secret = Secret::new(&account_id, unicode_password, hasher).unwrap();
-        
+
         assert_eq!(secret.verify(unicode_password, Argon2Hasher).unwrap(), VerificationResult::Ok);
         assert_eq!(secret.verify("different", Argon2Hasher).unwrap(), VerificationResult::Unauthorized);
     }
@@ -270,9 +270,9 @@ mod credentials_security_tests {
     async fn test_credentials_creation() {
         let user_id = "user@example.com".to_string();
         let password = "secure_password";
-        
+
         let creds = Credentials::new(&user_id, password);
-        
+
         assert_eq!(creds.id, user_id);
         assert_eq!(creds.secret, password);
     }
@@ -281,9 +281,9 @@ mod credentials_security_tests {
     async fn test_credentials_with_special_characters() {
         let user_id = "user+tag@example.com".to_string();
         let password = "password!@#$%^&*()_+{}|:<>?[];',./";
-        
+
         let creds = Credentials::new(&user_id, password);
-        
+
         assert_eq!(creds.id, user_id);
         assert_eq!(creds.secret, password);
     }
@@ -292,11 +292,11 @@ mod credentials_security_tests {
     async fn test_credentials_with_empty_values() {
         let empty_user = "".to_string();
         let normal_user = "user".to_string();
-        
+
         let creds1 = Credentials::new(&empty_user, "password");
         let creds2 = Credentials::new(&normal_user, "");
         let creds3 = Credentials::new(&empty_user, "");
-        
+
         // Should be able to create credentials with empty values
         // Validation should happen at the authentication level
         assert_eq!(creds1.id, empty_user);

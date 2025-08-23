@@ -1,9 +1,9 @@
-use axum_gate::cookie::CookieBuilder; 
-use axum_gate::storage::memory::{MemoryAccountStorage, MemorySecretStorage};
-use axum_gate::services::{AccountInsertService, AccountDeleteService, AccountStorageService, SecretStorageService, CredentialsVerifierService};
-use axum_gate::hashing::{Argon2Hasher, VerificationResult};
-use axum_gate::secrets::Secret;
-use axum_gate::utils::AccessHierarchy;
+use axum_gate::cookie::CookieBuilder;
+use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+use axum_gate::{AccountInsertService, AccountDeleteService, AccountRepositoryService, SecretRepositoryService, CredentialsVerifierService};
+use axum_gate::{Argon2Hasher, VerificationResult};
+use axum_gate::Secret;
+use axum_gate::AccessHierarchy;
 use axum_gate::{Account, Credentials, Group, Role};
 
 use std::sync::Arc;
@@ -103,26 +103,26 @@ mod storage_security_tests {
 
     #[tokio::test]
     async fn test_memory_storage_concurrent_access() {
-        let storage = Arc::new(MemoryAccountStorage::<Role, Group>::default());
+        let storage = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 
         // Create and store accounts concurrently
         let account1 = Account::new("user1@example.com", &[Role::User], &[Group::new("group1")]);
         let account2 = Account::new("user2@example.com", &[Role::Admin], &[Group::new("group2")]);
-        
+
         let storage1 = Arc::clone(&storage);
         let storage2 = Arc::clone(&storage);
-        
+
         let handle1 = tokio::spawn(async move {
             storage1.store_account(account1).await.unwrap()
         });
-        
+
         let handle2 = tokio::spawn(async move {
             storage2.store_account(account2).await.unwrap()
         });
 
         // Wait for both tasks to complete
         let (_result1, _result2) = tokio::try_join!(handle1, handle2).unwrap();
-        
+
         // Verify both accounts were stored
         assert!(storage.query_account_by_user_id("user1@example.com").await.unwrap().is_some());
         assert!(storage.query_account_by_user_id("user2@example.com").await.unwrap().is_some());
@@ -130,7 +130,7 @@ mod storage_security_tests {
 
     #[tokio::test]
     async fn test_secret_storage_security() {
-        let storage = Arc::new(MemorySecretStorage::default());
+        let storage = Arc::new(MemorySecretRepository::default());
         let account_id = Uuid::now_v7();
         let password = "sensitive_password";
 
@@ -162,7 +162,7 @@ mod storage_security_tests {
 
         // Store first account
         let _stored1 = storage.store_account(account1).await.unwrap();
-        
+
         // Store second account with same user_id
         let _stored2 = storage.store_account(account2).await.unwrap();
 
@@ -173,13 +173,13 @@ mod storage_security_tests {
 
     #[tokio::test]
     async fn test_account_deletion_security() {
-        let account_storage = Arc::new(MemoryAccountStorage::<Role, Group>::default());
-        let secret_storage = Arc::new(MemorySecretStorage::default());
+        let account_repository = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+        let secret_repository = Arc::new(MemorySecretRepository::default());
 
         // Create an account with secret
         let account = AccountInsertService::insert("user@example.com", "password")
             .with_roles(vec![Role::User])
-            .into_storages(Arc::clone(&account_storage), Arc::clone(&secret_storage))
+            .into_repositories(Arc::clone(&account_repository), Arc::clone(&secret_repository))
             .await
             .unwrap()
             .unwrap();
@@ -187,21 +187,21 @@ mod storage_security_tests {
         let user_id = account.user_id.clone();
 
         // Verify account exists
-        assert!(account_storage.query_account_by_user_id(&user_id).await.unwrap().is_some());
+        assert!(account_repository.query_account_by_user_id(&user_id).await.unwrap().is_some());
 
         // Delete the account using AccountDeleteService
         AccountDeleteService::delete(account)
-            .from_storages(Arc::clone(&account_storage), Arc::clone(&secret_storage))
+            .from_repositories(Arc::clone(&account_repository), Arc::clone(&secret_repository))
             .await
             .unwrap();
 
         // Verify account is deleted
-        assert!(account_storage.query_account_by_user_id(&user_id).await.unwrap().is_none());
+        assert!(account_repository.query_account_by_user_id(&user_id).await.unwrap().is_none());
     }
 
     #[tokio::test]
     async fn test_storage_with_malformed_data() {
-        let storage = Arc::new(MemorySecretStorage::default());
+        let storage = Arc::new(MemorySecretRepository::default());
 
         // Test with invalid UUID (this should be handled by the type system)
         // but we can test error handling in credential verification
@@ -235,11 +235,11 @@ mod access_control_security_tests {
         assert!(supervises(&Role::Admin, &Role::Reporter));
         assert!(supervises(&Role::Admin, &Role::User));
         assert!(supervises(&Role::Reporter, &Role::User));
-        
+
         // Test that roles don't supervise themselves
         assert!(!supervises(&Role::User, &Role::User));
         assert!(!supervises(&Role::Admin, &Role::Admin));
-        
+
         // Test inverse relationships
         assert!(!supervises(&Role::User, &Role::Admin));
         assert!(!supervises(&Role::User, &Role::Reporter));
@@ -257,7 +257,7 @@ mod access_control_security_tests {
         assert_eq!(account.roles.len(), 2);
         assert!(account.roles.contains(&Role::User));
         assert!(account.roles.contains(&Role::Reporter));
-        
+
         assert_eq!(account.groups.len(), 2);
         assert!(account.groups.contains(&Group::new("users")));
         assert!(account.groups.contains(&Group::new("reporters")));
@@ -296,13 +296,13 @@ mod access_control_security_tests {
         // Test permission conversion
         let read_perm: u32 = TestPermission::Read.into();
         let write_perm: u32 = TestPermission::Write.into();
-        
+
         assert_ne!(read_perm, write_perm);
-        
+
         // Test reverse conversion
         let read_from_u32: TestPermission = TestPermission::try_from(0).unwrap();
         assert_eq!(read_from_u32, TestPermission::Read);
-        
+
         // Test invalid permission
         let invalid_perm = TestPermission::try_from(999);
         assert!(invalid_perm.is_err());
@@ -316,7 +316,7 @@ mod edge_case_security_tests {
     #[tokio::test]
     async fn test_account_with_empty_collections() {
         let account: Account<Role, Group> = Account::new("user@example.com", &[], &[]);
-        
+
         assert!(account.roles.is_empty());
         assert!(account.groups.is_empty());
         assert!(account.permissions.is_empty());
@@ -338,7 +338,7 @@ mod edge_case_security_tests {
     async fn test_very_long_user_identifiers() {
         let long_user_id = "a".repeat(1000);
         let account = Account::new(&long_user_id, &[Role::User], &[Group::new("test")]);
-        
+
         assert_eq!(account.user_id, long_user_id);
     }
 
@@ -346,14 +346,14 @@ mod edge_case_security_tests {
     async fn test_unicode_user_identifiers() {
         let unicode_user_id = "用户@例え.com";
         let account = Account::new(unicode_user_id, &[Role::User], &[Group::new("unicode")]);
-        
+
         assert_eq!(account.user_id, unicode_user_id);
     }
 
     #[tokio::test]
     async fn test_account_serialization_security() {
         use serde_json;
-        
+
         let account = Account::new(
             "user@example.com",
             &[Role::Admin],
@@ -364,7 +364,7 @@ mod edge_case_security_tests {
         let serialized = serde_json::to_string(&account).unwrap();
         assert!(serialized.contains("user@example.com"));
         assert!(serialized.contains("Admin"));
-        
+
         let deserialized: Account<Role, Group> = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.user_id, account.user_id);
         assert_eq!(deserialized.roles, account.roles);
@@ -374,17 +374,17 @@ mod edge_case_security_tests {
     #[tokio::test]
     async fn test_secret_serialization_security() {
         use serde_json;
-        
+
         let account_id = Uuid::now_v7();
         let secret = Secret::new(&account_id, "password", Argon2Hasher).unwrap();
 
         // Test that secret can be serialized (for storage)
         let serialized = serde_json::to_string(&secret).unwrap();
-        
+
         // Ensure the serialized data doesn't contain the plain password
         assert!(!serialized.contains("password"));
         assert!(serialized.contains("$argon2")); // Should contain hash prefix
-        
+
         let deserialized: Secret = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.account_id, secret.account_id);
         assert_eq!(deserialized.secret, secret.secret);

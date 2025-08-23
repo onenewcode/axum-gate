@@ -9,7 +9,7 @@
 //! ## 1. Validating Permissions at Compile Time
 //!
 //! ```rust
-//! # use axum_gate::{permissions::{PermissionChecker, PermissionId}, validate_permissions};
+//! # use axum_gate::{PermissionChecker, PermissionId, validate_permissions};
 //! # use roaring::RoaringBitmap;
 //! validate_permissions![
 //!     "read:resource1",
@@ -22,7 +22,7 @@
 //! ## 2. Working with Account Permissions (recommended)
 //!
 //! ```rust
-//! # use axum_gate::{permissions::{PermissionChecker, PermissionId}, Account};
+//! # use axum_gate::{PermissionChecker, PermissionId, Account};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyRole { User, Admin }
 //! # impl std::fmt::Display for MyRole {
@@ -33,7 +33,7 @@
 //! #         }
 //! #     }
 //! # }
-//! # impl axum_gate::utils::AccessHierarchy for MyRole {
+//! # impl axum_gate::AccessHierarchy for MyRole {
 //! #     fn supervisor(&self) -> Option<Self> {
 //! #         match self {
 //! #             Self::Admin => None,
@@ -64,15 +64,15 @@
 //! account.revoke_permission(PermissionId::from_name("write:resource1"));
 //!
 //! // Note: After modifying account permissions, you would typically
-//! // save the account back to your storage system using your chosen
-//! // storage implementation (see AccountStorageService).
+//! // save the account back to your repository system using your chosen
+//! // repository implementation (see AccountRepositoryService).
 //! ```
 //!
 //! ## 3. Using Permissions with Gates (recommended)
 //!
 //! ```rust
-//! # use axum_gate::{Account, Gate, Group, permissions::PermissionId};
-//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::{Account, Gate, Group, PermissionId};
+//! # use axum_gate::{JsonWebToken, JwtClaims};
 //! # use std::sync::Arc;
 //! # use axum::{routing::get, Router};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -85,7 +85,7 @@
 //! #         }
 //! #     }
 //! # }
-//! # impl axum_gate::utils::AccessHierarchy for MyRole {
+//! # impl axum_gate::AccessHierarchy for MyRole {
 //! #     fn supervisor(&self) -> Option<Self> {
 //! #         match self {
 //! #             Self::Admin => None,
@@ -119,7 +119,7 @@
 //! ## 4. Checking Permissions in Route Handlers
 //!
 //! ```rust
-//! # use axum_gate::permissions::PermissionChecker;
+//! # use axum_gate::PermissionChecker;
 //! # use roaring::RoaringBitmap;
 //! # let mut user_permissions = RoaringBitmap::new();
 //! # PermissionChecker::grant_permission(&mut user_permissions, "read:resource1");
@@ -142,7 +142,7 @@
 //! from multiple sources and validate them once:
 //!
 //! ```rust
-//! use axum_gate::permissions::ApplicationValidator;
+//! use axum_gate::ApplicationValidator;
 //!
 //! # fn example() -> anyhow::Result<()> {
 //! let report = ApplicationValidator::new()
@@ -172,7 +172,7 @@
 //! and debugging capabilities:
 //!
 //! ```rust
-//! use axum_gate::permissions::PermissionCollisionChecker;
+//! use axum_gate::PermissionCollisionChecker;
 //!
 //! # fn example() -> anyhow::Result<()> {
 //! let mut checker = PermissionCollisionChecker::new(dynamic_permissions());
@@ -249,7 +249,7 @@ impl PermissionId {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::permissions::PermissionId;
+    /// use axum_gate::PermissionId;
     ///
     /// let read_id = PermissionId::from_name("read:file");
     /// let write_id = PermissionId::from_name("write:file");
@@ -300,7 +300,7 @@ impl PermissionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::permissions::{PermissionChecker, PermissionId};
+    /// use axum_gate::{PermissionChecker, PermissionId};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut user_permissions = RoaringBitmap::new();
@@ -319,7 +319,7 @@ impl PermissionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::permissions::{PermissionChecker, PermissionId};
+    /// use axum_gate::{PermissionChecker, PermissionId};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut user_permissions = RoaringBitmap::new();
@@ -364,7 +364,7 @@ impl PermissionChecker {
 /// # Examples
 ///
 /// ```
-/// use axum_gate::permissions::validate_permission_uniqueness;
+/// use axum_gate::validate_permission_uniqueness;
 ///
 /// // This should pass
 /// validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();

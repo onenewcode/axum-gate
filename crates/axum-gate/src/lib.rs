@@ -9,6 +9,7 @@ mod ports;
 
 // Core domain entities that users work with directly
 pub use domain::entities::{Account, Credentials, Group, Role};
+pub use domain::values::secrets::Secret;
 
 // Domain traits needed for custom implementations
 pub use domain::traits::AccessHierarchy;
@@ -23,16 +24,16 @@ pub use domain::services::permissions::{
 
 // Permission validation utilities
 pub use domain::services::permissions::validation::{
-    ApplicationValidator, PermissionCollisionChecker,
+    ApplicationValidator, PermissionCollision, PermissionCollisionChecker, ValidationReport,
 };
 
 // Infrastructure services users need
 pub use infrastructure::services::{
-    AccountInsertService, AccountStorageService, CodecService, CredentialsVerifierService,
-    SecretStorageService,
+    AccountDeleteService, AccountInsertService, AccountRepositoryService, CodecService,
+    CredentialsVerifierService, SecretRepositoryService,
 };
 
-// Storage implementations
+// Repository implementations
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
 pub use infrastructure::storage::TableNames;
 pub use infrastructure::storage::memory;
