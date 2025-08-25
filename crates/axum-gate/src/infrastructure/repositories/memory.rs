@@ -15,6 +15,7 @@
 //!
 //! ```rust
 //! use axum_gate::{Account, Role, Group, Secret, Argon2Hasher};
+//! use axum_gate::{AccountRepository, SecretRepository};
 //! use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
@@ -191,12 +192,12 @@ where
 /// repo.store_secret(secret).await.unwrap();
 ///
 /// // Verify credentials
-/// let credentials = Credentials::new(account_id, "user_password");
+/// let credentials = Credentials::new(&account_id, "user_password");
 /// let result = repo.verify_credentials(credentials).await.unwrap();
-/// assert_eq!(result, VerificationResult::Authorized);
+/// assert_eq!(result, VerificationResult::Ok);
 ///
 /// // Test wrong password
-/// let wrong_creds = Credentials::new(account_id, "wrong_password");
+/// let wrong_creds = Credentials::new(&account_id, "wrong_password");
 /// let result = repo.verify_credentials(wrong_creds).await.unwrap();
 /// assert_eq!(result, VerificationResult::Unauthorized);
 /// # });

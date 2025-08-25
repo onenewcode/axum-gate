@@ -104,6 +104,9 @@
 //!         Error::Port(PortError::Repository { repository, message, .. }) => {
 //!             println!("Repository {} error: {}", repository, message);
 //!         },
+//!         _ => {
+//!             println!("Other error: {}", error);
+//!         },
 //!     }
 //! }
 //! ```

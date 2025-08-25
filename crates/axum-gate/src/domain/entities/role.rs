@@ -19,7 +19,7 @@
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-//!     .with_policy(AccessPolicy::require_role_or_supervisor(Role::User));
+//!     .with_policy(AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User));
 //! // This allows User, Reporter, Moderator, and Admin roles
 //! ```
 //!
@@ -31,7 +31,7 @@
 //! use axum_gate::AccessHierarchy;
 //! use serde::{Deserialize, Serialize};
 //!
-//! #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+//! #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 //! enum CustomRole {
 //!     SuperAdmin,
 //!     Admin,
@@ -91,7 +91,7 @@ use serde::{Deserialize, Serialize};
 /// let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);
 ///
 /// // Grant access to specific roles only
-/// let policy = AccessPolicy::require_role(Role::Admin)
+/// let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
 ///     .or_require_role(Role::Moderator);
 /// ```
 #[derive(

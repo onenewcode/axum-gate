@@ -71,7 +71,7 @@
 //! ## 3. Using Permissions with Gates (recommended)
 //!
 //! ```rust
-//! # use axum_gate::{Account, Gate, Group, PermissionId};
+//! # use axum_gate::{Account, Gate, Group, PermissionId, AccessPolicy};
 //! # use axum_gate::{JsonWebToken, JwtClaims};
 //! # use std::sync::Arc;
 //! # use axum::{routing::get, Router};
@@ -106,9 +106,9 @@
 //! let app = Router::<()>::new()
 //!     .route("/protected", get(protected_handler))
 //!     .layer(
-//!         Gate::new_cookie("issuer", jwt_codec)
+//!         Gate::cookie_deny_all("issuer", jwt_codec)
 //!             .with_cookie_template(cookie_template)
-//!             .grant_permission(PermissionId::from_name("read:resource1"))
+//!             .with_policy(AccessPolicy::<MyRole, MyGroup>::require_permission(PermissionId::from_name("read:resource1")))
 //!     );
 //!
 //! async fn protected_handler() -> &'static str {

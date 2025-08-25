@@ -17,11 +17,11 @@
 //!     .secure(true)
 //!     .http_only(true);
 //!
-//! let app = Router::new()
+//! let app = Router::<()>::new()
 //!     .route("/admin", get(protected_handler))
 //!     .layer(
 //!         Gate::cookie_deny_all("my-app", jwt_codec)
-//!             .with_policy(AccessPolicy::require_role(Role::Admin))
+//!             .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
 //!             .with_cookie_template(cookie_template)
 //!     );
 //! ```
@@ -35,13 +35,13 @@
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! # let cookie_template = cookie::CookieBuilder::new("auth", "");
 //! // Allow only Admin role
-//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-//!     .with_policy(AccessPolicy::require_role(Role::Admin));
+//! let gate = Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+//!     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 //!
 //! // Allow Admin or Moderator roles
-//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//! let gate = Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(
-//!         AccessPolicy::require_role(Role::Admin)
+//!         AccessPolicy::<Role, Group>::require_role(Role::Admin)
 //!             .or_require_role(Role::Moderator)
 //!     );
 //! ```
@@ -53,7 +53,7 @@
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
 //! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-//!     .with_policy(AccessPolicy::require_role_or_supervisor(Role::User));
+//!     .with_policy(AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User));
 //! ```
 //!
 //! ## Permission-Based Access
@@ -63,7 +63,7 @@
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
 //!     .with_policy(
-//!         AccessPolicy::require_permission(PermissionId::from_name("read:api"))
+//!         AccessPolicy::<Role, Group>::require_permission(PermissionId::from_name("read:api"))
 //!     );
 //! ```
 use self::cookie_service::CookieGateService;
@@ -102,7 +102,7 @@ impl Gate {
     /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let policy = AccessPolicy::require_role(Role::Admin);
+    /// let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
     ///
     /// let gate = Gate::cookie("my-app", jwt_codec, policy);
     /// ```
@@ -140,7 +140,7 @@ impl Gate {
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     ///
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-    ///     .with_policy(AccessPolicy::require_role(Role::Admin))
+    ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
     ///     .with_cookie_template(
     ///         cookie::CookieBuilder::new("auth-token", "")
     ///             .secure(true)
@@ -221,6 +221,7 @@ where
     ///     .max_age(cookie::time::Duration::hours(24)); // 24 hour expiry
     ///
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
     ///     .with_cookie_template(cookie_template);
     /// ```
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {

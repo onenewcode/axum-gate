@@ -25,7 +25,7 @@ use uuid::Uuid;
 /// PermissionChecker::grant_permission(&mut permissions, "read:profile");
 /// PermissionChecker::grant_permission(&mut permissions, "write:profile");
 ///
-/// let account = Account::new("admin@example.com", &[Role::Admin], &[])
+/// let account = Account::<Role, Group>::new("admin@example.com", &[Role::Admin], &[])
 ///     .with_permissions(permissions);
 /// ```
 ///
@@ -159,7 +159,7 @@ where
     /// PermissionChecker::grant_permission(&mut permissions, "read:api");
     /// PermissionChecker::grant_permission(&mut permissions, "write:api");
     ///
-    /// let account = Account::new("user@example.com", &[Role::User], &[])
+    /// let account = Account::<Role, Group>::new("user@example.com", &[Role::User], &[])
     ///     .with_permissions(permissions);
     /// ```
     pub fn with_permissions(self, permissions: RoaringBitmap) -> Self {

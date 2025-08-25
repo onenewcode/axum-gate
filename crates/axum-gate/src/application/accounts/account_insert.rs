@@ -71,9 +71,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::AccountInsertService;
+    /// use axum_gate::{AccountInsertService, Role, Group};
     ///
-    /// let builder = AccountInsertService::insert("admin@example.com", "strong_password");
+    /// let builder = AccountInsertService::<Role, Group>::insert("admin@example.com", "strong_password");
     /// // Continue with .with_roles(), .with_groups(), etc.
     /// ```
     pub fn insert(user_id: &str, secret: &str) -> Self {
@@ -93,9 +93,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccountInsertService, Role};
+    /// use axum_gate::{AccountInsertService, Role, Group};
     ///
-    /// let builder = AccountInsertService::insert("user@example.com", "password")
+    /// let builder = AccountInsertService::<Role, Group>::insert("user@example.com", "password")
     ///     .with_roles(vec![Role::User, Role::Reporter]);
     /// ```
     pub fn with_roles(self, roles: Vec<R>) -> Self {
@@ -109,9 +109,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccountInsertService, Group};
+    /// use axum_gate::{AccountInsertService, Role, Group};
     ///
-    /// let builder = AccountInsertService::insert("user@example.com", "password")
+    /// let builder = AccountInsertService::<Role, Group>::insert("user@example.com", "password")
     ///     .with_groups(vec![Group::new("engineering"), Group::new("backend-team")]);
     /// ```
     pub fn with_groups(self, groups: Vec<G>) -> Self {

@@ -55,11 +55,11 @@ async fn main() {
         .http_only(true);
 
     // Build your application with protected routes
-    let app = Router::new()
+    let app = Router::<()>::new()
         .route("/admin", get(admin_handler))
         .layer(
             Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(AccessPolicy::require_role(Role::Admin))
+                .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
                 .with_cookie_template(cookie_template)
         )
         .route("/login", axum::routing::post(login_handler))
@@ -92,7 +92,7 @@ use axum_gate::{AccessPolicy, Role, Group};
 let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
 
 // Allow multiple roles
-let policy = AccessPolicy::require_role(Role::Admin)
+let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin)
     .or_require_role(Role::Moderator);
 ```
 
@@ -272,8 +272,8 @@ if !report.is_valid() {
 ### In-Memory Storage (Development/Testing)
 
 ```rust
+use axum_gate::{Role, Group};
 use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
-
 use std::sync::Arc;
 
 let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
@@ -286,7 +286,7 @@ let secret_repo = Arc::new(MemorySecretRepository::default());
 #[cfg(feature = "storage-surrealdb")]
 use axum_gate::surrealdb::SurrealDbRepository;
 #[cfg(feature = "storage-surrealdb")]
-use axum_gate::TableNames;
+use axum_gate::{TableNames, surrealdb::DatabaseScope};
 #[cfg(feature = "storage-surrealdb")]
 use std::sync::Arc;
 
@@ -294,8 +294,13 @@ use std::sync::Arc;
 # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 # let db = surrealdb::Surreal::new::<surrealdb::engine::remote::ws::Ws>("127.0.0.1:8000").await?;
 # let table_names = TableNames::default();
+# let scope = DatabaseScope {
+#     table_names,
+#     namespace: "axum_gate".to_string(),
+#     database: "main".to_string(),
+# };
 # // SurrealDbRepository implements both AccountRepository and SecretRepository
-# let repo = Arc::new(SurrealDbRepository::new(db, table_names));
+# let repo = Arc::new(SurrealDbRepository::new(db, scope));
 # Ok(())
 # }
 ```
@@ -314,7 +319,7 @@ use std::sync::Arc;
 # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 # let db = Database::connect("sqlite://./database.db").await?;
 # // SeaOrmRepository implements both AccountRepository and SecretRepository
-# let repo = Arc::new(SeaOrmRepository::new(db));
+# let repo = Arc::new(SeaOrmRepository::new(&db));
 # Ok(())
 # }
 ```
@@ -448,6 +453,8 @@ The crate provides comprehensive error types for different failure scenarios:
 ```rust
 use axum_gate::errors::{Error, ApplicationError, InfrastructureError};
 
+# async fn some_operation() -> Result<(), Error> { Ok(()) }
+# async fn example() {
 match some_operation().await {
     Ok(result) => { /* handle success */ },
     Err(Error::Application(app_error)) => {
@@ -462,7 +469,12 @@ match some_operation().await {
         // Handle port adapter errors
         eprintln!("Port error: {}", port_error);
     }
+    Err(_) => {
+        // Handle any other error variants
+        eprintln!("Other error occurred");
+    }
 }
+# }
 ```
 
 ## Security Best Practices
