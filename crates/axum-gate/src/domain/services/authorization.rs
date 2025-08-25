@@ -70,16 +70,16 @@ where
     /// - Required permissions
     /// - Required groups
     /// - Required roles
-    /// - Required minimum roles (supervisor access)
+    /// - Required supervisor roles
     pub fn is_authorized(&self, account: &Account<R, G>) -> bool {
-        self.authorized_by_permission(account)
-            || self.authorized_by_group(account)
-            || self.authorized_by_role(account)
-            || self.authorized_by_minimum_role(account)
+        self.meets_permission_requirement(account)
+            || self.meets_group_requirement(account)
+            || self.meets_role_requirement(account)
+            || self.meets_supervisor_role_requirement(account)
     }
 
-    /// Checks if the account is authorized by having any of the required roles.
-    pub fn authorized_by_role(&self, account: &Account<R, G>) -> bool {
+    /// Checks if the account meets any of the required roles.
+    pub fn meets_role_requirement(&self, account: &Account<R, G>) -> bool {
         account.roles.iter().any(|r| {
             self.policy
                 .role_requirements()
@@ -88,8 +88,8 @@ where
         })
     }
 
-    /// Checks if the account is authorized by having a role that supervises any required role.
-    pub fn authorized_by_minimum_role(&self, account: &Account<R, G>) -> bool {
+    /// Checks if the account has a role that supervises any required role.
+    pub fn meets_supervisor_role_requirement(&self, account: &Account<R, G>) -> bool {
         debug!("Checking if any subordinate role matches the required one.");
         account.roles.iter().any(|ur| {
             self.policy
@@ -99,8 +99,8 @@ where
         })
     }
 
-    /// Checks if the account is authorized by being in any of the required groups.
-    pub fn authorized_by_group(&self, account: &Account<R, G>) -> bool {
+    /// Checks if the account meets any of the required groups.
+    pub fn meets_group_requirement(&self, account: &Account<R, G>) -> bool {
         account.groups.iter().any(|r| {
             self.policy
                 .group_requirements()
@@ -109,16 +109,16 @@ where
         })
     }
 
-    /// Checks if the account is authorized by having any of the required permissions.
-    pub fn authorized_by_permission(&self, account: &Account<R, G>) -> bool {
+    /// Checks if the account meets any of the required permissions.
+    pub fn meets_permission_requirement(&self, account: &Account<R, G>) -> bool {
         account
             .permissions
             .iter()
             .any(|perm| self.policy.permission_requirements().contains(perm))
     }
 
-    /// Returns true if all authorization criteria are empty (no roles, groups, or permissions configured).
-    pub fn has_empty_criteria(&self) -> bool {
+    /// Returns true if the policy denies all access (no requirements configured).
+    pub fn policy_denies_all_access(&self) -> bool {
         self.policy.denies_all()
     }
 }
@@ -150,14 +150,14 @@ mod tests {
     fn authorization_service_empty_criteria() {
         let service: AuthorizationService<Role, Group> =
             AuthorizationService::new(AccessPolicy::deny_all());
-        assert!(service.has_empty_criteria());
+        assert!(service.policy_denies_all_access());
     }
 
     #[test]
     fn authorization_service_non_empty_criteria() {
         let policy = AccessPolicy::require_role(Role::Admin);
         let service: AuthorizationService<Role, Group> = AuthorizationService::new(policy);
-        assert!(!service.has_empty_criteria());
+        assert!(!service.policy_denies_all_access());
     }
 
     #[test]
@@ -166,7 +166,7 @@ mod tests {
         let policy = AccessPolicy::require_role(Role::Admin);
         let service = AuthorizationService::new(policy);
 
-        assert!(service.authorized_by_role(&account));
+        assert!(service.meets_role_requirement(&account));
     }
 
     #[test]
@@ -175,7 +175,7 @@ mod tests {
         let policy = AccessPolicy::require_role(Role::User);
         let service = AuthorizationService::new(policy);
 
-        assert!(!service.authorized_by_role(&account));
+        assert!(!service.meets_role_requirement(&account));
     }
 
     #[test]
@@ -184,7 +184,7 @@ mod tests {
         let policy = AccessPolicy::require_group(Group::new("engineering"));
         let service = AuthorizationService::new(policy);
 
-        assert!(service.authorized_by_group(&account));
+        assert!(service.meets_group_requirement(&account));
     }
 
     #[test]
@@ -193,7 +193,7 @@ mod tests {
         let policy = AccessPolicy::require_group(Group::new("sales"));
         let service = AuthorizationService::new(policy);
 
-        assert!(!service.authorized_by_group(&account));
+        assert!(!service.meets_group_requirement(&account));
     }
 
     #[test]
@@ -202,7 +202,7 @@ mod tests {
         let policy = AccessPolicy::require_permission(1u32); // Account has permission 1
         let service = AuthorizationService::new(policy);
 
-        assert!(service.authorized_by_permission(&account));
+        assert!(service.meets_permission_requirement(&account));
     }
 
     #[test]
@@ -211,7 +211,7 @@ mod tests {
         let policy = AccessPolicy::require_permission(10u32); // Account doesn't have permission 10
         let service = AuthorizationService::new(policy);
 
-        assert!(!service.authorized_by_permission(&account));
+        assert!(!service.meets_permission_requirement(&account));
     }
 
     #[test]

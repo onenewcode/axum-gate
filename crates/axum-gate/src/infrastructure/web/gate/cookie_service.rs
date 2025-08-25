@@ -101,7 +101,7 @@ where
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
 
-        if self.authorization_service.has_empty_criteria() {
+        if self.authorization_service.policy_denies_all_access() {
             debug!("Denying access because roles, groups or permissions are empty.");
             return unauthorized_future;
         }

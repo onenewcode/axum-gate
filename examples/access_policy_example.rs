@@ -6,7 +6,7 @@
 
 use axum::{routing::get, Router};
 use axum_gate::{
-    AccessPolicy, Gate, Group, Role,
+    AccessPolicy, AuthorizationService, Gate, Group, Role, Account,
     infrastructure::jwt::JsonWebTokenOptions,
     infrastructure::storage::memory::MemoryAccountRepository,
 };
@@ -143,6 +143,22 @@ mod tests {
         let _flexible: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin)
             .or_require_group(Group::new("engineering"))
             .or_require_permission(42u32);
+
+        // Authorization service methods are now clear about intent
+        let auth_service = AuthorizationService::new(_admin_only.clone());
+        let account = Account::new("test", &[Role::Admin], &[Group::new("test")]);
+
+        // Clear method names show they check individual requirements
+        let _meets_role = auth_service.meets_role_requirement(&account);
+        let _meets_group = auth_service.meets_group_requirement(&account);
+        let _meets_permission = auth_service.meets_permission_requirement(&account);
+        let _meets_supervisor = auth_service.meets_supervisor_role_requirement(&account);
+
+        // Main authorization decision is obvious
+        let _authorized = auth_service.is_authorized(&account);
+
+        // Policy state checking is clear
+        let _denies_all = auth_service.policy_denies_all_access();
     }
 
     #[test]
