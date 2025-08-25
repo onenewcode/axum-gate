@@ -145,11 +145,6 @@ where
 
         let req = req;
         let inner = self.inner.call(req);
-        Box::pin(async move {
-            if is_authorized {
-                return inner.await;
-            }
-            Ok(Self::unauthorized())
-        })
+        Box::pin(async move { inner.await })
     }
 }
