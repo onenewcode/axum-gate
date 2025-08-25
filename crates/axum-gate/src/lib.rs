@@ -61,6 +61,9 @@ pub use infrastructure::jwt::{
 // Hashing utilities
 pub use infrastructure::hashing::{Argon2Hasher, HashedValue};
 
-// Re-export external dependencies users need
+// Cookie utilities for authentication
+pub use axum_extra::extract::cookie::CookieJar;
 pub use cookie;
+
+// Re-export external dependencies users need
 pub use jsonwebtoken;

@@ -1,7 +1,7 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::{Account, Gate, Group, Role, cookie};
+use axum_gate::{AccessPolicy, Account, Gate, Group, Role, cookie};
 use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 
 use std::sync::Arc;
@@ -107,39 +107,41 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(
-            Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+            Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
-                .grant_role_and_supervisor(Role::Admin),
+                .with_policy(AccessPolicy::require_role_or_supervisor(Role::Admin)),
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
-                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_group(Group::new("admin")),
+                    .with_policy(AccessPolicy::require_group(Group::new("admin"))),
             ),
         )
         .route("/reporter", get(reporter))
         .layer(
-            Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+            Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
-                .grant_role_and_supervisor(Role::Reporter),
+                .with_policy(AccessPolicy::require_role_or_supervisor(Role::Reporter)),
         )
         .route(
             "/user",
             get(user).layer(
-                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_role(Role::User),
+                    .with_policy(AccessPolicy::require_role(Role::User)),
             ),
         )
         .route(
             "/permissions",
             get(permissions).layer(
-                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_permission(axum_gate::PermissionId::from_name(
-                        &AppPermissions::Api(ApiPermission::Read).as_str(),
+                    .with_policy(AccessPolicy::require_permission(
+                        axum_gate::PermissionId::from_name(
+                            &AppPermissions::Api(ApiPermission::Read).as_str(),
+                        ),
                     )),
             ),
         )

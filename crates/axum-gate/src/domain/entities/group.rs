@@ -1,19 +1,97 @@
+//! Group entity for organizing users into collections.
+//!
+//! Groups provide a way to organize users into logical collections for access control.
+//! Unlike roles, groups are typically used for organizational purposes like departments,
+//! teams, or project memberships.
+//!
+//! # Creating and Using Groups
+//!
+//! ```rust
+//! use axum_gate::{Group, AccessPolicy, Role};
+//!
+//! // Create groups
+//! let engineering = Group::new("engineering");
+//! let marketing = Group::new("marketing");
+//! let backend_team = Group::new("backend-team");
+//!
+//! // Use groups in access policies
+//! let policy = AccessPolicy::<Role, Group>::require_group(engineering)
+//!     .or_require_group(marketing);
+//! ```
+//!
+//! # Group-Based Access Control
+//!
+//! ```rust
+//! use axum_gate::{Account, Role, Group, Gate, AccessPolicy, JsonWebToken, JwtClaims};
+//! use std::sync::Arc;
+//!
+//! // Create an account with group membership
+//! let account = Account::new(
+//!     "developer@example.com",
+//!     &[Role::User],
+//!     &[Group::new("engineering"), Group::new("backend-team")]
+//! );
+//!
+//! // Create access policy for specific groups
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//!     .with_policy(
+//!         AccessPolicy::require_group(Group::new("engineering"))
+//!             .or_require_group(Group::new("qa-team"))
+//!     );
+//! ```
+
 use crate::domain::traits::CommaSeparatedValue;
 
 use serde::{Deserialize, Serialize};
 
-/// A group representation.
+/// A group represents a collection of users for access control purposes.
+///
+/// Groups are typically used to represent organizational units like departments,
+/// teams, projects, or any other logical grouping of users. They provide an
+/// additional dimension of access control beyond roles.
+///
+/// # Example Usage
+/// ```rust
+/// use axum_gate::Group;
+///
+/// let engineering = Group::new("engineering");
+/// let backend_team = Group::new("backend-team");
+/// let project_alpha = Group::new("project-alpha");
+///
+/// println!("Group name: {}", engineering.name());
+/// ```
 #[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 #[serde(transparent)]
 pub struct Group(String);
 
 impl Group {
-    /// Creates a new instance with the given group name.
+    /// Creates a new group with the specified name.
+    ///
+    /// # Arguments
+    /// * `group` - The name of the group (e.g., "engineering", "marketing", "admin")
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::Group;
+    ///
+    /// let engineering = Group::new("engineering");
+    /// let marketing = Group::new("marketing");
+    /// let project_team = Group::new("project-alpha-team");
+    /// ```
     pub fn new(group: &str) -> Self {
         Self(group.to_string())
     }
 
-    /// Returns the group name.
+    /// Returns the name of this group.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::Group;
+    ///
+    /// let group = Group::new("engineering");
+    /// assert_eq!(group.name(), "engineering");
+    /// ```
     pub fn name(&self) -> &str {
         &self.0
     }

@@ -1,4 +1,70 @@
-//! Default implementation of roles and their relation.
+//! Default role implementation with hierarchical access control.
+//!
+//! This module provides a pre-defined role system with built-in hierarchy support.
+//! You can use these roles directly or create your own custom roles by implementing
+//! the `AccessHierarchy` trait.
+//!
+//! # Using Default Roles
+//!
+//! ```rust
+//! use axum_gate::{Role, AccessHierarchy};
+//!
+//! // Roles have a built-in hierarchy: Admin > Moderator > Reporter > User
+//! assert_eq!(Role::Admin.subordinate(), Some(Role::Moderator));
+//! assert_eq!(Role::User.supervisor(), Some(Role::Reporter));
+//!
+//! // Use with access policies
+//! use axum_gate::{Gate, AccessPolicy, Group, JsonWebToken, JwtClaims, Account};
+//! use std::sync::Arc;
+//!
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//!     .with_policy(AccessPolicy::require_role_or_supervisor(Role::User));
+//! // This allows User, Reporter, Moderator, and Admin roles
+//! ```
+//!
+//! # Creating Custom Roles
+//!
+//! For applications with specific role requirements:
+//!
+//! ```rust
+//! use axum_gate::AccessHierarchy;
+//! use serde::{Deserialize, Serialize};
+//!
+//! #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+//! enum CustomRole {
+//!     SuperAdmin,
+//!     Admin,
+//!     Manager,
+//!     Employee,
+//! }
+//!
+//! impl std::fmt::Display for CustomRole {
+//!     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//!         write!(f, "{:?}", self)
+//!     }
+//! }
+//!
+//! impl AccessHierarchy for CustomRole {
+//!     fn supervisor(&self) -> Option<Self> {
+//!         match self {
+//!             Self::SuperAdmin => None,
+//!             Self::Admin => Some(Self::SuperAdmin),
+//!             Self::Manager => Some(Self::Admin),
+//!             Self::Employee => Some(Self::Manager),
+//!         }
+//!     }
+//!
+//!     fn subordinate(&self) -> Option<Self> {
+//!         match self {
+//!             Self::SuperAdmin => Some(Self::Admin),
+//!             Self::Admin => Some(Self::Manager),
+//!             Self::Manager => Some(Self::Employee),
+//!             Self::Employee => None,
+//!         }
+//!     }
+//! }
+//! ```
 
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 
@@ -6,22 +72,64 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-/// Available default roles.
+/// Pre-defined roles with hierarchical access control.
+///
+/// These roles are arranged in a hierarchy where higher roles automatically
+/// inherit access from lower roles when using `AccessPolicy::require_role_or_supervisor()`.
+///
+/// **Hierarchy (highest to lowest):**
+/// - `Admin` - Full system access
+/// - `Moderator` - Content moderation and user management
+/// - `Reporter` - Read access with reporting capabilities
+/// - `User` - Basic user access
+///
+/// # Example Usage
+/// ```rust
+/// use axum_gate::{Role, AccessPolicy, Group};
+///
+/// // Grant access to Moderators and all supervisor roles (Admin)
+/// let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);
+///
+/// // Grant access to specific roles only
+/// let policy = AccessPolicy::require_role(Role::Admin)
+///     .or_require_role(Role::Moderator);
+/// ```
 #[derive(
     Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
 )]
 pub enum Role {
-    /// The person having this type is considered an Administrator.
+    /// Administrator role with the highest level of access.
+    ///
+    /// Administrators typically have full system access and can perform
+    /// any operation within the application.
     Admin,
-    /// The person having this type is considered a Moderator.
+    /// Moderator role with elevated privileges for content and user management.
+    ///
+    /// Moderators can typically manage content, moderate discussions,
+    /// and have elevated access to user-facing features.
     Moderator,
-    /// The person is considered a Reporter.
+    /// Reporter role with read access and reporting capabilities.
+    ///
+    /// Reporters can typically view system information, generate reports,
+    /// and access analytics data.
     Reporter,
-    /// The person having this type is considered a User.
+    /// Basic user role with standard application access.
+    ///
+    /// Users have access to core application features but limited
+    /// administrative capabilities.
     User,
 }
 
 impl AccessHierarchy for Role {
+    /// Returns the next role down in the hierarchy, if any.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::{Role, AccessHierarchy};
+    ///
+    /// assert_eq!(Role::Admin.subordinate(), Some(Role::Moderator));
+    /// assert_eq!(Role::User.subordinate(), None); // Lowest role
+    /// ```
     fn subordinate(&self) -> Option<Self> {
         match self {
             Self::Admin => Some(Self::Moderator),
@@ -30,6 +138,16 @@ impl AccessHierarchy for Role {
             Self::User => None,
         }
     }
+
+    /// Returns the next role up in the hierarchy, if any.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::{Role, AccessHierarchy};
+    ///
+    /// assert_eq!(Role::User.supervisor(), Some(Role::Reporter));
+    /// assert_eq!(Role::Admin.supervisor(), None); // Highest role
+    /// ```
     fn supervisor(&self) -> Option<Self> {
         match self {
             Self::Admin => None,

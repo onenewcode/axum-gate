@@ -2,7 +2,7 @@ use axum_gate::AccessHierarchy;
 use axum_gate::AccountInsertService;
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
-use axum_gate::{Account, Credentials, Gate, cookie};
+use axum_gate::{AccessPolicy, Account, Credentials, Gate, cookie};
 use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 
 use std::sync::Arc;
@@ -40,6 +40,16 @@ pub enum CustomGroupDefinition {
     Maintenance,
     Operations,
     Administration,
+}
+
+impl CustomGroupDefinition {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Maintenance => "maintenance",
+            Self::Operations => "operations",
+            Self::Administration => "administration",
+        }
+    }
 }
 
 async fn reporter(
@@ -140,32 +150,36 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(
-            Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+            Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
-                .grant_role(CustomRoleDefinition::Expert),
+                .with_policy(AccessPolicy::require_role(CustomRoleDefinition::Expert)),
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
-                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_group(CustomGroupDefinition::Maintenance),
+                    .with_policy(AccessPolicy::require_group(
+                        CustomGroupDefinition::Maintenance,
+                    )),
             ),
         )
         .route(
             "/reporter",
             get(reporter).layer(
-                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_role_and_supervisor(CustomRoleDefinition::Experienced),
+                    .with_policy(AccessPolicy::require_role_or_supervisor(
+                        CustomRoleDefinition::Experienced,
+                    )),
             ),
         )
         .route(
             "/user",
             get(user).layer(
-                Gate::new_cookie(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .grant_role(CustomRoleDefinition::Novice),
+                    .with_policy(AccessPolicy::require_role(CustomRoleDefinition::Novice)),
             ),
         )
         .route(

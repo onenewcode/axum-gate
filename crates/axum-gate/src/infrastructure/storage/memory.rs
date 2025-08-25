@@ -1,4 +1,58 @@
-//! Repository implementations using the memory as backend.
+//! In-memory storage implementations for development and testing.
+//!
+//! This module provides repository implementations that store all data in memory.
+//! These are ideal for development, testing, and small applications that don't
+//! require persistent storage.
+//!
+//! # Features
+//! - Zero configuration required
+//! - Fast operations (no I/O)
+//! - Perfect for unit tests and development
+//! - Thread-safe with async support
+//! - Automatic cleanup when dropped
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use axum_gate::{Account, Role, Group, Secret, Argon2Hasher};
+//! use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use std::sync::Arc;
+//!
+//! # tokio_test::block_on(async {
+//! // Create repositories
+//! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//!
+//! // Create an account
+//! let account = Account::new("user@example.com", &[Role::User], &[Group::new("staff")]);
+//! let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
+//!
+//! // Create corresponding secret
+//! let secret = Secret::new(&stored_account.account_id, "password", Argon2Hasher).unwrap();
+//! secret_repo.store_secret(secret).await.unwrap();
+//!
+//! // Query the account
+//! let found = account_repo.query_account_by_user_id("user@example.com").await.unwrap();
+//! assert!(found.is_some());
+//! # });
+//! ```
+//!
+//! # Creating from Existing Data
+//!
+//! ```rust
+//! use axum_gate::{Account, Role, Group, Secret};
+//! use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+//!
+//! // Create repositories with pre-populated data
+//! let accounts = vec![
+//!     Account::new("admin@example.com", &[Role::Admin], &[]),
+//!     Account::new("user@example.com", &[Role::User], &[Group::new("staff")]),
+//! ];
+//! let account_repo = MemoryAccountRepository::from(accounts);
+//!
+//! let secrets = vec![/* your secrets */];
+//! let secret_repo = MemorySecretRepository::from(secrets);
+//! ```
 
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
@@ -17,7 +71,35 @@ use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
-/// A [MemoryAccountRepository] is a data structure where all [Account]s are stored in memory.
+/// In-memory repository for storing and retrieving user accounts.
+///
+/// This repository stores all account data in memory using a HashMap with the user ID
+/// as the key. It's thread-safe and supports concurrent access through async read/write locks.
+///
+/// # Performance Characteristics
+/// - O(1) lookup by user ID
+/// - Thread-safe with RwLock
+/// - No persistence (data lost when dropped)
+/// - Suitable for up to thousands of accounts
+///
+/// # Example
+/// ```rust
+/// use axum_gate::{Account, Role, Group, AccountRepository};
+/// use axum_gate::memory::MemoryAccountRepository;
+/// use std::sync::Arc;
+///
+/// # tokio_test::block_on(async {
+/// let repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+///
+/// // Store an account
+/// let account = Account::new("user@example.com", &[Role::User], &[]);
+/// let stored = repo.store_account(account).await.unwrap();
+///
+/// // Query the account
+/// let found = repo.query_account_by_user_id("user@example.com").await.unwrap();
+/// assert!(found.is_some());
+/// # });
+/// ```
 #[derive(Clone)]
 pub struct MemoryAccountRepository<R, G>
 where
@@ -82,31 +164,55 @@ where
         self.store_account(account).await
     }
 }
-/// Stores secrets in memory for authentication.
+/// In-memory repository for storing and managing user authentication secrets.
 ///
-/// # Create and use a credential repository for authentication
+/// This repository stores password hashes and other authentication secrets in memory.
+/// It's designed to work alongside `MemoryAccountRepository` and implements both
+/// `SecretRepository` and `CredentialsVerifier` traits for complete authentication support.
+///
+/// # Security Note
+/// While this stores password hashes (not plain passwords), the data is kept in memory
+/// and will be lost when the application stops. For production use, consider persistent
+/// storage implementations.
+///
+/// # Example Usage
 /// ```rust
-/// # tokio_test::block_on(async move {
-/// # use axum_gate::{Credentials, SecretRepository, Secret};
-/// # use axum_gate::{VerificationResult, Argon2Hasher};
-/// # use axum_gate::memory::MemorySecretRepository;
-/// # use uuid::Uuid;
-/// // The account id needs to be queried from an AccountRepository.
-/// // We generate it for this easy example.
+/// use axum_gate::{Secret, Credentials, VerificationResult, Argon2Hasher};
+/// use axum_gate::{SecretRepository, CredentialsVerifier};
+/// use axum_gate::memory::MemorySecretRepository;
+/// use uuid::Uuid;
+///
+/// # tokio_test::block_on(async {
+/// let repo = MemorySecretRepository::default();
 /// let account_id = Uuid::now_v7();
-/// let password = "admin_password";
-/// let creds = Secret::new(&account_id, password, Argon2Hasher).unwrap();
-/// // We can create a repository from a Vec<Secret>.
-/// let creds_repository = MemorySecretRepository::try_from(vec![creds.clone()]).unwrap();
-/// // We can add another secret.
-/// let creds = Secret::new(&Uuid::now_v7(), "changed-admin-password", Argon2Hasher).unwrap();
-/// creds_repository.store_secret(creds).await.unwrap();
-/// let creds = Secret::new(&account_id, "changed-admin-password", Argon2Hasher).unwrap();
-/// // We can update the secret in the repository.
-/// creds_repository.update_secret(creds).await.unwrap();
-/// // Or we can delete it if we want to.
-/// creds_repository.delete_secret(&account_id).await.unwrap();
+///
+/// // Store a secret (password hash)
+/// let secret = Secret::new(&account_id, "user_password", Argon2Hasher).unwrap();
+/// repo.store_secret(secret).await.unwrap();
+///
+/// // Verify credentials
+/// let credentials = Credentials::new(account_id, "user_password");
+/// let result = repo.verify_credentials(credentials).await.unwrap();
+/// assert_eq!(result, VerificationResult::Authorized);
+///
+/// // Test wrong password
+/// let wrong_creds = Credentials::new(account_id, "wrong_password");
+/// let result = repo.verify_credentials(wrong_creds).await.unwrap();
+/// assert_eq!(result, VerificationResult::Unauthorized);
 /// # });
+/// ```
+///
+/// # Creating from Existing Data
+/// ```rust
+/// use axum_gate::{Secret, Argon2Hasher};
+/// use axum_gate::memory::MemorySecretRepository;
+/// use uuid::Uuid;
+///
+/// let secrets = vec![
+///     Secret::new(&Uuid::now_v7(), "admin_pass", Argon2Hasher).unwrap(),
+///     Secret::new(&Uuid::now_v7(), "user_pass", Argon2Hasher).unwrap(),
+/// ];
+/// let repo = MemorySecretRepository::from(secrets);
 /// ```
 #[derive(Clone)]
 pub struct MemorySecretRepository {

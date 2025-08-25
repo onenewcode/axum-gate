@@ -1,5 +1,83 @@
-//! Pre-defined route handler for [axum] like `login` and `logout`.
-#![doc = include_str!("../../../doc/route_handlers.md")]
+//! Pre-defined route handlers for authentication operations.
+//!
+//! This module provides ready-to-use handlers for common authentication workflows
+//! like user login and logout. These handlers integrate seamlessly with your
+//! chosen storage implementations and JWT configuration.
+//!
+//! # Login Handler
+//!
+//! The `login` handler authenticates user credentials and sets a JWT cookie:
+//!
+//! ```rust
+//! use axum::{routing::post, Router, Json};
+//! use axum_gate::{
+//!     route_handlers::login, Credentials, RegisteredClaims, CookieJar,
+//!     memory::{MemorySecretRepository, MemoryAccountRepository},
+//!     JsonWebToken, JwtClaims, Account, Role, Group
+//! };
+//! use std::sync::Arc;
+//!
+//! async fn login_endpoint(
+//!     cookie_jar: CookieJar,
+//!     Json(credentials): Json<Credentials<String>>,
+//!     // Your repositories and codec would be provided via extensions or state
+//! ) -> Result<CookieJar, axum::http::StatusCode> {
+//!     let registered_claims = RegisteredClaims::new("my-app",
+//!         chrono::Utc::now().timestamp() as u64 + 3600); // 1 hour expiry
+//!
+//!     let secret_verifier = Arc::new(MemorySecretRepository::default());
+//!     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+//!     let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!     let cookie_template = cookie::CookieBuilder::new("auth-token", "")
+//!         .secure(true)
+//!         .http_only(true);
+//!
+//!     login(
+//!         cookie_jar,
+//!         Json(credentials),
+//!         registered_claims,
+//!         secret_verifier,
+//!         account_repo,
+//!         jwt_codec,
+//!         cookie_template,
+//!     ).await
+//! }
+//! ```
+//!
+//! # Logout Handler
+//!
+//! The `logout` handler removes the authentication cookie:
+//!
+//! ```rust
+//! use axum_gate::{route_handlers::logout, CookieJar};
+//!
+//! async fn logout_endpoint(cookie_jar: CookieJar) -> CookieJar {
+//!     let cookie_template = cookie::CookieBuilder::new("auth-token", "");
+//!     logout(cookie_jar, cookie_template).await
+//! }
+//! ```
+//!
+//! # Permission Management Functions
+//!
+//! This module also provides utility functions for managing user permissions
+//! using the zero-synchronization permission system:
+//!
+//! ```rust
+//! use axum_gate::route_handlers::{grant_user_permissions, check_user_permissions};
+//! use roaring::RoaringBitmap;
+//!
+//! let mut user_permissions = RoaringBitmap::new();
+//! let permissions_to_grant = vec!["read:file".to_string(), "write:file".to_string()];
+//!
+//! // Grant permissions
+//! grant_user_permissions(&mut user_permissions, &permissions_to_grant);
+//!
+//! // Check permissions
+//! let required_permissions = vec!["read:file".to_string()];
+//! if check_user_permissions(&user_permissions, &required_permissions) {
+//!     println!("User has required permissions");
+//! }
+//! ```
 use crate::Account;
 use crate::application::auth::{LoginResult, LoginService, LogoutService};
 use crate::cookie::CookieBuilder;
@@ -19,7 +97,33 @@ use axum_extra::extract::CookieJar;
 use tracing::error;
 use uuid::Uuid;
 
-/// Can be used to log a user in.
+/// Authenticates user credentials and creates a JWT authentication cookie.
+///
+/// This handler validates the provided credentials against the secret repository,
+/// retrieves the corresponding account from the account repository, and creates
+/// a signed JWT cookie containing the user's authentication information.
+///
+/// # Arguments
+/// * `cookie_jar` - The incoming cookie jar to add the auth cookie to
+/// * `request_credentials` - JSON payload containing user credentials
+/// * `registered_claims` - JWT registered claims (issuer, expiration, etc.)
+/// * `secret_verifier` - Repository for verifying user passwords
+/// * `account_repository` - Repository for loading user account data
+/// * `codec` - JWT codec for creating signed tokens
+/// * `cookie_template` - Template for creating the authentication cookie
+///
+/// # Returns
+/// * `Ok(CookieJar)` - Updated cookie jar with authentication cookie
+/// * `Err(StatusCode)` - HTTP error code indicating failure reason
+///   - `NOT_FOUND` - Account doesn't exist
+///   - `UNAUTHORIZED` - Invalid credentials
+///   - `INTERNAL_SERVER_ERROR` - System error during authentication
+///
+/// # Example Response Codes
+/// - 200: Login successful, cookie set
+/// - 401: Invalid username/password
+/// - 404: Account not found
+/// - 500: Internal server error
 pub async fn login<CredVeri, AccRepo, C, R, G>(
     cookie_jar: CookieJar,
     request_credentials: Json<Credentials<String>>,
@@ -70,7 +174,28 @@ where
     }
 }
 
-/// Removes the cookie that authenticates a user.
+/// Logs out a user by removing their authentication cookie.
+///
+/// This handler creates a cookie with the same name as the authentication cookie
+/// but removes its value, effectively logging out the user. The browser will
+/// delete the cookie when it receives this response.
+///
+/// # Arguments
+/// * `cookie_jar` - The incoming cookie jar
+/// * `cookie_template` - Template matching the authentication cookie to remove
+///
+/// # Returns
+/// The updated cookie jar with the authentication cookie removed.
+///
+/// # Example
+/// ```rust
+/// use axum_gate::{route_handlers::logout, CookieJar};
+///
+/// async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
+///     let cookie_template = cookie::CookieBuilder::new("auth-token", "");
+///     logout(cookie_jar, cookie_template).await
+/// }
+/// ```
 pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'static>) -> CookieJar {
     let logout_service = LogoutService::new();
     logout_service.logout();
@@ -79,33 +204,32 @@ pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'stati
     cookie_jar.remove(cookie)
 }
 
-// The old extend_permission_set handler has been removed.
-// The new zero-synchronization permission system eliminates the need
-// for dynamic permission set management. Permissions are now automatically
-// available when referenced by name using deterministic hashing.
-//
-// Migration: Remove calls to this endpoint and use PermissionChecker directly:
-//   PermissionChecker::grant_permission(&mut user.permissions, "permission_name");
+// Note: The old extend_permission_set handler has been removed in favor of the
+// zero-synchronization permission system. Permissions are now automatically
+// available when referenced by name using deterministic hashing - no coordination
+// between distributed nodes is required.
 
-/// Grant permissions to a user by permission names.
+/// Grants multiple permissions to a user's permission bitmap.
 ///
-/// This is the recommended way to manage user permissions in the new
-/// zero-synchronization architecture. No permission set management required.
+/// This is a convenience function that grants multiple permissions at once using
+/// the zero-synchronization permission system. Each permission name is automatically
+/// converted to a deterministic hash ID and added to the bitmap.
 ///
-/// # Example Usage
+/// # Arguments
+/// * `user_permissions` - Mutable reference to the user's permission bitmap
+/// * `permission_names` - Slice of permission name strings to grant
 ///
-/// ```
-/// use axum_gate::PermissionChecker;
+/// # Example
+/// ```rust
+/// use axum_gate::route_handlers::grant_user_permissions;
 /// use roaring::RoaringBitmap;
 ///
 /// let mut user_permissions = RoaringBitmap::new();
 /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
 ///
-/// for permission in &permissions {
-///     PermissionChecker::grant_permission(&mut user_permissions, permission);
-/// }
+/// grant_user_permissions(&mut user_permissions, &permissions);
 ///
-/// assert!(PermissionChecker::has_permission(&user_permissions, "read:file"));
+/// // User now has both read:file and write:file permissions
 /// ```
 pub fn grant_user_permissions(
     user_permissions: &mut roaring::RoaringBitmap,
@@ -116,7 +240,29 @@ pub fn grant_user_permissions(
     }
 }
 
-/// Revoke permissions from a user by permission names.
+/// Revokes multiple permissions from a user's permission bitmap.
+///
+/// This is a convenience function that removes multiple permissions at once.
+/// Each permission name is converted to its deterministic hash ID and removed
+/// from the bitmap.
+///
+/// # Arguments
+/// * `user_permissions` - Mutable reference to the user's permission bitmap
+/// * `permission_names` - Slice of permission name strings to revoke
+///
+/// # Example
+/// ```rust
+/// use axum_gate::route_handlers::{grant_user_permissions, revoke_user_permissions};
+/// use roaring::RoaringBitmap;
+///
+/// let mut user_permissions = RoaringBitmap::new();
+/// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
+///
+/// grant_user_permissions(&mut user_permissions, &permissions);
+/// revoke_user_permissions(&mut user_permissions, &["write:file".to_string()]);
+///
+/// // User now has only read:file permission
+/// ```
 pub fn revoke_user_permissions(
     user_permissions: &mut roaring::RoaringBitmap,
     permission_names: &[String],
@@ -126,7 +272,33 @@ pub fn revoke_user_permissions(
     }
 }
 
-/// Check if a user has specific permissions.
+/// Checks if a user has all of the specified permissions.
+///
+/// This function returns `true` only if the user has ALL of the required
+/// permissions. Use this for operations that require multiple permissions
+/// to be present simultaneously.
+///
+/// # Arguments
+/// * `user_permissions` - Reference to the user's permission bitmap
+/// * `required_permissions` - Slice of permission name strings to check
+///
+/// # Returns
+/// `true` if the user has all specified permissions, `false` otherwise.
+///
+/// # Example
+/// ```rust
+/// use axum_gate::route_handlers::{grant_user_permissions, check_user_permissions};
+/// use roaring::RoaringBitmap;
+///
+/// let mut user_permissions = RoaringBitmap::new();
+/// grant_user_permissions(&mut user_permissions, &["read:file".to_string()]);
+///
+/// let required = vec!["read:file".to_string()];
+/// assert!(check_user_permissions(&user_permissions, &required));
+///
+/// let required_both = vec!["read:file".to_string(), "write:file".to_string()];
+/// assert!(!check_user_permissions(&user_permissions, &required_both)); // Missing write:file
+/// ```
 pub fn check_user_permissions(
     user_permissions: &roaring::RoaringBitmap,
     required_permissions: &[String],

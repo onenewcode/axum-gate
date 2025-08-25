@@ -14,7 +14,34 @@ use crate::errors::Result;
 use roaring::RoaringBitmap;
 use tracing::debug;
 
-/// Ergonomic service that is able to insert/register a new [Account] to the repositories.
+/// Service for creating new user accounts with their associated authentication secrets.
+///
+/// This service provides an ergonomic builder pattern for creating accounts with roles,
+/// groups, and permissions, then storing both the account data and authentication secrets
+/// in their respective repositories.
+///
+/// # Basic Usage
+///
+/// ```rust
+/// use axum_gate::{AccountInsertService, Role, Group};
+/// use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+/// use std::sync::Arc;
+///
+/// # tokio_test::block_on(async {
+/// let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+/// let secret_repo = Arc::new(MemorySecretRepository::default());
+///
+/// let account = AccountInsertService::insert("user@example.com", "secure_password")
+///     .with_roles(vec![Role::User])
+///     .with_groups(vec![Group::new("staff")])
+///     .into_repositories(account_repo, secret_repo)
+///     .await
+///     .unwrap()
+///     .unwrap();
+///
+/// println!("Created account: {}", account.user_id);
+/// # });
+/// ```
 pub struct AccountInsertService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -32,7 +59,23 @@ where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
-    /// Creates a new instance that will insert an [Account] with the given details.
+    /// Creates a new account insertion builder with the specified credentials.
+    ///
+    /// This is the starting point for creating a new account. The user ID should be
+    /// unique within your application (typically an email or username), and the secret
+    /// will be hashed before storage using Argon2.
+    ///
+    /// # Arguments
+    /// * `user_id` - Unique identifier for the user (e.g., email or username)
+    /// * `secret` - Plain text password that will be securely hashed
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::AccountInsertService;
+    ///
+    /// let builder = AccountInsertService::insert("admin@example.com", "strong_password");
+    /// // Continue with .with_roles(), .with_groups(), etc.
+    /// ```
     pub fn insert(user_id: &str, secret: &str) -> Self {
         Self {
             user_id: user_id.to_string(),
@@ -43,28 +86,57 @@ where
         }
     }
 
-    /// Adds the given roles to the [Account] that will be inserted.
+    /// Adds roles to the account being created.
+    ///
+    /// Roles determine what actions the user can perform. Use the pre-defined
+    /// `Role` enum or create your own custom role type.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::{AccountInsertService, Role};
+    ///
+    /// let builder = AccountInsertService::insert("user@example.com", "password")
+    ///     .with_roles(vec![Role::User, Role::Reporter]);
+    /// ```
     pub fn with_roles(self, roles: Vec<R>) -> Self {
         Self { roles, ..self }
     }
 
-    /// Adds the given groups to the [Account] that will be inserted.
+    /// Adds groups to the account being created.
+    ///
+    /// Groups provide organizational structure for users, such as department
+    /// or team membership. They offer another dimension of access control.
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::{AccountInsertService, Group};
+    ///
+    /// let builder = AccountInsertService::insert("user@example.com", "password")
+    ///     .with_groups(vec![Group::new("engineering"), Group::new("backend-team")]);
+    /// ```
     pub fn with_groups(self, groups: Vec<G>) -> Self {
         Self { groups, ..self }
     }
 
-    /// Adds the given permission bitmap to the [Account].
+    /// Adds custom permissions to the account being created.
     ///
-    /// Use this with the zero-synchronization permission system:
+    /// This method allows you to set specific permissions using the zero-synchronization
+    /// permission system. Permissions are stored as a compressed bitmap for efficiency.
+    ///
+    /// # Arguments
+    /// * `permissions` - A RoaringBitmap containing the permission IDs
+    ///
+    /// # Example
     /// ```rust
-    /// use axum_gate::{PermissionChecker, AccountInsertService, Role, Group};
+    /// use axum_gate::{AccountInsertService, PermissionChecker, Role, Group};
     /// use roaring::RoaringBitmap;
     ///
     /// let mut permissions = RoaringBitmap::new();
-    /// PermissionChecker::grant_permission(&mut permissions, "read:file");
-    /// PermissionChecker::grant_permission(&mut permissions, "write:file");
+    /// PermissionChecker::grant_permission(&mut permissions, "read:api");
+    /// PermissionChecker::grant_permission(&mut permissions, "write:api");
+    /// PermissionChecker::grant_permission(&mut permissions, "manage:users");
     ///
-    /// let service = AccountInsertService::<Role, Group>::insert("user@example.com", "password")
+    /// let builder = AccountInsertService::<Role, Group>::insert("admin@example.com", "password")
     ///     .with_permissions(permissions);
     /// ```
     pub fn with_permissions(self, permissions: RoaringBitmap) -> Self {
@@ -74,7 +146,47 @@ where
         }
     }
 
-    /// Adds the created [Account] to the repositories.
+    /// Creates the account and secret, storing them in the provided repositories.
+    ///
+    /// This method consumes the builder and performs the actual account creation:
+    /// 1. Creates an `Account` with the specified details
+    /// 2. Stores the account in the account repository
+    /// 3. Hashes the password using Argon2
+    /// 4. Creates and stores the secret in the secret repository
+    ///
+    /// Both operations must succeed for the account to be considered created.
+    ///
+    /// # Arguments
+    /// * `account_repository` - Repository for storing account data
+    /// * `secret_repository` - Repository for storing password hashes
+    ///
+    /// # Returns
+    /// * `Ok(Some(Account))` - Account successfully created
+    /// * `Ok(None)` - Account creation failed (repository returned None)
+    /// * `Err(...)` - Error during creation process
+    ///
+    /// # Example
+    /// ```rust
+    /// use axum_gate::{AccountInsertService, Role, Group};
+    /// use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+    /// use std::sync::Arc;
+    ///
+    /// # tokio_test::block_on(async {
+    /// let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+    /// let secret_repo = Arc::new(MemorySecretRepository::default());
+    ///
+    /// let result = AccountInsertService::insert("user@example.com", "password")
+    ///     .with_roles(vec![Role::User])
+    ///     .into_repositories(account_repo, secret_repo)
+    ///     .await?;
+    ///
+    /// match result {
+    ///     Some(account) => println!("Created account: {}", account.user_id),
+    ///     None => println!("Account creation failed"),
+    /// }
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// # });
+    /// ```
     pub async fn into_repositories<AccRepo, SecRepo>(
         self,
         account_repository: Arc<AccRepo>,
