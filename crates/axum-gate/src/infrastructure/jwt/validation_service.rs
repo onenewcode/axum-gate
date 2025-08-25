@@ -138,9 +138,15 @@ mod tests {
     impl Codec for MockCodec {
         type Payload = JwtClaims<Account<Role, Group>>;
 
-        fn decode(&self, _data: &[u8]) -> anyhow::Result<Self::Payload> {
+        fn decode(&self, _data: &[u8]) -> crate::errors::Result<Self::Payload> {
             if self.should_fail_decode {
-                return Err(anyhow::anyhow!("Mock decode failure"));
+                return Err(crate::errors::Error::Infrastructure(
+                    crate::errors::InfrastructureError::Jwt {
+                        operation: crate::errors::JwtOperation::Decode,
+                        message: "Mock decode failure".to_string(),
+                        token_preview: None,
+                    },
+                ));
             }
 
             use crate::infrastructure::jwt::RegisteredClaims;
@@ -171,7 +177,7 @@ mod tests {
             })
         }
 
-        fn encode(&self, _payload: &Self::Payload) -> anyhow::Result<Vec<u8>> {
+        fn encode(&self, _payload: &Self::Payload) -> crate::errors::Result<Vec<u8>> {
             unimplemented!()
         }
     }

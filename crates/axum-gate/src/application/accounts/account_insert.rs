@@ -1,12 +1,16 @@
 use crate::{
-    Account, Error, domain::traits::AccessHierarchy, domain::values::Secret,
-    infrastructure::hashing::Argon2Hasher, ports::repositories::AccountRepository,
+    Account,
+    domain::traits::AccessHierarchy,
+    domain::values::Secret,
+    errors::{AccountOperation, ApplicationError, Error},
+    infrastructure::hashing::Argon2Hasher,
+    ports::repositories::AccountRepository,
     ports::repositories::SecretRepository,
 };
 
 use std::sync::Arc;
 
-use anyhow::{Result, anyhow};
+use crate::errors::Result;
 use roaring::RoaringBitmap;
 use tracing::debug;
 
@@ -84,17 +88,23 @@ where
             .with_permissions(self.permissions);
         debug!("Created account.");
         let Some(account) = account_repository.store_account(account).await? else {
-            return Err(anyhow!(Error::AccountRepository(
-                "Account repository returned None on insertion.".to_string()
-            )));
+            return Err(Error::Application(ApplicationError::AccountService {
+                operation: AccountOperation::Create,
+                message: "Account repository returned None on insertion".to_string(),
+                account_id: Some(self.user_id.clone()),
+            })
+            .into());
         };
         debug!("Stored account in account repository.");
         let id = &account.account_id;
         let secret = Secret::new(id, &self.secret, Argon2Hasher)?;
         if !secret_repository.store_secret(secret).await? {
-            Err(anyhow!(Error::SecretRepository(
-                "Storing secret in repository returned false.".to_string()
-            )))
+            Err(Error::Application(ApplicationError::AccountService {
+                operation: AccountOperation::Create,
+                message: "Storing secret in repository returned false".to_string(),
+                account_id: Some(account.account_id.to_string()),
+            })
+            .into())
         } else {
             debug!("Stored secret in secret repository.");
             Ok(Some(account))

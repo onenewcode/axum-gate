@@ -5,6 +5,7 @@
 //! - Storage: Database and persistence implementations
 //! - JWT: JSON Web Token implementation details
 //! - Hashing: Password hashing and cryptographic implementations
+pub mod error;
 pub mod hashing;
 pub mod jwt;
 pub mod storage;

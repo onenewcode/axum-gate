@@ -3,7 +3,8 @@
 
 mod application;
 mod domain;
-mod errors;
+pub mod errors;
+
 mod infrastructure;
 mod ports;
 
@@ -25,7 +26,8 @@ pub use domain::services::permissions::{
 
 // Permission validation utilities
 pub use domain::services::permissions::validation::{
-    ApplicationValidator, PermissionCollision, PermissionCollisionChecker, ValidationReport,
+    ApplicationValidator, PermissionCollision as ValidationPermissionCollision,
+    PermissionCollisionChecker, ValidationReport,
 };
 
 // Port definitions
@@ -57,9 +59,6 @@ pub use infrastructure::jwt::{
 
 // Hashing utilities
 pub use infrastructure::hashing::{Argon2Hasher, HashedValue};
-
-// Error types
-pub use errors::Error;
 
 // Re-export external dependencies users need
 pub use cookie;

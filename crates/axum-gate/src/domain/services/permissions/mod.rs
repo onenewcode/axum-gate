@@ -216,9 +216,9 @@
 
 pub mod validation;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
+use crate::errors::{DomainError, Error, Result};
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
 
@@ -367,27 +367,28 @@ impl PermissionChecker {
 ///
 /// // This would panic if there were collisions (very unlikely with SHA-256)
 /// ```
-pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<(), String> {
-    let mut seen_ids = HashSet::new();
+pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
+    let mut seen_ids: HashMap<u32, &str> = HashMap::new();
     let mut seen_names = HashSet::new();
 
     for &permission in permissions {
         // Check for duplicate names
         if !seen_names.insert(permission) {
-            return Err(format!("Duplicate permission name: {}", permission));
+            return Err(Error::Domain(DomainError::permission_collision(
+                0,
+                vec![permission.to_string()],
+            )));
         }
 
         // Check for hash collisions
         let id = PermissionId::from_name(permission);
-        if let Some(existing) = seen_ids.get(&id) {
-            return Err(format!(
-                "Hash collision detected between '{}' and '{}' (both hash to {})",
-                permission,
-                existing,
-                id.as_u32()
-            ));
+        if let Some(existing_permission) = seen_ids.get(&id.as_u32()) {
+            return Err(Error::Domain(DomainError::permission_collision(
+                id.as_u32(),
+                vec![existing_permission.to_string(), permission.to_string()],
+            )));
         }
-        seen_ids.insert(id);
+        seen_ids.insert(id.as_u32(), permission);
     }
 
     Ok(())
@@ -573,7 +574,8 @@ mod tests {
             "read:file", // Duplicate
         ]);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Duplicate permission name"));
+        let error_message = format!("{}", result.unwrap_err());
+        assert!(error_message.contains("Permission collision"));
     }
 
     #[test]

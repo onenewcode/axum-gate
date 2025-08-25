@@ -1,6 +1,6 @@
 use crate::domain::values::Secret;
 
-use anyhow::Result;
+use crate::errors::Result;
 use std::future::Future;
 use uuid::Uuid;
 

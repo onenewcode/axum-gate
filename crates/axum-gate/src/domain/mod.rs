@@ -7,6 +7,7 @@
 //! - Values: Value objects and domain-specific types
 
 pub mod entities;
+pub mod error;
 pub mod services;
 pub mod traits;
 pub mod values;

@@ -1,12 +1,12 @@
 //! Claims and JWT models.
-use crate::Error;
+use crate::errors::{Error, InfrastructureError, JwtOperation};
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use crate::ports::Codec;
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use anyhow::{Result, anyhow};
+use crate::errors::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
@@ -186,8 +186,14 @@ where
 {
     type Payload = P;
     fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>> {
-        let web_token = jsonwebtoken::encode(&self.header, payload, &self.enc_key)
-            .map_err(|e| Error::Codec(format!("{e}")))?;
+        let web_token =
+            jsonwebtoken::encode(&self.header, payload, &self.enc_key).map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Jwt {
+                    operation: JwtOperation::Encode,
+                    message: format!("JWT encoding failed: {e}"),
+                    token_preview: None,
+                })
+            })?;
         Ok(web_token.as_bytes().to_vec())
     }
     /// Decodes the given value.
@@ -201,12 +207,27 @@ where
             &self.dec_key,
             &self.validation,
         )
-        .map_err(|e| Error::Codec(format!("{e}")))?;
+        .map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Jwt {
+                operation: JwtOperation::Decode,
+                message: format!("JWT decoding failed: {e}"),
+                token_preview: Some(
+                    String::from_utf8_lossy(encoded_value)
+                        .chars()
+                        .take(20)
+                        .collect::<String>()
+                        + "...",
+                ),
+            })
+        })?;
 
         if self.header != claims.header {
-            return Err(anyhow!(Error::Codec(
-                "Header of the decoded value does not match the one used for encoding.".to_string()
-            )));
+            return Err(Error::Infrastructure(InfrastructureError::Jwt {
+                operation: JwtOperation::Validate,
+                message: "Header of the decoded value does not match the one used for encoding"
+                    .to_string(),
+                token_preview: None,
+            }));
         }
 
         Ok(claims.claims)

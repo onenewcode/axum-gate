@@ -1,5 +1,5 @@
 //! En- and decoding payload interfaces.
-use anyhow::Result;
+use crate::errors::Result;
 use serde::{Serialize, de::DeserializeOwned};
 
 /// Methods for encoding and decoding payload.

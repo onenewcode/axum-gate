@@ -1,11 +1,14 @@
 use crate::domain::traits::AccessHierarchy;
 use crate::ports::repositories::AccountRepository;
 use crate::ports::repositories::SecretRepository;
-use crate::{Account, Error};
+use crate::{
+    Account,
+    errors::{AccountOperation, ApplicationError, Error},
+};
 
 use std::sync::Arc;
 
-use anyhow::{Result, anyhow};
+use crate::errors::Result;
 
 /// Removes the given account and its corresponding secret from repositories.
 pub struct AccountDeleteService<R, G>
@@ -40,9 +43,12 @@ where
             .delete_secret(&self.account.account_id)
             .await?
         {
-            return Err(anyhow!(Error::SecretRepository(
-                "Deleting secret in repository returned false.".to_string()
-            )));
+            return Err(Error::Application(ApplicationError::AccountService {
+                operation: AccountOperation::Delete,
+                message: "Deleting secret in repository returned false".to_string(),
+                account_id: Some(self.account.account_id.to_string()),
+            })
+            .into());
         };
 
         if account_repository
@@ -50,9 +56,12 @@ where
             .await?
             .is_none()
         {
-            return Err(anyhow!(Error::AccountRepository(
-                "Account repository returned None on insertion.".to_string()
-            )));
+            return Err(Error::Application(ApplicationError::AccountService {
+                operation: AccountOperation::Delete,
+                message: "Account repository returned None on deletion".to_string(),
+                account_id: Some(self.account.account_id.to_string()),
+            })
+            .into());
         };
         Ok(())
     }

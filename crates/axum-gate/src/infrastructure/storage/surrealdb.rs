@@ -6,11 +6,14 @@ use crate::domain::values::Secret;
 use crate::domain::values::VerificationResult;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::{Account, Credentials, Error};
+use crate::{
+    Account, Credentials,
+    errors::{DatabaseOperation, Error, InfrastructureError},
+};
 
 use std::default::Default;
 
-use anyhow::{Result, anyhow};
+use crate::errors::Result;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use surrealdb::{Connection, RecordId, RecordIdKey, Surreal};
@@ -62,7 +65,14 @@ where
             .use_ns(&self.scope_settings.namespace)
             .use_db(&self.scope_settings.database)
             .await
-            .map_err(|e| anyhow!(Error::Repository(e.to_string())))
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Connect,
+                    message: format!("Failed to set namespace/database: {}", e),
+                    table: None,
+                    record_id: None,
+                })
+            })
     }
 }
 
@@ -81,7 +91,14 @@ where
                 user_id,
             ))
             .await
-            .map_err(|e| Error::AccountRepository(e.to_string()))?;
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query account by user_id: {}", e),
+                    table: Some(self.scope_settings.table_names.accounts.clone()),
+                    record_id: Some(user_id.to_string()),
+                })
+            })?;
         Ok(db_account)
     }
 
@@ -89,12 +106,20 @@ where
         self.use_ns_db().await?;
         let record_id =
             RecordId::from_table_key(&self.scope_settings.table_names.accounts, &account.user_id);
+        let user_id = account.user_id.clone();
         let db_account: Option<Account<R, G>> = self
             .db
             .insert(record_id)
             .content(account)
             .await
-            .map_err(|e| Error::AccountRepository(format!("Could not insert account: {e}")))?;
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Insert,
+                    message: format!("Could not insert account: {}", e),
+                    table: Some(self.scope_settings.table_names.accounts.clone()),
+                    record_id: Some(user_id),
+                })
+            })?;
         Ok(db_account)
     }
 
@@ -107,7 +132,14 @@ where
                 user_id,
             ))
             .await
-            .map_err(|e| Error::AccountRepository(e.to_string()))?;
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Delete,
+                    message: format!("Failed to delete account: {}", e),
+                    table: Some(self.scope_settings.table_names.accounts.clone()),
+                    record_id: Some(user_id.to_string()),
+                })
+            })?;
         Ok(db_account)
     }
 
@@ -132,23 +164,34 @@ where
             secret.account_id,
         );
 
+        let account_id = secret.account_id;
         let db_credentials: Option<Secret> = self
             .db
             .insert(&record_id)
             .content(secret)
             .await
-            .map_err(|e| Error::SecretRepository(e.to_string()))?;
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Insert,
+                    message: format!("Failed to store secret: {}", e),
+                    table: Some(self.scope_settings.table_names.credentials.clone()),
+                    record_id: Some(account_id.to_string()),
+                })
+            })?;
         Ok(db_credentials.is_some())
     }
 
     async fn delete_secret(&self, id: &Uuid) -> Result<bool> {
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(&self.scope_settings.table_names.credentials, *id);
-        let result: Option<Secret> = self
-            .db
-            .delete(record_id)
-            .await
-            .map_err(|e| Error::SecretRepository(e.to_string()))?;
+        let result: Option<Secret> = self.db.delete(record_id).await.map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Delete,
+                message: format!("Failed to delete secret: {}", e),
+                table: Some(self.scope_settings.table_names.credentials.clone()),
+                record_id: Some(id.to_string()),
+            })
+        })?;
         Ok(result.is_some())
     }
 
@@ -159,12 +202,20 @@ where
             &self.scope_settings.table_names.credentials,
             secret.account_id,
         );
+        let account_id = secret.account_id;
         let _: Option<Secret> = self
             .db
             .update(record_id)
             .content(secret)
             .await
-            .map_err(|e| Error::SecretRepository(e.to_string()))?;
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Update,
+                    message: format!("Failed to update secret: {}", e),
+                    table: Some(self.scope_settings.table_names.credentials.clone()),
+                    record_id: Some(account_id.to_string()),
+                })
+            })?;
         Ok(())
     }
 }
@@ -186,10 +237,22 @@ where
             .bind(("record_id", record_id))
             .bind(("request_secret", credentials.secret))
             .await
-            .map_err(|e| Error::SecretRepository(e.to_string()))?;
-        let result: Option<bool> = response
-            .take(0)
-            .map_err(|e| Error::SecretRepository(e.to_string()))?;
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to verify credentials: {}", e),
+                    table: Some(self.scope_settings.table_names.credentials.clone()),
+                    record_id: None,
+                })
+            })?;
+        let result: Option<bool> = response.take(0).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Query,
+                message: format!("Failed to extract verification result: {}", e),
+                table: Some(self.scope_settings.table_names.credentials.clone()),
+                record_id: None,
+            })
+        })?;
 
         Ok(VerificationResult::from(result.unwrap_or(false)))
     }

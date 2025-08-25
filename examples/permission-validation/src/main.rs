@@ -7,7 +7,7 @@
 //! - Runtime validation during application lifecycle
 //! - Error handling and reporting
 
-use anyhow::{Context, Result};
+use axum_gate::errors::Result;
 use axum_gate::{ApplicationValidator, PermissionCollisionChecker};
 use serde::{Deserialize, Serialize};
 
@@ -76,9 +76,11 @@ fn example_static_validation() -> Result<()> {
                 info!("  ✅ Static validation passed");
             } else {
                 error!("  ❌ Static validation failed: {}", report.summary());
-                return Err(anyhow::anyhow!(
-                    "Static validation failed: {}",
-                    report.summary()
+                return Err(axum_gate::errors::Error::Domain(
+                    axum_gate::errors::DomainError::permission_collision(
+                        12345,
+                        vec!["static_validation_failed".to_string()],
+                    ),
                 ));
             }
         }
@@ -103,9 +105,11 @@ fn example_static_validation() -> Result<()> {
                     "  ❌ ApplicationValidator validation failed: {}",
                     report.summary()
                 );
-                return Err(anyhow::anyhow!(
-                    "ApplicationValidator validation failed: {}",
-                    report.summary()
+                return Err(axum_gate::errors::Error::Domain(
+                    axum_gate::errors::DomainError::permission_collision(
+                        54321,
+                        vec!["app_validation_failed".to_string()],
+                    ),
                 ));
             }
         }
@@ -410,18 +414,29 @@ async fn handle_validation_with_recovery(permissions: Vec<String>) -> Result<()>
             if !duplicates.is_empty() {
                 info!("    Applying automatic deduplication...");
                 // In a real application, you might implement deduplication logic here
-                return Err(anyhow::anyhow!(
-                    "Duplicates found but recovery not implemented in example"
+                return Err(axum_gate::errors::Error::Application(
+                    axum_gate::errors::ApplicationError::authentication(
+                        axum_gate::errors::AuthenticationError::InvalidCredentials,
+                        Some(
+                            "Duplicates found but recovery not implemented in example".to_string(),
+                        ),
+                    ),
                 ));
             }
 
             if !report.collisions.is_empty() {
                 error!("    Hash collisions detected - manual intervention required");
-                return Err(anyhow::anyhow!("Hash collisions require manual resolution"));
+                return Err(axum_gate::errors::Error::Domain(
+                    axum_gate::errors::DomainError::permission_collision(
+                        99999,
+                        vec!["collision_detected".to_string()],
+                    ),
+                ));
             }
         }
         Err(e) => {
-            return Err(e).context("Failed to generate validation report");
+            error!("Failed to generate validation report: {}", e);
+            return Err(e);
         }
     }
 
@@ -448,9 +463,10 @@ async fn validate_service_permissions(permissions: Vec<String>) -> Result<usize>
     let mut checker = PermissionCollisionChecker::new(permissions);
 
     // Use strict validation for service permissions
-    checker
-        .validate()
-        .context("Service permission validation failed")?;
+    checker.validate().map_err(|e| {
+        error!("Service permission validation failed: {}", e);
+        e
+    })?;
 
     Ok(permission_count)
 }
@@ -482,9 +498,10 @@ async fn validate_with_fallback() -> Result<()> {
             ];
 
             let mut fallback_checker = PermissionCollisionChecker::new(safe_permissions);
-            fallback_checker
-                .validate()
-                .context("Even fallback permissions failed validation")?;
+            fallback_checker.validate().map_err(|e| {
+                error!("Even fallback permissions failed validation: {}", e);
+                e
+            })?;
 
             info!("    ✅ Fallback permission set validated successfully");
             Ok(())

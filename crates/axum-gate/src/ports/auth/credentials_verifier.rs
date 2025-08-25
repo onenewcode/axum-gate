@@ -1,7 +1,7 @@
 use crate::Credentials;
 use crate::domain::values::VerificationResult;
 
-use anyhow::Result;
+use crate::errors::Result;
 use std::future::Future;
 
 /// Checks whether the given [Credentials] match to the one that is stored.

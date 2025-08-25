@@ -5,7 +5,7 @@
 //! It's particularly useful when dealing with dynamic permission strings loaded from
 //! configuration files, databases, or other runtime sources.
 use crate::domain::services::permissions::PermissionId;
-use anyhow::{Context, Result};
+use crate::errors::{DomainError, Error, Result};
 use std::collections::HashMap;
 use tracing::{info, warn};
 
@@ -144,8 +144,12 @@ impl PermissionCollisionChecker {
         let mut report = ValidationReport::default();
 
         // Check for hash collisions (including duplicates)
-        self.check_hash_collisions(&mut report)
-            .context("Failed to check for hash collisions")?;
+        self.check_hash_collisions(&mut report).map_err(|e| {
+            Error::Domain(DomainError::permission_collision(
+                0,
+                vec![format!("Failed to check for hash collisions: {}", e)],
+            ))
+        })?;
 
         // Generate collision map for inspection
         self.build_collision_map();
@@ -545,9 +549,12 @@ impl ApplicationValidator {
     /// * `Err(anyhow::Error)` - Validation process failed
     pub fn validate(self) -> Result<ValidationReport> {
         let mut checker = PermissionCollisionChecker::new(self.permissions);
-        let report = checker
-            .validate()
-            .context("Permission validation process failed")?;
+        let report = checker.validate().map_err(|e| {
+            Error::Domain(DomainError::permission_collision(
+                0,
+                vec![format!("Permission validation process failed: {}", e)],
+            ))
+        })?;
 
         report.log_results();
 

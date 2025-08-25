@@ -1,10 +1,12 @@
 //! Secrets hashing and verification models.
 use crate::{
-    Error, domain::values::verification::VerificationResult, infrastructure::hashing::HashedValue,
+    domain::values::verification::VerificationResult,
+    errors::{Error, HashingOperation, PortError},
+    infrastructure::hashing::HashedValue,
     ports::auth::HashingService,
 };
 
-use anyhow::Result;
+use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -26,9 +28,13 @@ impl Secret {
         plain_secret: &str,
         hasher: Hasher,
     ) -> Result<Self> {
-        let secret = hasher
-            .hash_value(plain_secret)
-            .map_err(|e| Error::Hashing(e.to_string()))?;
+        let secret = hasher.hash_value(plain_secret).map_err(|e| {
+            Error::Port(PortError::Hashing {
+                operation: HashingOperation::Hash,
+                message: e.to_string(),
+                algorithm: Some("Argon2".to_string()),
+            })
+        })?;
         Ok(Self {
             account_id: *account_id,
             secret,

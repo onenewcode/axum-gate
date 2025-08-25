@@ -3,15 +3,16 @@
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
 use crate::domain::values::VerificationResult;
+use crate::errors::{Error, PortError, RepositoryType};
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::{Account, Credentials, Error};
+use crate::{Account, Credentials};
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{Result, anyhow};
+use crate::errors::Result;
 use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
@@ -139,16 +140,22 @@ impl SecretRepository for MemorySecretRepository {
         };
 
         if already_present {
-            return Err(anyhow!(Error::SecretRepository(
-                "AccountID is already present.".to_string()
-            )));
+            return Err(Error::Port(PortError::Repository {
+                repository: RepositoryType::Secret,
+                message: "AccountID is already present".to_string(),
+                operation: None,
+            }));
         }
 
         let mut write = self.store.write().await;
         debug!("Got write lock on secret repository.");
 
         if write.insert(secret.account_id, secret).is_some() {
-            return Err(anyhow!(Error::SecretRepository("This should never occur because it is checked if the key is already present a few lines earlier.".to_string())));
+            return Err(Error::Port(PortError::Repository {
+                repository: RepositoryType::Secret,
+                message: "This should never occur because it is checked if the key is already present a few lines earlier".to_string(),
+                operation: Some("store".to_string()),
+            }));
         };
         Ok(true)
     }

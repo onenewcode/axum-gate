@@ -1,9 +1,9 @@
 //! Value hashing implementations.
-use crate::Error;
 use crate::domain::values::VerificationResult;
+use crate::errors::{Error, HashingOperation, PortError};
 use crate::ports::auth::HashingService;
 
-use anyhow::Result;
+use crate::errors::Result;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 
@@ -20,14 +20,22 @@ impl HashingService for Argon2Hasher {
         let argon2 = Argon2::default();
         Ok(argon2
             .hash_password(plain_value.as_bytes(), &salt)
-            .map_err(|e| Error::Hashing(format!("Could not hash secret: {e}")))?
+            .map_err(|e| {
+                Error::Port(PortError::Hashing {
+                    operation: HashingOperation::Hash,
+                    message: format!("Could not hash secret: {e}"),
+                    algorithm: Some("Argon2".to_string()),
+                })
+            })?
             .to_string())
     }
     fn verify_value(&self, plain_value: &str, hashed_value: &str) -> Result<VerificationResult> {
         let hash = PasswordHash::new(hashed_value).map_err(|e| {
-            crate::Error::Hashing(format!(
-                "Could not create password hash from hashed value string: {e}"
-            ))
+            crate::errors::Error::Port(PortError::Hashing {
+                operation: HashingOperation::Verify,
+                message: format!("Could not create password hash from hashed value string: {e}"),
+                algorithm: Some("Argon2".to_string()),
+            })
         })?;
         Ok(VerificationResult::from(
             Argon2::default()

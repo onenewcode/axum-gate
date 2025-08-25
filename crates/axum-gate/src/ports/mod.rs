@@ -5,6 +5,7 @@
 //! are implemented by adapters in the infrastructure layer.
 
 pub mod auth;
+pub mod error;
 pub mod repositories;
 
 mod codecs;
