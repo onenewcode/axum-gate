@@ -1,6 +1,7 @@
-use super::AccessScope;
 use crate::Account;
+use crate::domain::services::authorization::AuthorizationService;
 use crate::domain::traits::AccessHierarchy;
+use crate::domain::values::AccessScope;
 use crate::infrastructure::jwt::JwtClaims;
 use crate::ports::Codec;
 
@@ -28,9 +29,7 @@ where
 {
     inner: S,
     issuer: String,
-    role_scopes: Vec<AccessScope<R>>,
-    group_scope: Vec<G>,
-    permissions: RoaringBitmap,
+    authorization_service: AuthorizationService<R, G>,
     codec: Arc<C>,
     cookie_template: CookieBuilder<'static>,
 }
@@ -53,43 +52,11 @@ where
     ) -> Self {
         Self {
             inner,
-            issuer: issuer.to_string(),
-            role_scopes,
-            group_scope,
-            permissions,
+            issuer: issuer.to_owned(),
+            authorization_service: AuthorizationService::new(role_scopes, group_scope, permissions),
             codec,
             cookie_template,
         }
-    }
-
-    fn authorized_by_role(&self, account: &Account<R, G>) -> bool {
-        account
-            .roles
-            .iter()
-            .any(|r| self.role_scopes.iter().any(|scope| scope.grants_role(r)))
-    }
-
-    fn authorized_by_minimum_role(&self, account: &Account<R, G>) -> bool {
-        debug!("Checking if any subordinate role matches the required one.");
-        account.roles.iter().any(|ur| {
-            self.role_scopes
-                .iter()
-                .any(|scope| scope.grants_supervisor(ur))
-        })
-    }
-
-    fn authorized_by_group(&self, account: &Account<R, G>) -> bool {
-        account
-            .groups
-            .iter()
-            .any(|r| self.group_scope.iter().any(|g_scope| g_scope.eq(r)))
-    }
-
-    fn authorized_by_permission(&self, account: &Account<R, G>) -> bool {
-        account
-            .permissions
-            .iter()
-            .any(|perm| self.permissions.contains(perm))
     }
 }
 
@@ -139,8 +106,7 @@ where
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
 
-        if self.group_scope.is_empty() && self.role_scopes.is_empty() && self.permissions.is_empty()
-        {
+        if self.authorization_service.has_empty_criteria() {
             debug!("Denying access because roles, groups or permissions are empty.");
             return unauthorized_future;
         }
@@ -168,10 +134,7 @@ where
         }
 
         let account = &jwt.custom_claims;
-        let is_authorized = self.authorized_by_permission(account)
-            || self.authorized_by_group(account)
-            || self.authorized_by_role(account)
-            || self.authorized_by_minimum_role(account);
+        let is_authorized = self.authorization_service.is_authorized(account);
 
         if !is_authorized {
             return unauthorized_future;
