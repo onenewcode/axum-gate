@@ -1,9 +1,7 @@
 use crate::domain::entities::Account;
 use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::AccessScope;
 
-use roaring::RoaringBitmap;
 use tracing::debug;
 
 /// Domain service for authorization decisions.
@@ -27,40 +25,6 @@ where
 {
     /// Creates a new authorization service with the given access policy.
     pub fn new(policy: AccessPolicy<R, G>) -> Self {
-        Self { policy }
-    }
-
-    /// Creates a new authorization service with the given scopes and permissions.
-    ///
-    /// This method is provided for backward compatibility with existing code.
-    /// Consider using `new(AccessPolicy)` for new code.
-    pub fn from_components(
-        role_scopes: Vec<AccessScope<R>>,
-        group_scope: Vec<G>,
-        permissions: RoaringBitmap,
-    ) -> Self {
-        // Reconstruct policy from components
-        let mut policy = AccessPolicy::deny_all();
-
-        // Add role requirements
-        for scope in role_scopes {
-            if scope.allow_supervisor_access {
-                policy = policy.or_require_role_or_supervisor(scope.role);
-            } else {
-                policy = policy.or_require_role(scope.role);
-            }
-        }
-
-        // Add group requirements
-        for group in group_scope {
-            policy = policy.or_require_group(group);
-        }
-
-        // Add permission requirements
-        for permission in permissions {
-            policy = policy.or_require_permission(permission);
-        }
-
         Self { policy }
     }
 
