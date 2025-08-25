@@ -27,7 +27,7 @@ To protect your application with `axum-gate`, you need storage implementations f
 ```rust
 use axum::{routing::get, Router};
 use axum_gate::{
-    Account, Gate, Role, Group, JsonWebToken, JwtClaims, 
+    Account, Gate, Role, Group, JsonWebToken, JwtClaims,
     memory::{MemoryAccountRepository, MemorySecretRepository},
     AccountInsertService, AccessPolicy
 };
@@ -38,22 +38,22 @@ async fn main() {
     // Set up storage
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
     let secret_repo = Arc::new(MemorySecretRepository::default());
-    
+
     // Create a test user
     AccountInsertService::insert("admin@example.com", "secure_password")
         .with_roles(vec![Role::Admin])
         .into_repositories(Arc::clone(&account_repo), Arc::clone(&secret_repo))
         .await
         .unwrap();
-    
+
     // Set up JWT codec
     let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    
+
     // Create cookie template
     let cookie_template = axum_gate::cookie::CookieBuilder::new("auth-token", "")
         .secure(true)
         .http_only(true);
-    
+
     // Build your application with protected routes
     let app = Router::new()
         .route("/admin", get(admin_handler))
@@ -64,10 +64,10 @@ async fn main() {
         )
         .route("/login", axum::routing::post(login_handler))
         .route("/logout", axum::routing::post(logout_handler));
-    
+
     // Run your server
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    //axum::serve(listener, app).await.unwrap();
 }
 
 async fn admin_handler() -> &'static str {
@@ -129,7 +129,7 @@ use axum_gate::{AccessPolicy, PermissionChecker, PermissionId, Role, Group};
 // Static permissions using compile-time validation
 axum_gate::validate_permissions![
     "read:api",
-    "write:api", 
+    "write:api",
     "admin:system"
 ];
 
@@ -208,9 +208,9 @@ let auth_routes = Router::<()>::new()
         cookie_jar: CookieJar,
         Json(creds): Json<Credentials<String>>
     | async move {
-        let registered_claims = RegisteredClaims::new("my-app", 
+        let registered_claims = RegisteredClaims::new("my-app",
             chrono::Utc::now().timestamp() as u64 + 3600); // 1 hour expiry
-        
+
         login(
             cookie_jar,
             Json(creds),
@@ -238,7 +238,7 @@ use axum_gate::validate_permissions;
 
 validate_permissions![
     "user:read:profile",
-    "user:write:profile", 
+    "user:write:profile",
     "admin:manage:system",
     "admin:delete:user"
 ];
@@ -330,7 +330,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 enum CustomRole {
     SuperAdmin,
-    Admin, 
+    Admin,
     Manager,
     Employee,
     Guest,
@@ -352,7 +352,7 @@ impl AccessHierarchy for CustomRole {
             Self::Guest => Some(Self::Employee),
         }
     }
-    
+
     fn subordinate(&self) -> Option<Self> {
         match self {
             Self::SuperAdmin => Some(Self::Admin),
