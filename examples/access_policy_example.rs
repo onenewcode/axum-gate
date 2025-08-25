@@ -8,7 +8,7 @@ use axum::{routing::get, Router};
 use axum_gate::{
     AccessPolicy, AuthorizationService, Gate, Group, Role, Account,
     infrastructure::jwt::JsonWebTokenOptions,
-    infrastructure::storage::memory::MemoryAccountRepository,
+    infrastructure::repositories::memory::MemoryAccountRepository,
 };
 use std::sync::Arc;
 

@@ -1,4 +1,4 @@
-//! Storage implementations.
+//! Repository implementations.
 
 pub mod memory;
 #[cfg(feature = "storage-seaorm")]
@@ -7,10 +7,10 @@ pub mod sea_orm;
 pub mod surrealdb;
 
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
-pub use storage_additions::*;
+pub use repository_additions::*;
 
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
-mod storage_additions {
+mod repository_additions {
     /// Table names that are used within the database.
     #[derive(Clone, Debug)]
     pub struct TableNames {

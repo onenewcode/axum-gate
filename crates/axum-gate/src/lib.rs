@@ -42,12 +42,12 @@ pub use application::auth::{LoginResult, LoginService, LogoutService};
 
 // Repository implementations
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
-pub use infrastructure::storage::TableNames;
-pub use infrastructure::storage::memory;
+pub use infrastructure::repositories::TableNames;
+pub use infrastructure::repositories::memory;
 #[cfg(feature = "storage-seaorm")]
-pub use infrastructure::storage::sea_orm;
+pub use infrastructure::repositories::sea_orm;
 #[cfg(feature = "storage-surrealdb")]
-pub use infrastructure::storage::surrealdb;
+pub use infrastructure::repositories::surrealdb;
 
 // Web components - the main user-facing API
 pub use infrastructure::web::{gate::Gate, route_handlers};

@@ -10,8 +10,8 @@ use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{
     Account,
     errors::{DatabaseOperation, Error, InfrastructureError},
-    infrastructure::storage::sea_orm::models::account as seaorm_account,
-    infrastructure::storage::sea_orm::models::credentials as seaorm_credentials,
+    infrastructure::repositories::sea_orm::models::account as seaorm_account,
+    infrastructure::repositories::sea_orm::models::credentials as seaorm_credentials,
 };
 
 use crate::errors::Result;

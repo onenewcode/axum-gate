@@ -199,7 +199,7 @@ where
 }
 
 #[cfg(feature = "storage-seaorm")]
-impl<R, G> TryFrom<crate::infrastructure::storage::sea_orm::models::account::Model>
+impl<R, G> TryFrom<crate::infrastructure::repositories::sea_orm::models::account::Model>
     for Account<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
@@ -210,7 +210,7 @@ where
     type Error = String;
 
     fn try_from(
-        value: crate::infrastructure::storage::sea_orm::models::account::Model,
+        value: crate::infrastructure::repositories::sea_orm::models::account::Model,
     ) -> Result<Self, Self::Error> {
         Ok(Self::new_with_account_id(
             &value.account_id,
