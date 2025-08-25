@@ -179,8 +179,8 @@ async fn reporter(Extension(user): Extension<Account<Role, Group>>) -> Result<St
 
 # Handling storage of `Account`s and `Secret`s
 
-You can use the [AccountInsertService](crate::services::AccountInsertService) and
-[AccountDeleteService](crate::services::AccountDeleteService) for easy insertion and deletion
+You can use the [AccountInsertService](crate::application::accounts::AccountInsertService) and
+[AccountDeleteService](crate::application::accounts::AccountDeleteService) for easy insertion and deletion
 of user accounts and their secrets.
 
 ```rust

@@ -32,8 +32,8 @@ pub use ports::Codec;
 pub use ports::auth::{CredentialsVerifier, HashingService};
 pub use ports::repositories::{AccountRepository, SecretRepository};
 
-// Infrastructure services users need
-pub use infrastructure::services::{AccountDeleteService, AccountInsertService};
+// Application services users need
+pub use application::accounts::{AccountDeleteService, AccountInsertService};
 
 // Repository implementations
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]

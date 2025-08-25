@@ -5,10 +5,7 @@
 //! - Storage: Database and persistence implementations
 //! - JWT: JSON Web Token implementation details
 //! - Hashing: Password hashing and cryptographic implementations
-//! - Services: Infrastructure-level service implementations
-
 pub mod hashing;
 pub mod jwt;
-pub mod services;
 pub mod storage;
 pub mod web;
