@@ -212,3 +212,7 @@ where
         Ok(claims.claims)
     }
 }
+
+mod validation_service;
+
+pub use validation_service::{JwtValidationResult, JwtValidationService};

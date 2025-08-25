@@ -50,7 +50,10 @@ pub use infrastructure::storage::surrealdb;
 pub use infrastructure::web::{gate::Gate, route_handlers};
 
 // JWT and authentication utilities
-pub use infrastructure::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+pub use infrastructure::jwt::{
+    JsonWebToken, JsonWebTokenOptions, JwtClaims, JwtValidationResult, JwtValidationService,
+    RegisteredClaims,
+};
 
 // Hashing utilities
 pub use infrastructure::hashing::{Argon2Hasher, HashedValue};

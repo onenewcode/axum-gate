@@ -2,7 +2,7 @@ use crate::Account;
 use crate::domain::services::authorization::AuthorizationService;
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::AccessScope;
-use crate::infrastructure::jwt::JwtClaims;
+use crate::infrastructure::jwt::{JwtClaims, JwtValidationResult, JwtValidationService};
 use crate::ports::Codec;
 
 use std::convert::Infallible;
@@ -28,9 +28,8 @@ where
     G: Eq,
 {
     inner: S,
-    issuer: String,
     authorization_service: AuthorizationService<R, G>,
-    codec: Arc<C>,
+    jwt_validation_service: JwtValidationService<C>,
     cookie_template: CookieBuilder<'static>,
 }
 
@@ -52,9 +51,8 @@ where
     ) -> Self {
         Self {
             inner,
-            issuer: issuer.to_owned(),
             authorization_service: AuthorizationService::new(role_scopes, group_scope, permissions),
-            codec,
+            jwt_validation_service: JwtValidationService::new(codec, issuer),
             cookie_template,
         }
     }
@@ -115,23 +113,24 @@ where
             return unauthorized_future;
         };
         trace!("axum-gate cookie: {auth_cookie:#?}");
+
         let cookie_value = auth_cookie.value_trimmed();
-        let jwt = match self.codec.decode(cookie_value.as_bytes()) {
-            Err(e) => {
-                debug!("Could not decode cookie value: {e}");
+        let jwt = match self.jwt_validation_service.validate_token(cookie_value) {
+            JwtValidationResult::Valid(jwt) => jwt,
+            JwtValidationResult::InvalidToken => {
+                debug!("JWT token validation failed");
                 return unauthorized_future;
             }
-            Ok(j) => j,
+            JwtValidationResult::InvalidIssuer { expected, actual } => {
+                warn!(
+                    "JWT issuer validation failed. Expected: '{}', Actual: '{}', Account: {}",
+                    expected, actual, "unknown"
+                );
+                return unauthorized_future;
+            }
         };
-        debug!("Logged in with id: {}", jwt.custom_claims.account_id);
 
-        if !jwt.has_issuer(&self.issuer) {
-            warn!(
-                "Access for issuer {:?} denied. User: {}",
-                jwt.registered_claims.issuer, jwt.custom_claims.account_id
-            );
-            return unauthorized_future;
-        }
+        debug!("Logged in with id: {}", jwt.custom_claims.account_id);
 
         let account = &jwt.custom_claims;
         let is_authorized = self.authorization_service.is_authorized(account);
@@ -143,7 +142,6 @@ where
         req.extensions_mut().insert(jwt.custom_claims.clone());
         req.extensions_mut().insert(jwt.registered_claims.clone());
 
-        let req = req;
         let inner = self.inner.call(req);
         Box::pin(async move { inner.await })
     }
