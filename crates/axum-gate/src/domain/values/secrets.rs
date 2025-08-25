@@ -1,7 +1,6 @@
 //! Secrets hashing and verification models.
 use crate::{
-    Error,
-    infrastructure::hashing::{HashedValue, VerificationResult},
+    Error, domain::values::verification::VerificationResult, infrastructure::hashing::HashedValue,
     ports::auth::HashingService,
 };
 

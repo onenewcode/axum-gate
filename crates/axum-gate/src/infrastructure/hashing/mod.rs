@@ -1,5 +1,6 @@
 //! Value hashing implementations.
 use crate::Error;
+use crate::domain::values::verification::VerificationResult;
 use crate::ports::auth::HashingService;
 
 use anyhow::Result;
@@ -8,21 +9,6 @@ use argon2::{Argon2, PasswordHash, PasswordVerifier};
 
 /// A hashed value.
 pub type HashedValue = String;
-
-/// The verification result of a hashed value.
-#[derive(Eq, PartialEq, Debug)]
-pub enum VerificationResult {
-    /// The verification was successful.
-    Ok,
-    /// The verification failed.
-    Unauthorized,
-}
-
-impl From<bool> for VerificationResult {
-    fn from(value: bool) -> Self {
-        if value { Self::Ok } else { Self::Unauthorized }
-    }
-}
 
 /// Hashes values using [argon2].
 #[derive(Default)]

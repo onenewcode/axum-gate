@@ -1,7 +1,7 @@
 use crate::Account;
 use crate::domain::entities::Credentials;
 use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::hashing::VerificationResult;
+use crate::domain::values::verification::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
 use crate::ports::Codec;
 use crate::ports::auth::CredentialsVerifier;

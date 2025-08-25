@@ -10,6 +10,7 @@ mod ports;
 // Core domain entities that users work with directly
 pub use domain::entities::{Account, Credentials, Group, Role};
 pub use domain::values::secrets::Secret;
+pub use domain::values::verification::VerificationResult;
 
 // Domain traits needed for custom implementations
 pub use domain::traits::AccessHierarchy;
@@ -52,7 +53,7 @@ pub use infrastructure::web::{gate::Gate, route_handlers};
 pub use infrastructure::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 
 // Hashing utilities
-pub use infrastructure::hashing::{Argon2Hasher, HashedValue, VerificationResult};
+pub use infrastructure::hashing::{Argon2Hasher, HashedValue};
 
 // Error types
 pub use errors::Error;
