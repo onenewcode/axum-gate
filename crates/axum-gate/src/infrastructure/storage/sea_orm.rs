@@ -2,8 +2,8 @@
 
 use crate::Credentials;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
-use crate::domain::values::secrets::Secret;
-use crate::domain::values::verification::VerificationResult;
+use crate::domain::values::Secret;
+use crate::domain::values::VerificationResult;
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};

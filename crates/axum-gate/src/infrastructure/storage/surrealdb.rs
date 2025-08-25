@@ -2,8 +2,8 @@
 
 use super::TableNames;
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::secrets::Secret;
-use crate::domain::values::verification::VerificationResult;
+use crate::domain::values::Secret;
+use crate::domain::values::VerificationResult;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 use crate::{Account, Credentials, Error};

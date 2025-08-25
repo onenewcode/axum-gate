@@ -1,5 +1,5 @@
 use crate::{
-    Account, Error, domain::traits::AccessHierarchy, domain::values::secrets::Secret,
+    Account, Error, domain::traits::AccessHierarchy, domain::values::Secret,
     infrastructure::hashing::Argon2Hasher, ports::repositories::AccountRepository,
     ports::repositories::SecretRepository,
 };

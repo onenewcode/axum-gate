@@ -1,6 +1,6 @@
 //! Credentials model to be used with [sea-orm].
 
-use crate::domain::values::secrets::Secret;
+use crate::domain::values::Secret;
 
 use sea_orm::{ActiveValue, entity::prelude::*};
 

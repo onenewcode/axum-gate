@@ -1,4 +1,4 @@
-use crate::domain::values::verification::VerificationResult;
+use crate::domain::values::VerificationResult;
 use crate::infrastructure::hashing::HashedValue;
 
 use anyhow::Result;

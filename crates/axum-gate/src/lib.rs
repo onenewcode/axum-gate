@@ -9,8 +9,8 @@ mod ports;
 
 // Core domain entities that users work with directly
 pub use domain::entities::{Account, Credentials, Group, Role};
-pub use domain::values::secrets::Secret;
-pub use domain::values::verification::VerificationResult;
+pub use domain::values::Secret;
+pub use domain::values::VerificationResult;
 
 // Domain traits needed for custom implementations
 pub use domain::traits::AccessHierarchy;

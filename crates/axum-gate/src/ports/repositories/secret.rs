@@ -1,4 +1,4 @@
-use crate::domain::values::secrets::Secret;
+use crate::domain::values::Secret;
 
 use anyhow::Result;
 use std::future::Future;

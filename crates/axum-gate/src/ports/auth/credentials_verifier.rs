@@ -1,5 +1,5 @@
 use crate::Credentials;
-use crate::domain::values::verification::VerificationResult;
+use crate::domain::values::VerificationResult;
 
 use anyhow::Result;
 use std::future::Future;

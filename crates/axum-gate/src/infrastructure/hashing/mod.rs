@@ -1,6 +1,6 @@
 //! Value hashing implementations.
 use crate::Error;
-use crate::domain::values::verification::VerificationResult;
+use crate::domain::values::VerificationResult;
 use crate::ports::auth::HashingService;
 
 use anyhow::Result;
