@@ -11,7 +11,5 @@ pub use account::AccountRepository;
 pub use secret::SecretRepository;
 
 // TODO: Define additional repository traits
-// - CredentialsRepository: For credential storage and retrieval
 // - RoleRepository: For role management
 // - GroupRepository: For group management
-// - SecretRepository: For secret storage operations
