@@ -16,6 +16,7 @@ pub use domain::values::{AccessScope, Secret, VerificationResult};
 pub use domain::traits::AccessHierarchy;
 
 // Domain services that users interact with
+pub use domain::services::access_policy::AccessPolicy;
 pub use domain::services::authorization::AuthorizationService;
 pub use domain::services::permissions::{
     PermissionChecker,

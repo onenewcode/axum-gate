@@ -1,4 +1,5 @@
 use crate::domain::entities::Account;
+use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::AccessScope;
 
@@ -8,17 +9,15 @@ use tracing::debug;
 /// Domain service for authorization decisions.
 ///
 /// This service contains pure business logic for determining whether an account
-/// is authorized based on roles, groups, and permissions. It has no external
-/// dependencies and can be used across different application contexts.
+/// is authorized based on an access policy. It has no external dependencies
+/// and can be used across different application contexts.
 #[derive(Debug, Clone)]
 pub struct AuthorizationService<R, G>
 where
-    R: AccessHierarchy + Eq,
+    R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
-    role_scopes: Vec<AccessScope<R>>,
-    group_scope: Vec<G>,
-    permissions: RoaringBitmap,
+    policy: AccessPolicy<R, G>,
 }
 
 impl<R, G> AuthorizationService<R, G>
@@ -26,17 +25,43 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
+    /// Creates a new authorization service with the given access policy.
+    pub fn new(policy: AccessPolicy<R, G>) -> Self {
+        Self { policy }
+    }
+
     /// Creates a new authorization service with the given scopes and permissions.
-    pub fn new(
+    ///
+    /// This method is provided for backward compatibility with existing code.
+    /// Consider using `new(AccessPolicy)` for new code.
+    pub fn from_components(
         role_scopes: Vec<AccessScope<R>>,
         group_scope: Vec<G>,
         permissions: RoaringBitmap,
     ) -> Self {
-        Self {
-            role_scopes,
-            group_scope,
-            permissions,
+        // Reconstruct policy from components
+        let mut policy = AccessPolicy::deny_all();
+
+        // Add role requirements
+        for scope in role_scopes {
+            if scope.allow_supervisor_access {
+                policy = policy.or_require_role_or_supervisor(scope.role);
+            } else {
+                policy = policy.or_require_role(scope.role);
+            }
         }
+
+        // Add group requirements
+        for group in group_scope {
+            policy = policy.or_require_group(group);
+        }
+
+        // Add permission requirements
+        for permission in permissions {
+            policy = policy.or_require_permission(permission);
+        }
+
+        Self { policy }
     }
 
     /// Determines if the account is authorized based on any of the configured criteria.
@@ -55,17 +80,20 @@ where
 
     /// Checks if the account is authorized by having any of the required roles.
     pub fn authorized_by_role(&self, account: &Account<R, G>) -> bool {
-        account
-            .roles
-            .iter()
-            .any(|r| self.role_scopes.iter().any(|scope| scope.grants_role(r)))
+        account.roles.iter().any(|r| {
+            self.policy
+                .role_requirements()
+                .iter()
+                .any(|scope| scope.grants_role(r))
+        })
     }
 
     /// Checks if the account is authorized by having a role that supervises any required role.
     pub fn authorized_by_minimum_role(&self, account: &Account<R, G>) -> bool {
         debug!("Checking if any subordinate role matches the required one.");
         account.roles.iter().any(|ur| {
-            self.role_scopes
+            self.policy
+                .role_requirements()
                 .iter()
                 .any(|scope| scope.grants_supervisor(ur))
         })
@@ -73,10 +101,12 @@ where
 
     /// Checks if the account is authorized by being in any of the required groups.
     pub fn authorized_by_group(&self, account: &Account<R, G>) -> bool {
-        account
-            .groups
-            .iter()
-            .any(|r| self.group_scope.iter().any(|g_scope| g_scope.eq(r)))
+        account.groups.iter().any(|r| {
+            self.policy
+                .group_requirements()
+                .iter()
+                .any(|g_scope| g_scope.eq(r))
+        })
     }
 
     /// Checks if the account is authorized by having any of the required permissions.
@@ -84,19 +114,19 @@ where
         account
             .permissions
             .iter()
-            .any(|perm| self.permissions.contains(perm))
+            .any(|perm| self.policy.permission_requirements().contains(perm))
     }
 
     /// Returns true if all authorization criteria are empty (no roles, groups, or permissions configured).
     pub fn has_empty_criteria(&self) -> bool {
-        self.group_scope.is_empty() && self.role_scopes.is_empty() && self.permissions.is_empty()
+        self.policy.denies_all()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::values::AccessScope;
+
     use crate::{Group, Role};
 
     fn create_test_account() -> Account<Role, Group> {
@@ -119,23 +149,22 @@ mod tests {
     #[test]
     fn authorization_service_empty_criteria() {
         let service: AuthorizationService<Role, Group> =
-            AuthorizationService::new(vec![], vec![], RoaringBitmap::new());
+            AuthorizationService::new(AccessPolicy::deny_all());
         assert!(service.has_empty_criteria());
     }
 
     #[test]
     fn authorization_service_non_empty_criteria() {
-        let role_scopes = vec![AccessScope::new(Role::Admin)];
-        let service: AuthorizationService<Role, Group> =
-            AuthorizationService::new(role_scopes, vec![], RoaringBitmap::new());
+        let policy = AccessPolicy::require_role(Role::Admin);
+        let service: AuthorizationService<Role, Group> = AuthorizationService::new(policy);
         assert!(!service.has_empty_criteria());
     }
 
     #[test]
     fn authorized_by_role_matching() {
         let account = create_test_account();
-        let role_scopes = vec![AccessScope::new(Role::Admin)];
-        let service = AuthorizationService::new(role_scopes, vec![], RoaringBitmap::new());
+        let policy = AccessPolicy::require_role(Role::Admin);
+        let service = AuthorizationService::new(policy);
 
         assert!(service.authorized_by_role(&account));
     }
@@ -143,8 +172,8 @@ mod tests {
     #[test]
     fn authorized_by_role_not_matching() {
         let account = create_test_account();
-        let role_scopes = vec![AccessScope::new(Role::User)];
-        let service = AuthorizationService::new(role_scopes, vec![], RoaringBitmap::new());
+        let policy = AccessPolicy::require_role(Role::User);
+        let service = AuthorizationService::new(policy);
 
         assert!(!service.authorized_by_role(&account));
     }
@@ -152,8 +181,8 @@ mod tests {
     #[test]
     fn authorized_by_group_matching() {
         let account = create_test_account();
-        let group_scope = vec![Group::new("engineering")];
-        let service = AuthorizationService::new(vec![], group_scope, RoaringBitmap::new());
+        let policy = AccessPolicy::require_group(Group::new("engineering"));
+        let service = AuthorizationService::new(policy);
 
         assert!(service.authorized_by_group(&account));
     }
@@ -161,8 +190,8 @@ mod tests {
     #[test]
     fn authorized_by_group_not_matching() {
         let account = create_test_account();
-        let group_scope = vec![Group::new("sales")];
-        let service = AuthorizationService::new(vec![], group_scope, RoaringBitmap::new());
+        let policy = AccessPolicy::require_group(Group::new("sales"));
+        let service = AuthorizationService::new(policy);
 
         assert!(!service.authorized_by_group(&account));
     }
@@ -170,9 +199,8 @@ mod tests {
     #[test]
     fn authorized_by_permission_matching() {
         let account = create_test_account();
-        let mut permissions = RoaringBitmap::new();
-        permissions.insert(1); // Account has permission 1
-        let service = AuthorizationService::new(vec![], vec![], permissions);
+        let policy = AccessPolicy::require_permission(1u32); // Account has permission 1
+        let service = AuthorizationService::new(policy);
 
         assert!(service.authorized_by_permission(&account));
     }
@@ -180,9 +208,8 @@ mod tests {
     #[test]
     fn authorized_by_permission_not_matching() {
         let account = create_test_account();
-        let mut permissions = RoaringBitmap::new();
-        permissions.insert(10); // Account doesn't have permission 10
-        let service = AuthorizationService::new(vec![], vec![], permissions);
+        let policy = AccessPolicy::require_permission(10u32); // Account doesn't have permission 10
+        let service = AuthorizationService::new(policy);
 
         assert!(!service.authorized_by_permission(&account));
     }
@@ -190,10 +217,9 @@ mod tests {
     #[test]
     fn is_authorized_returns_true_when_any_criteria_match() {
         let account = create_test_account();
-        let role_scopes = vec![AccessScope::new(Role::User)]; // Won't match
-        let group_scope = vec![Group::new("engineering")]; // Will match
-        let permissions = RoaringBitmap::new(); // Won't match
-        let service = AuthorizationService::new(role_scopes, group_scope, permissions);
+        let policy = AccessPolicy::require_role(Role::User) // Won't match
+            .or_require_group(Group::new("engineering")); // Will match
+        let service = AuthorizationService::new(policy);
 
         assert!(service.is_authorized(&account));
     }
@@ -201,10 +227,9 @@ mod tests {
     #[test]
     fn is_authorized_returns_false_when_no_criteria_match() {
         let account = create_test_account();
-        let role_scopes = vec![AccessScope::new(Role::User)]; // Won't match
-        let group_scope = vec![Group::new("sales")]; // Won't match
-        let permissions = RoaringBitmap::new(); // Won't match
-        let service = AuthorizationService::new(role_scopes, group_scope, permissions);
+        let policy = AccessPolicy::require_role(Role::User) // Won't match
+            .or_require_group(Group::new("sales")); // Won't match
+        let service = AuthorizationService::new(policy);
 
         assert!(!service.is_authorized(&account));
     }

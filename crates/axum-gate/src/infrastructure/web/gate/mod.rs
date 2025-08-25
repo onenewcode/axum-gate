@@ -1,13 +1,12 @@
 //! Implementation for [axum]
 use self::cookie_service::CookieGateService;
 use crate::cookie::CookieBuilder;
+use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::AccessScope;
 use crate::ports::Codec;
 
 use std::sync::Arc;
 
-use roaring::RoaringBitmap;
 use tower::Layer;
 
 mod cookie_service;
@@ -17,21 +16,35 @@ mod cookie_service;
 pub struct Gate;
 
 impl Gate {
-    /// Creates a new instance of a gate that uses JWT cookies, denying all requests by default.
-    pub fn new_cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
+    /// Creates a new cookie-based gate with the specified access policy.
+    pub fn cookie<C, R, G>(
+        issuer: &str,
+        codec: Arc<C>,
+        policy: AccessPolicy<R, G>,
+    ) -> CookieGate<C, R, G>
     where
         C: Codec,
-        R: AccessHierarchy + Eq,
+        R: AccessHierarchy + Eq + std::fmt::Display,
         G: Eq,
     {
         CookieGate {
             issuer: issuer.to_string(),
-            role_scopes: vec![],
-            group_scope: vec![],
-            permissions: RoaringBitmap::new(),
+            policy,
             codec,
             cookie_template: CookieBuilder::new("axum-gate", ""),
         }
+    }
+
+    /// Creates a new cookie-based gate that denies all access by default.
+    ///
+    /// Use `with_policy()` to configure access requirements.
+    pub fn cookie_deny_all<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
+    where
+        C: Codec,
+        R: AccessHierarchy + Eq + std::fmt::Display,
+        G: Eq,
+    {
+        Self::cookie(issuer, codec, AccessPolicy::deny_all())
     }
 }
 
@@ -40,13 +53,11 @@ impl Gate {
 pub struct CookieGate<C, R, G>
 where
     C: Codec,
-    R: AccessHierarchy + Eq,
+    R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
     issuer: String,
-    role_scopes: Vec<AccessScope<R>>,
-    group_scope: Vec<G>,
-    permissions: RoaringBitmap,
+    policy: AccessPolicy<R, G>,
     codec: Arc<C>,
     cookie_template: CookieBuilder<'static>,
 }
@@ -57,43 +68,15 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
-    /// Adds the cookie builder as a template for the cookie used for auth.
+    /// Sets the access policy for this gate.
+    pub fn with_policy(mut self, policy: AccessPolicy<R, G>) -> Self {
+        self.policy = policy;
+        self
+    }
+
+    /// Configures the cookie template used for authentication.
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
         self.cookie_template = template;
-        self
-    }
-
-    /// Users with the given role are granted access.
-    pub fn grant_role(mut self, role: R) -> Self {
-        self.role_scopes.push(AccessScope::new(role));
-        self
-    }
-
-    /// Users with the given role and all [supervisor](AccessHierarchy::supervisor)
-    /// roles are granted access.
-    pub fn grant_role_and_supervisor(mut self, role: R) -> Self {
-        self.role_scopes
-            .push(AccessScope::new(role).allow_supervisor());
-        self
-    }
-
-    /// Users that are member of the given groupe are granted access.
-    pub fn grant_group(mut self, group: G) -> Self {
-        self.group_scope.push(group);
-        self
-    }
-
-    /// Users that do have the given permission will be granted access.
-    pub fn grant_permission<P: Into<u32>>(mut self, permission: P) -> Self {
-        self.permissions.insert(permission.into());
-        self
-    }
-
-    /// Users that do have the given permissions will be granted access.
-    pub fn grant_permissions<P: Into<u32>>(mut self, permission: Vec<P>) -> Self {
-        permission.into_iter().for_each(|p| {
-            self.permissions.insert(p.into());
-        });
         self
     }
 }
@@ -110,9 +93,7 @@ where
         CookieGateService::new(
             inner,
             &self.issuer,
-            self.role_scopes.clone(),
-            self.group_scope.clone(),
-            self.permissions.clone(),
+            self.policy.clone(),
             Arc::clone(&self.codec),
             self.cookie_template.clone(),
         )

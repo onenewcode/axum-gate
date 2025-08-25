@@ -1,7 +1,7 @@
 use crate::Account;
+use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::services::authorization::AuthorizationService;
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::AccessScope;
 use crate::infrastructure::jwt::{JwtClaims, JwtValidationResult, JwtValidationService};
 use crate::ports::Codec;
 
@@ -15,7 +15,6 @@ use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use cookie::CookieBuilder;
 use http::StatusCode;
-use roaring::RoaringBitmap;
 use tower::Service;
 use tracing::{debug, trace, warn};
 
@@ -24,7 +23,7 @@ use tracing::{debug, trace, warn};
 pub struct CookieGateService<C, R, G, S>
 where
     C: Codec,
-    R: AccessHierarchy + Eq,
+    R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
     inner: S,
@@ -43,15 +42,13 @@ where
     pub fn new(
         inner: S,
         issuer: &str,
-        role_scopes: Vec<AccessScope<R>>,
-        group_scope: Vec<G>,
-        permissions: RoaringBitmap,
+        policy: AccessPolicy<R, G>,
         codec: Arc<C>,
         cookie_template: CookieBuilder<'static>,
     ) -> Self {
         Self {
             inner,
-            authorization_service: AuthorizationService::new(role_scopes, group_scope, permissions),
+            authorization_service: AuthorizationService::new(policy),
             jwt_validation_service: JwtValidationService::new(codec, issuer),
             cookie_template,
         }
@@ -61,7 +58,7 @@ where
 impl<C, R, G, S> CookieGateService<C, R, G, S>
 where
     C: Codec,
-    R: AccessHierarchy + Eq,
+    R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
     /// Queries the axum-gate auth cookie from the request.
