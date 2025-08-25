@@ -10,4 +10,6 @@ pub mod accounts;
 pub mod auth;
 pub mod permissions;
 
-// Currently no exports needed - modules are empty placeholders
+// Export application services
+pub use accounts::{AccountDeleteService, AccountInsertService};
+pub use auth::{LoginResult, LoginService, LogoutService};

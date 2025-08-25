@@ -1,11 +1,11 @@
 //! Pre-defined route handler for [axum] like `login` and `logout`.
 #![doc = include_str!("../../../doc/route_handlers.md")]
 use crate::Account;
+use crate::application::auth::{LoginResult, LoginService, LogoutService};
 use crate::cookie::CookieBuilder;
 use crate::domain::entities::Credentials;
 use crate::domain::services::permissions::PermissionChecker;
 use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::hashing::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
 use crate::ports::Codec;
 use crate::ports::auth::CredentialsVerifier;
@@ -16,7 +16,7 @@ use std::sync::Arc;
 use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
-use tracing::{debug, error};
+use tracing::error;
 use uuid::Uuid;
 
 /// Can be used to log a user in.
@@ -36,53 +36,45 @@ where
     AccRepo: AccountRepository<R, G>,
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
 {
-    let creds = request_credentials.0;
+    let login_service = LoginService::<R, G>::new();
 
-    let account = match account_repository.query_account_by_user_id(&creds.id).await {
-        Ok(Some(acc)) => acc,
-        Ok(_) => return Err(StatusCode::NOT_FOUND),
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    let result = login_service
+        .authenticate(
+            request_credentials.0,
+            registered_claims,
+            secret_verifier,
+            account_repository,
+            codec,
+        )
+        .await;
+
+    match result {
+        LoginResult::Success(jwt_string) => {
+            let json_string = match serde_json::to_string(&jwt_string) {
+                Ok(enc) => enc,
+                Err(e) => {
+                    error!("Error serializing JWT: {}", e);
+                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            };
+            let mut cookie = cookie_template.build();
+            cookie.set_value(json_string);
+            Ok(cookie_jar.add(cookie))
         }
-    };
-
-    let creds_to_verify = Credentials::new(&account.account_id, &creds.secret);
-
-    match secret_verifier.verify_credentials(creds_to_verify).await {
-        Ok(VerificationResult::Ok) => (),
-        Ok(VerificationResult::Unauthorized) => {
-            debug!("Hashed creds do not match.");
-            return Err(StatusCode::UNAUTHORIZED);
-        }
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        LoginResult::AccountNotFound => Err(StatusCode::NOT_FOUND),
+        LoginResult::InvalidCredentials => Err(StatusCode::UNAUTHORIZED),
+        LoginResult::InternalError(msg) => {
+            error!("Login internal error: {}", msg);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
-
-    let claims = JwtClaims::new(account, registered_claims);
-    let jwt = match codec.encode(&claims) {
-        Ok(jwt) => jwt,
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
-    let json_string = match serde_json::to_string(&String::from_utf8(jwt).unwrap()) {
-        Err(e) => {
-            error!("{e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-        Ok(enc) => enc,
-    };
-    let mut cookie = cookie_template.build();
-    cookie.set_value(json_string);
-    Ok(cookie_jar.add(cookie))
 }
 
 /// Removes the cookie that authenticates a user.
 pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'static>) -> CookieJar {
+    let logout_service = LogoutService::new();
+    logout_service.logout();
+
     let cookie = cookie_template.build();
     cookie_jar.remove(cookie)
 }

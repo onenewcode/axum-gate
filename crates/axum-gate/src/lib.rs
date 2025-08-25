@@ -34,6 +34,7 @@ pub use ports::repositories::{AccountRepository, SecretRepository};
 
 // Application services users need
 pub use application::accounts::{AccountDeleteService, AccountInsertService};
+pub use application::auth::{LoginResult, LoginService, LogoutService};
 
 // Repository implementations
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
