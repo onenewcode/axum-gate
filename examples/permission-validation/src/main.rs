@@ -7,8 +7,8 @@
 //! - Runtime validation during application lifecycle
 //! - Error handling and reporting
 
+use axum_gate::advanced::{ApplicationValidator, PermissionCollisionChecker};
 use axum_gate::errors::Result;
-use axum_gate::{ApplicationValidator, PermissionCollisionChecker};
 use serde::{Deserialize, Serialize};
 
 use tracing::{error, info, warn};

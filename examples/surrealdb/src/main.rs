@@ -2,9 +2,9 @@ use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::{Account, Credentials, Group, Role, cookie};
 use axum_gate::{
     AccountInsertService,
-    surrealdb::{DatabaseScope, SurrealDbRepository},
+    storage::{DatabaseScope, SurrealDbRepository},
 };
-use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use axum_gate::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
 
 use std::sync::Arc;
 
@@ -92,7 +92,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String>>| {
-                    axum_gate::route_handlers::login(
+                    axum_gate::login(
                         cookie_jar,
                         request_credentials,
                         registered_claims,
@@ -106,9 +106,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get({
-                move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)
-            }),
+            get(move |cookie_jar| axum_gate::logout(cookie_jar, cookie_template)),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

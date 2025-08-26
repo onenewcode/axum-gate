@@ -69,10 +69,10 @@ pub mod storage {
     };
 
     #[cfg(feature = "storage-surrealdb")]
-    pub use crate::infrastructure::repositories::surrealdb::SurrealDbRepository;
+    pub use crate::infrastructure::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
 
     #[cfg(feature = "storage-seaorm")]
-    pub use crate::infrastructure::repositories::sea_orm::SeaOrmRepository;
+    pub use crate::infrastructure::repositories::sea_orm::{SeaOrmRepository, models};
 
     #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
     pub use crate::infrastructure::repositories::TableNames;

@@ -1,7 +1,7 @@
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::{Account, Credentials, Group, Role, cookie};
-use axum_gate::{AccountInsertService, sea_orm::SeaOrmRepository};
-use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
+use axum_gate::{AccountInsertService, storage::SeaOrmRepository};
+use axum_gate::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
 
 use std::sync::Arc;
 
@@ -20,12 +20,12 @@ const DATABASE_URL: &str = "sqlite::memory:";
 async fn setup_database_schema(db: &DbConn) {
     let schema = Schema::new(DbBackend::Sqlite);
     let stmt: TableCreateStatement =
-        schema.create_table_from_entity(axum_gate::sea_orm::models::credentials::Entity);
+        schema.create_table_from_entity(axum_gate::storage::models::credentials::Entity);
     db.execute(db.get_database_backend().build(&stmt))
         .await
         .expect("Could not create credentials table");
     let stmt: TableCreateStatement =
-        schema.create_table_from_entity(axum_gate::sea_orm::models::account::Entity);
+        schema.create_table_from_entity(axum_gate::storage::models::account::Entity);
     db.execute(db.get_database_backend().build(&stmt))
         .await
         .expect("Could not create account table");
@@ -110,7 +110,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String>>| {
-                    axum_gate::route_handlers::login(
+                    axum_gate::login(
                         cookie_jar,
                         request_credentials,
                         registered_claims,
@@ -124,9 +124,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get({
-                move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)
-            }),
+            get(move |cookie_jar| axum_gate::logout(cookie_jar, cookie_template)),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// The credentials contain login data such as eg. user id and password.
 ///
 /// These values are plain values. If you need to store the password in a repository, you will be
-/// required to put it in a [Secret](crate::secrets::Secret).
+/// required to put it in a [Secret](crate::domain::values::secrets::Secret).
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Credentials<Id> {
     /// The identification of the user, eg. a username.

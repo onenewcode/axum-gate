@@ -1,8 +1,9 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
+use axum_gate::advanced::JsonWebTokenOptions;
 use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::{AccessPolicy, Account, Gate, Group, Role, cookie};
-use axum_gate::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+use axum_gate::{JsonWebToken, JwtClaims};
 
 use std::sync::Arc;
 
