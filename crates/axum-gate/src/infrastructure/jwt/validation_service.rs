@@ -1,6 +1,5 @@
 use crate::Account;
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::Permissions;
 use crate::infrastructure::jwt::JwtClaims;
 use crate::ports::Codec;
 
