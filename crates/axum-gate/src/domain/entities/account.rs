@@ -1,8 +1,8 @@
 use crate::domain::traits::AccessHierarchy;
 #[cfg(feature = "storage-seaorm")]
 use crate::domain::traits::CommaSeparatedValue;
+use crate::domain::values::Permissions;
 
-use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,16 +14,13 @@ use uuid::Uuid;
 /// # Creating Accounts
 ///
 /// ```rust
-/// use axum_gate::{Account, Role, Group, PermissionChecker};
-/// use roaring::RoaringBitmap;
+/// use axum_gate::{Account, Role, Group, Permissions};
 ///
 /// // Create a basic account
 /// let account = Account::new("user123", &[Role::User], &[Group::new("staff")]);
 ///
 /// // Create account with permissions
-/// let mut permissions = RoaringBitmap::new();
-/// PermissionChecker::grant_permission(&mut permissions, "read:profile");
-/// PermissionChecker::grant_permission(&mut permissions, "write:profile");
+/// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
 ///
 /// let account = Account::<Role, Group>::new("admin@example.com", &[Role::Admin], &[])
 ///     .with_permissions(permissions);
@@ -32,19 +29,19 @@ use uuid::Uuid;
 /// # Working with Permissions
 ///
 /// ```rust
-/// # use axum_gate::{Account, Role, Group, PermissionChecker};
+/// # use axum_gate::{Account, Role, Group, PermissionId};
 /// # let mut account = Account::<Role, Group>::new("user", &[], &[]);
 /// // Grant permissions
-/// account.grant_permission(axum_gate::PermissionId::from_name("read:api"));
-/// account.grant_permission(axum_gate::PermissionId::from_name("write:api"));
+/// account.grant_permission("read:api");
+/// account.grant_permission(PermissionId::from_name("write:api"));
 ///
-/// // Check permissions using PermissionChecker
-/// if PermissionChecker::has_permission(&account.permissions, "read:api") {
+/// // Check permissions directly
+/// if account.permissions.has("read:api") {
 ///     println!("User can read API");
 /// }
 ///
 /// // Revoke permissions
-/// account.revoke_permission(axum_gate::PermissionId::from_name("write:api"));
+/// account.revoke_permission("write:api");
 /// ```
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Account<R, G>
@@ -78,7 +75,7 @@ where
     /// Uses a compressed bitmap for efficient storage and fast permission checks.
     /// Permissions are automatically available when referenced by name using
     /// deterministic hashing - no coordination between nodes required.
-    pub permissions: RoaringBitmap,
+    pub permissions: Permissions,
 }
 
 impl<R, G> Account<R, G>
@@ -115,7 +112,7 @@ where
             user_id: user_id.to_owned(),
             groups,
             roles,
-            permissions: RoaringBitmap::new(),
+            permissions: Permissions::new(),
         }
     }
 
@@ -142,7 +139,7 @@ where
             user_id: user_id.to_owned(),
             groups,
             roles,
-            permissions: RoaringBitmap::new(),
+            permissions: Permissions::new(),
         }
     }
 
@@ -152,17 +149,15 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Account, Role, Group, PermissionChecker};
-    /// use roaring::RoaringBitmap;
+    /// use axum_gate::{Account, Role, Group, Permissions};
     ///
-    /// let mut permissions = RoaringBitmap::new();
-    /// PermissionChecker::grant_permission(&mut permissions, "read:api");
-    /// PermissionChecker::grant_permission(&mut permissions, "write:api");
+    /// // Create permissions
+    /// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
     ///
     /// let account = Account::<Role, Group>::new("user@example.com", &[Role::User], &[])
     ///     .with_permissions(permissions);
     /// ```
-    pub fn with_permissions(self, permissions: RoaringBitmap) -> Self {
+    pub fn with_permissions(self, permissions: Permissions) -> Self {
         Self {
             permissions,
             ..self
@@ -176,11 +171,14 @@ where
     /// use axum_gate::{Account, Role, Group, PermissionId};
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
-    /// account.grant_permission(PermissionId::from_name("read:profile"));
-    /// account.grant_permission(42u32); // Direct permission ID
+    /// account.grant_permission("read:profile");
+    /// account.grant_permission(PermissionId::from_name("write:profile"));
     /// ```
-    pub fn grant_permission<P: Into<u32>>(&mut self, permission: P) {
-        self.permissions.insert(permission.into());
+    pub fn grant_permission<P>(&mut self, permission: P)
+    where
+        P: Into<crate::PermissionId>,
+    {
+        self.permissions.grant(permission);
     }
 
     /// Revokes a permission from this account.
@@ -190,11 +188,14 @@ where
     /// use axum_gate::{Account, Role, Group, PermissionId};
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
-    /// account.grant_permission(PermissionId::from_name("write:profile"));
+    /// account.grant_permission("write:profile");
     /// account.revoke_permission(PermissionId::from_name("write:profile"));
     /// ```
-    pub fn revoke_permission<P: Into<u32>>(&mut self, permission: P) {
-        self.permissions.remove(permission.into());
+    pub fn revoke_permission<P>(&mut self, permission: P)
+    where
+        P: Into<crate::PermissionId>,
+    {
+        self.permissions.revoke(permission);
     }
 }
 

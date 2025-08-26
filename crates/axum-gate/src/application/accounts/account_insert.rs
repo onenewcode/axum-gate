@@ -10,8 +10,8 @@ use crate::{
 
 use std::sync::Arc;
 
+use crate::domain::values::Permissions;
 use crate::errors::Result;
-use roaring::RoaringBitmap;
 use tracing::debug;
 
 /// Service for creating new user accounts with their associated authentication secrets.
@@ -51,7 +51,7 @@ where
     secret: String,
     roles: Vec<R>,
     groups: Vec<G>,
-    permissions: RoaringBitmap,
+    permissions: Permissions,
 }
 
 impl<R, G> AccountInsertService<R, G>
@@ -82,7 +82,7 @@ where
             secret: secret.to_string(),
             roles: vec![],
             groups: vec![],
-            permissions: RoaringBitmap::new(),
+            permissions: Permissions::new(),
         }
     }
 
@@ -124,22 +124,22 @@ where
     /// permission system. Permissions are stored as a compressed bitmap for efficiency.
     ///
     /// # Arguments
-    /// * `permissions` - A RoaringBitmap containing the permission IDs
+    /// * `permissions` - A Permissions set containing the permission names
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccountInsertService, PermissionChecker, Role, Group};
-    /// use roaring::RoaringBitmap;
+    /// use axum_gate::{AccountInsertService, Permissions, Role, Group};
     ///
-    /// let mut permissions = RoaringBitmap::new();
-    /// PermissionChecker::grant_permission(&mut permissions, "read:api");
-    /// PermissionChecker::grant_permission(&mut permissions, "write:api");
-    /// PermissionChecker::grant_permission(&mut permissions, "manage:users");
+    /// let permissions = Permissions::from_iter([
+    ///     "read:api",
+    ///     "write:api",
+    ///     "manage:users"
+    /// ]);
     ///
     /// let builder = AccountInsertService::<Role, Group>::insert("admin@example.com", "password")
     ///     .with_permissions(permissions);
     /// ```
-    pub fn with_permissions(self, permissions: RoaringBitmap) -> Self {
+    pub fn with_permissions(self, permissions: Permissions) -> Self {
         Self {
             permissions,
             ..self

@@ -4,7 +4,7 @@
 //! complementing the compile-time validation provided by the `validate_permissions!` macro.
 //! It's particularly useful when dealing with dynamic permission strings loaded from
 //! configuration files, databases, or other runtime sources.
-use crate::domain::services::permissions::PermissionId;
+use crate::domain::values::PermissionId;
 use crate::errors::{DomainError, Error, Result};
 use std::collections::HashMap;
 use tracing::{info, warn};

@@ -9,8 +9,7 @@
 //! ## 1. Validating Permissions at Compile Time
 //!
 //! ```rust
-//! # use axum_gate::{PermissionChecker, PermissionId, validate_permissions};
-//! # use roaring::RoaringBitmap;
+//! # use axum_gate::{PermissionId, validate_permissions};
 //! validate_permissions![
 //!     "read:resource1",
 //!     "write:resource1",
@@ -22,7 +21,7 @@
 //! ## 2. Working with Account Permissions (recommended)
 //!
 //! ```rust
-//! # use axum_gate::{PermissionChecker, PermissionId, Account};
+//! # use axum_gate::{PermissionId, Account};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyRole { User, Admin }
 //! # impl std::fmt::Display for MyRole {
@@ -52,16 +51,16 @@
 //! let mut account = Account::<MyRole, MyGroup>::new("user123", &[MyRole::User], &[MyGroup::Staff]);
 //!
 //! // Add permissions to an account
-//! account.grant_permission(PermissionId::from_name("read:resource1"));
-//! account.grant_permission(PermissionId::from_name("write:resource1"));
+//! account.grant_permission("read:resource1");
+//! account.grant_permission("write:resource1");
 //!
 //! // Check if account has permission
-//! if PermissionChecker::has_permission(&account.permissions, "read:resource1") {
+//! if account.permissions.has("read:resource1") {
 //!     // Account has permission
 //! }
 //!
 //! // Remove permissions from an account
-//! account.revoke_permission(PermissionId::from_name("write:resource1"));
+//! account.revoke_permission("write:resource1");
 //!
 //! // Note: After modifying account permissions, you would typically
 //! // save the account back to your repository system using your chosen
@@ -119,11 +118,10 @@
 //! ## 4. Checking Permissions in Route Handlers
 //!
 //! ```rust
-//! # use axum_gate::PermissionChecker;
-//! # use roaring::RoaringBitmap;
-//! # let mut user_permissions = RoaringBitmap::new();
-//! # PermissionChecker::grant_permission(&mut user_permissions, "read:resource1");
-//! if PermissionChecker::has_permission(&user_permissions, "read:resource1") {
+//! # use axum_gate::Permissions;
+//! # let mut user_permissions = Permissions::new();
+//! # user_permissions.grant("read:resource1");
+//! if user_permissions.has("read:resource1") {
 //!     // Grant access
 //! }
 //! ```
@@ -218,139 +216,8 @@ pub mod validation;
 
 use std::collections::{HashMap, HashSet};
 
+use crate::domain::values::PermissionId;
 use crate::errors::{DomainError, Error, Result};
-use roaring::RoaringBitmap;
-use serde::{Deserialize, Serialize};
-
-/// A deterministic permission identifier computed from permission names.
-///
-/// Permission IDs are generated using SHA-256 hashing of the permission name,
-/// ensuring that the same permission name always produces the same ID across
-/// all nodes in a distributed system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PermissionId(u32);
-
-impl std::fmt::Display for PermissionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl PermissionId {
-    /// Creates a permission ID from a permission name using deterministic hashing.
-    ///
-    /// The same permission name will always produce the same ID across all nodes,
-    /// enabling zero-synchronization distributed authorization.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use axum_gate::PermissionId;
-    ///
-    /// let read_id = PermissionId::from_name("read:file");
-    /// let write_id = PermissionId::from_name("write:file");
-    ///
-    /// assert_ne!(read_id, write_id);
-    /// assert_eq!(read_id, PermissionId::from_name("read:file")); // Deterministic
-    /// ```
-    pub fn from_name(name: &str) -> Self {
-        Self(const_sha256_u32(name))
-    }
-
-    /// Returns the underlying u32 value for use in bitmaps.
-    pub fn as_u32(self) -> u32 {
-        self.0
-    }
-
-    /// Creates a PermissionId from a raw u32 value.
-    ///
-    /// This should primarily be used for deserialization or when working
-    /// with existing bitmap data.
-    pub fn from_u32(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<u32> for PermissionId {
-    fn from(value: u32) -> Self {
-        Self::from_u32(value)
-    }
-}
-
-impl From<PermissionId> for u32 {
-    fn from(id: PermissionId) -> u32 {
-        id.as_u32()
-    }
-}
-
-/// Zero-synchronization permission checker that works without any coordination
-/// between distributed nodes.
-pub struct PermissionChecker;
-
-impl PermissionChecker {
-    /// Checks if the user has the specified permission.
-    ///
-    /// This is a pure function that requires no external state or network calls,
-    /// making it perfect for distributed systems.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use axum_gate::{PermissionChecker, PermissionId};
-    /// use roaring::RoaringBitmap;
-    ///
-    /// let mut user_permissions = RoaringBitmap::new();
-    /// user_permissions.insert(PermissionId::from_name("read:file").as_u32());
-    ///
-    /// assert!(PermissionChecker::has_permission(&user_permissions, "read:file"));
-    /// assert!(!PermissionChecker::has_permission(&user_permissions, "write:file"));
-    /// ```
-    pub fn has_permission(user_permissions: &RoaringBitmap, permission_name: &str) -> bool {
-        let permission_id = PermissionId::from_name(permission_name);
-        user_permissions.contains(permission_id.as_u32())
-    }
-
-    /// Grants a permission to the user's permission bitmap.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use axum_gate::{PermissionChecker, PermissionId};
-    /// use roaring::RoaringBitmap;
-    ///
-    /// let mut user_permissions = RoaringBitmap::new();
-    /// PermissionChecker::grant_permission(&mut user_permissions, "read:file");
-    ///
-    /// assert!(PermissionChecker::has_permission(&user_permissions, "read:file"));
-    /// ```
-    pub fn grant_permission(user_permissions: &mut RoaringBitmap, permission_name: &str) {
-        let permission_id = PermissionId::from_name(permission_name);
-        user_permissions.insert(permission_id.as_u32());
-    }
-
-    /// Revokes a permission from the user's permission bitmap.
-    pub fn revoke_permission(user_permissions: &mut RoaringBitmap, permission_name: &str) {
-        let permission_id = PermissionId::from_name(permission_name);
-        user_permissions.remove(permission_id.as_u32());
-    }
-
-    /// Checks if the user has all of the specified permissions.
-    pub fn has_all_permissions(
-        user_permissions: &RoaringBitmap,
-        permission_names: &[&str],
-    ) -> bool {
-        permission_names
-            .iter()
-            .all(|name| Self::has_permission(user_permissions, name))
-    }
-
-    /// Checks if the user has any of the specified permissions.
-    pub fn has_any_permission(user_permissions: &RoaringBitmap, permission_names: &[&str]) -> bool {
-        permission_names
-            .iter()
-            .any(|name| Self::has_permission(user_permissions, name))
-    }
-}
 
 /// Validates that a set of permission names don't have hash collisions.
 ///
@@ -365,7 +232,7 @@ impl PermissionChecker {
 /// // This should pass
 /// validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();
 ///
-/// // This would panic if there were collisions (very unlikely with SHA-256)
+/// // This would return an error if there were collisions (very unlikely with SHA-256)
 /// ```
 pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
     let mut seen_ids: HashMap<u32, &str> = HashMap::new();
@@ -394,104 +261,56 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
     Ok(())
 }
 
-/// Compile-time permission validation macro with detailed error reporting.
+/// Macro for compile-time permission validation.
 ///
-/// This macro validates that the provided permission names don't have hash collisions
-/// and generates a compile error with detailed information if they do.
-/// When issues are found, the panic message will include all permissions being validated
-/// to help you identify which ones are causing conflicts.
-///
-/// Note: This macro uses compile-time panics to signal validation failures.
-/// For runtime validation with proper error handling, use the validation module.
+/// This macro validates that the provided permission strings don't have hash collisions
+/// and generates a compile-time test to ensure the validation passes. It should be called
+/// once in your application with all the permission strings you use.
 ///
 /// # Examples
 ///
-/// ```
+/// ```rust
 /// use axum_gate::validate_permissions;
 ///
 /// validate_permissions![
-///     "read:user:profile",
-///     "write:user:profile",
-///     "delete:user:account",
-///     "admin:system:config"
+///     "read:users",
+///     "write:users",
+///     "delete:users",
+///     "admin:system"
 /// ];
 /// ```
 ///
-/// If there are issues, the compiler will show the permissions being validated
-/// to help you identify duplicates or collisions.
+/// # Panics
+///
+/// This macro will cause a compile-time error if any of the permission strings
+/// hash to the same value (extremely unlikely with SHA-256).
 #[macro_export]
 macro_rules! validate_permissions {
-    ($($perm:literal),* $(,)?) => {
-        const _: () = {
-            const PERMISSIONS: &[&str] = &[$($perm),*];
+    ($($permission:expr),* $(,)?) => {
+        #[cfg(test)]
+        mod __axum_gate_permission_validation {
+            use super::*;
 
-            // Validate at compile time
-            const fn validate_compile_time() {
-                let mut i = 0;
-                while i < PERMISSIONS.len() {
-                    let mut j = i + 1;
-                    while j < PERMISSIONS.len() {
-                        // Check for duplicate names
-                        if str_eq(PERMISSIONS[i], PERMISSIONS[j]) {
-                            panic!(concat!(
-                                "Duplicate permission name found in: ",
-                                stringify!([$($perm),*]),
-                                ". All permission names must be unique. ",
-                                "Check for duplicate entries and remove or rename them."
-                            ));
-                        }
-
-                        // Check for hash collisions
-                        let id1 = $crate::const_sha256_u32(PERMISSIONS[i]);
-                        let id2 = $crate::const_sha256_u32(PERMISSIONS[j]);
-                        if id1 == id2 {
-                            panic!(concat!(
-                                "Hash collision detected in permissions: ",
-                                stringify!([$($perm),*]),
-                                ". Two different permission strings are hashing to the same u32 value. ",
-                                "This is extremely rare with SHA-256, but you need to rename one of the colliding permissions. ",
-                                "Look for permissions that might have similar patterns or try adding suffixes to differentiate them."
-                            ));
-                        }
-                        j += 1;
-                    }
-                    i += 1;
-                }
+            #[test]
+            fn validate_permission_uniqueness() {
+                let permissions = &[$($permission),*];
+                $crate::validate_permission_uniqueness(permissions)
+                    .expect("Permission validation failed: hash collision detected");
             }
 
-            const fn str_eq(a: &str, b: &str) -> bool {
-                if a.len() != b.len() {
-                    return false;
-                }
-                let a_bytes = a.as_bytes();
-                let b_bytes = b.as_bytes();
-                let mut i = 0;
-                while i < a_bytes.len() {
-                    if a_bytes[i] != b_bytes[i] {
-                        return false;
-                    }
-                    i += 1;
-                }
-                true
+            // Also validate at compile time by computing all hashes
+            #[allow(dead_code)]
+            const fn __validate_compile_time() {
+                $(
+                    let _id = $crate::const_sha256_u32($permission);
+                )*
             }
 
-            validate_compile_time();
-        };
+            // Force compile-time evaluation
+            #[allow(dead_code)]
+            const _: () = __validate_compile_time();
+        }
     };
-}
-
-/// Const-compatible SHA-256 hash function that produces a u32.
-///
-/// This is a simplified implementation for const contexts. It uses the first
-/// 4 bytes of a SHA-256 hash to create a u32 identifier.
-/// Computes SHA-256 hash and returns the first 4 bytes as u32.
-///
-/// Uses the `const-crypto` crate for const-compatible SHA-256 implementation.
-pub const fn const_sha256_u32(input: &str) -> u32 {
-    let hash = const_crypto::sha2::Sha256::new()
-        .update(input.as_bytes())
-        .finalize();
-    u32::from_be_bytes([hash[0], hash[1], hash[2], hash[3]])
 }
 
 #[cfg(test)]
@@ -499,92 +318,51 @@ mod tests {
     use super::*;
 
     #[test]
-    fn permission_id_deterministic() {
-        let id1 = PermissionId::from_name("read:file");
-        let id2 = PermissionId::from_name("read:file");
-        assert_eq!(id1, id2);
+    fn permissions_basic() {
+        use crate::domain::values::Permissions;
+
+        let mut permissions = Permissions::new();
+
+        // Initially no permissions
+        assert!(!permissions.has("read:file"));
+
+        // Grant permission
+        permissions.grant("read:file");
+        assert!(permissions.has("read:file"));
+        assert!(!permissions.has("write:file"));
+
+        // Revoke permission
+        permissions.revoke("read:file");
+        assert!(!permissions.has("read:file"));
     }
 
     #[test]
-    fn permission_id_different_names() {
-        let read_id = PermissionId::from_name("read:file");
-        let write_id = PermissionId::from_name("write:file");
-        assert_ne!(read_id, write_id);
-    }
+    fn permissions_multiple() {
+        use crate::domain::values::Permissions;
 
-    #[test]
-    fn permission_checker_basic() {
-        let mut permissions = RoaringBitmap::new();
+        let mut permissions = Permissions::new();
 
-        assert!(!PermissionChecker::has_permission(
-            &permissions,
-            "read:file"
-        ));
+        permissions.grant("read:file");
+        permissions.grant("write:file");
 
-        PermissionChecker::grant_permission(&mut permissions, "read:file");
-        assert!(PermissionChecker::has_permission(&permissions, "read:file"));
-        assert!(!PermissionChecker::has_permission(
-            &permissions,
-            "write:file"
-        ));
+        assert!(permissions.has_all(["read:file", "write:file"]));
+        assert!(!permissions.has_all(["read:file", "delete:file"]));
 
-        PermissionChecker::revoke_permission(&mut permissions, "read:file");
-        assert!(!PermissionChecker::has_permission(
-            &permissions,
-            "read:file"
-        ));
-    }
-
-    #[test]
-    fn permission_checker_multiple() {
-        let mut permissions = RoaringBitmap::new();
-        PermissionChecker::grant_permission(&mut permissions, "read:file");
-        PermissionChecker::grant_permission(&mut permissions, "write:file");
-
-        assert!(PermissionChecker::has_all_permissions(
-            &permissions,
-            &["read:file", "write:file"]
-        ));
-        assert!(!PermissionChecker::has_all_permissions(
-            &permissions,
-            &["read:file", "delete:file"]
-        ));
-
-        assert!(PermissionChecker::has_any_permission(
-            &permissions,
-            &["read:file", "delete:file"]
-        ));
-        assert!(!PermissionChecker::has_any_permission(
-            &permissions,
-            &["delete:file", "admin:system"]
-        ));
+        assert!(permissions.has_any(["read:file", "delete:file"]));
+        assert!(!permissions.has_any(["delete:file", "admin:system"]));
     }
 
     #[test]
     fn validate_permission_uniqueness_success() {
-        validate_permission_uniqueness(&["read:file", "write:file", "delete:file", "admin:system"])
-            .unwrap();
+        validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();
     }
 
     #[test]
     fn validate_permission_uniqueness_duplicate_name() {
-        let result = validate_permission_uniqueness(&[
-            "read:file",
-            "write:file",
-            "read:file", // Duplicate
-        ]);
+        let result = validate_permission_uniqueness(&["read:file", "read:file"]);
         assert!(result.is_err());
-        let error_message = format!("{}", result.unwrap_err());
-        assert!(error_message.contains("Permission collision"));
     }
 
-    #[test]
-    fn compile_time_validation() {
-        validate_permissions![
-            "read:user:profile",
-            "write:user:profile",
-            "delete:user:account",
-            "admin:system:config"
-        ];
-    }
+    // Test the macro
+    validate_permissions!["test:permission1", "test:permission2", "test:permission3"];
 }

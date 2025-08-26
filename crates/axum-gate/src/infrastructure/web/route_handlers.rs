@@ -64,9 +64,9 @@
 //!
 //! ```rust
 //! use axum_gate::route_handlers::{grant_user_permissions, check_user_permissions};
-//! use roaring::RoaringBitmap;
+//! use axum_gate::Permissions;
 //!
-//! let mut user_permissions = RoaringBitmap::new();
+//! let mut user_permissions = Permissions::new();
 //! let permissions_to_grant = vec!["read:file".to_string(), "write:file".to_string()];
 //!
 //! // Grant permissions
@@ -82,7 +82,7 @@ use crate::Account;
 use crate::application::auth::{LoginResult, LoginService, LogoutService};
 use crate::cookie::CookieBuilder;
 use crate::domain::entities::Credentials;
-use crate::domain::services::permissions::PermissionChecker;
+
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
 use crate::ports::Codec;
@@ -222,9 +222,9 @@ pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'stati
 /// # Example
 /// ```rust
 /// use axum_gate::route_handlers::grant_user_permissions;
-/// use roaring::RoaringBitmap;
+/// use axum_gate::Permissions;
 ///
-/// let mut user_permissions = RoaringBitmap::new();
+/// let mut user_permissions = Permissions::new();
 /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
 ///
 /// grant_user_permissions(&mut user_permissions, &permissions);
@@ -232,11 +232,11 @@ pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'stati
 /// // User now has both read:file and write:file permissions
 /// ```
 pub fn grant_user_permissions(
-    user_permissions: &mut roaring::RoaringBitmap,
+    user_permissions: &mut crate::domain::values::Permissions,
     permission_names: &[String],
 ) {
     for permission_name in permission_names {
-        PermissionChecker::grant_permission(user_permissions, permission_name);
+        user_permissions.grant(permission_name.as_str());
     }
 }
 
@@ -253,9 +253,9 @@ pub fn grant_user_permissions(
 /// # Example
 /// ```rust
 /// use axum_gate::route_handlers::{grant_user_permissions, revoke_user_permissions};
-/// use roaring::RoaringBitmap;
+/// use axum_gate::Permissions;
 ///
-/// let mut user_permissions = RoaringBitmap::new();
+/// let mut user_permissions = Permissions::new();
 /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
 ///
 /// grant_user_permissions(&mut user_permissions, &permissions);
@@ -264,11 +264,11 @@ pub fn grant_user_permissions(
 /// // User now has only read:file permission
 /// ```
 pub fn revoke_user_permissions(
-    user_permissions: &mut roaring::RoaringBitmap,
+    user_permissions: &mut crate::domain::values::Permissions,
     permission_names: &[String],
 ) {
     for permission_name in permission_names {
-        PermissionChecker::revoke_permission(user_permissions, permission_name);
+        user_permissions.revoke(permission_name.as_str());
     }
 }
 
@@ -288,9 +288,9 @@ pub fn revoke_user_permissions(
 /// # Example
 /// ```rust
 /// use axum_gate::route_handlers::{grant_user_permissions, check_user_permissions};
-/// use roaring::RoaringBitmap;
+/// use axum_gate::Permissions;
 ///
-/// let mut user_permissions = RoaringBitmap::new();
+/// let mut user_permissions = Permissions::new();
 /// grant_user_permissions(&mut user_permissions, &["read:file".to_string()]);
 ///
 /// let required = vec!["read:file".to_string()];
@@ -300,9 +300,9 @@ pub fn revoke_user_permissions(
 /// assert!(!check_user_permissions(&user_permissions, &required_both)); // Missing write:file
 /// ```
 pub fn check_user_permissions(
-    user_permissions: &roaring::RoaringBitmap,
+    user_permissions: &crate::domain::values::Permissions,
     required_permissions: &[String],
 ) -> bool {
     let permission_names: Vec<&str> = required_permissions.iter().map(|s| s.as_str()).collect();
-    PermissionChecker::has_all_permissions(user_permissions, &permission_names)
+    user_permissions.has_all(permission_names)
 }

@@ -124,7 +124,7 @@ let policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"
 For fine-grained control, use the permission system:
 
 ```rust
-use axum_gate::{AccessPolicy, PermissionChecker, PermissionId, Role, Group};
+use axum_gate::{AccessPolicy, PermissionId, Role, Group};
 
 // Static permissions using compile-time validation
 axum_gate::validate_permissions![
@@ -162,17 +162,14 @@ async fn profile_handler(
 Create and manage user accounts:
 
 ```rust
-use axum_gate::{AccountInsertService, AccountDeleteService, PermissionChecker, Role, Group};
-use roaring::RoaringBitmap;
+use axum_gate::{AccountInsertService, AccountDeleteService, Permissions, Role, Group};
 use std::sync::Arc;
 
 # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 # let account_repo = Arc::new(axum_gate::memory::MemoryAccountRepository::<Role, Group>::default());
 # let secret_repo = Arc::new(axum_gate::memory::MemorySecretRepository::default());
 // Create account with permissions
-let mut permissions = RoaringBitmap::new();
-PermissionChecker::grant_permission(&mut permissions, "read:profile");
-PermissionChecker::grant_permission(&mut permissions, "write:profile");
+let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
 
 let account = AccountInsertService::insert("user@example.com", "password")
     .with_roles(vec![Role::User])
@@ -392,32 +389,37 @@ impl CustomGroup {
 The permission system uses deterministic hashing to eliminate synchronization needs:
 
 ```rust
-use axum_gate::{PermissionChecker, PermissionId};
-use roaring::RoaringBitmap;
+use axum_gate::Permissions;
 
 # fn example() {
 // Permissions are automatically available when referenced by name
-let mut user_permissions = RoaringBitmap::new();
+let mut user_permissions = Permissions::new();
 
-// Grant permissions
-PermissionChecker::grant_permission(&mut user_permissions, "read:file");
-PermissionChecker::grant_permission(&mut user_permissions, "write:file");
-PermissionChecker::grant_permission(&mut user_permissions, "delete:file");
+// Grant permissions - chainable API
+user_permissions
+    .grant("read:file")
+    .grant("write:file")
+    .grant("delete:file");
+
+// Alternative: create from iterator
+let user_permissions = Permissions::from_iter([
+    "read:file",
+    "write:file", 
+    "delete:file"
+]);
 
 // Check permissions
-if PermissionChecker::has_permission(&user_permissions, "read:file") {
+if user_permissions.has("read:file") {
     println!("User can read files");
 }
 
 // Check multiple permissions
-let required = ["read:file", "write:file"];
-if PermissionChecker::has_all_permissions(&user_permissions, &required) {
+if user_permissions.has_all(["read:file", "write:file"]) {
     println!("User has all required permissions");
 }
 
 // Check any permission
-let options = ["admin:delete", "manager:delete"];
-if PermissionChecker::has_any_permission(&user_permissions, &options) {
+if user_permissions.has_any(["delete:file", "admin:system"]) {
     println!("User can delete");
 }
 # }

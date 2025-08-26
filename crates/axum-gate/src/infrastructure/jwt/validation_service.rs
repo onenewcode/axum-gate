@@ -1,5 +1,6 @@
 use crate::Account;
 use crate::domain::traits::AccessHierarchy;
+use crate::domain::values::Permissions;
 use crate::infrastructure::jwt::JwtClaims;
 use crate::ports::Codec;
 
@@ -150,7 +151,7 @@ mod tests {
             }
 
             use crate::infrastructure::jwt::RegisteredClaims;
-            use roaring::RoaringBitmap;
+
             use uuid::Uuid;
 
             let account = Account {
@@ -158,7 +159,7 @@ mod tests {
                 user_id: "test_user".to_string(),
                 roles: vec![Role::User],
                 groups: vec![Group::new("engineering")],
-                permissions: RoaringBitmap::new(),
+                permissions: Permissions::new(),
             };
 
             let registered_claims = RegisteredClaims {

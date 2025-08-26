@@ -75,10 +75,13 @@ where
 
     /// Checks if the account meets any of the required permissions.
     pub fn meets_permission_requirement(&self, account: &Account<R, G>) -> bool {
-        account
-            .permissions
-            .iter()
-            .any(|perm| self.policy.permission_requirements().contains(perm))
+        // Check if any of the account's permissions match any of the required permissions
+        let account_permissions: std::collections::HashSet<u32> =
+            account.permissions.iter().collect();
+        let required_permissions: std::collections::HashSet<u32> =
+            self.policy.permission_requirements().iter().collect();
+
+        !account_permissions.is_disjoint(&required_permissions)
     }
 
     /// Returns true if the policy denies all access (no requirements configured).
@@ -94,12 +97,13 @@ mod tests {
     use crate::{Group, Role};
 
     fn create_test_account() -> Account<Role, Group> {
-        use roaring::RoaringBitmap;
+        use crate::domain::values::Permissions;
         use uuid::Uuid;
 
-        let mut permissions = RoaringBitmap::new();
-        permissions.insert(1);
-        permissions.insert(5);
+        let mut permissions = Permissions::new();
+        // Insert raw permission IDs for testing
+        permissions.bitmap_mut().insert(1);
+        permissions.bitmap_mut().insert(5);
 
         Account {
             account_id: Uuid::new_v4(),

@@ -10,7 +10,9 @@ mod ports;
 
 // Core domain entities that users work with directly
 pub use domain::entities::{Account, Credentials, Group, Role};
-pub use domain::values::{AccessScope, Secret, VerificationResult};
+pub use domain::values::{
+    AccessScope, PermissionId, Permissions, Secret, VerificationResult, const_sha256_u32,
+};
 
 // Domain traits needed for custom implementations
 pub use domain::traits::AccessHierarchy;
@@ -18,12 +20,7 @@ pub use domain::traits::AccessHierarchy;
 // Domain services that users interact with
 pub use domain::services::access_policy::AccessPolicy;
 pub use domain::services::authorization::AuthorizationService;
-pub use domain::services::permissions::{
-    PermissionChecker,
-    PermissionId,
-    const_sha256_u32, // Needed for validate_permissions! macro
-    validate_permission_uniqueness,
-};
+pub use domain::services::permissions::validate_permission_uniqueness;
 
 // Permission validation utilities
 pub use domain::services::permissions::validation::{

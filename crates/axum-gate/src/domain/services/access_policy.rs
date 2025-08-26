@@ -6,7 +6,7 @@
 
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::AccessScope;
-use roaring::RoaringBitmap;
+use crate::domain::values::Permissions;
 
 /// Domain object representing access requirements for a protected resource.
 ///
@@ -21,7 +21,7 @@ where
 {
     role_requirements: Vec<AccessScope<R>>,
     group_requirements: Vec<G>,
-    permission_requirements: RoaringBitmap,
+    permission_requirements: Permissions,
 }
 
 impl<R, G> AccessPolicy<R, G>
@@ -37,7 +37,7 @@ where
         Self {
             role_requirements: vec![],
             group_requirements: vec![],
-            permission_requirements: RoaringBitmap::new(),
+            permission_requirements: Permissions::new(),
         }
     }
 
@@ -53,7 +53,7 @@ where
         Self {
             role_requirements: vec![AccessScope::new(role)],
             group_requirements: vec![],
-            permission_requirements: RoaringBitmap::new(),
+            permission_requirements: Permissions::new(),
         }
     }
 
@@ -72,7 +72,7 @@ where
         Self {
             role_requirements: vec![AccessScope::new(role).allow_supervisor()],
             group_requirements: vec![],
-            permission_requirements: RoaringBitmap::new(),
+            permission_requirements: Permissions::new(),
         }
     }
 
@@ -88,7 +88,7 @@ where
         Self {
             role_requirements: vec![],
             group_requirements: vec![group],
-            permission_requirements: RoaringBitmap::new(),
+            permission_requirements: Permissions::new(),
         }
     }
 
@@ -101,8 +101,8 @@ where
     /// let policy: AccessPolicy<Role, Group> = AccessPolicy::require_permission(42u32);
     /// ```
     pub fn require_permission<P: Into<u32>>(permission: P) -> Self {
-        let mut permissions = RoaringBitmap::new();
-        permissions.insert(permission.into());
+        let mut permissions = Permissions::new();
+        permissions.bitmap_mut().insert(permission.into());
         Self {
             role_requirements: vec![],
             group_requirements: vec![],
@@ -139,7 +139,9 @@ where
     ///
     /// Access will be granted if the user has ANY of the configured permissions.
     pub fn or_require_permission<P: Into<u32>>(mut self, permission: P) -> Self {
-        self.permission_requirements.insert(permission.into());
+        self.permission_requirements
+            .bitmap_mut()
+            .insert(permission.into());
         self
     }
 
@@ -148,7 +150,7 @@ where
     /// Access will be granted if the user has ANY of the configured permissions.
     pub fn or_require_permissions<P: Into<u32>>(mut self, permissions: Vec<P>) -> Self {
         permissions.into_iter().for_each(|p| {
-            self.permission_requirements.insert(p.into());
+            self.permission_requirements.bitmap_mut().insert(p.into());
         });
         self
     }
@@ -164,7 +166,7 @@ where
     }
 
     /// Returns the permission requirements for this policy.
-    pub fn permission_requirements(&self) -> &RoaringBitmap {
+    pub fn permission_requirements(&self) -> &Permissions {
         &self.permission_requirements
     }
 
@@ -189,7 +191,7 @@ where
     /// Converts this policy into the components needed by the authorization service.
     ///
     /// This is primarily used internally when bridging to the authorization service.
-    pub fn into_components(self) -> (Vec<AccessScope<R>>, Vec<G>, RoaringBitmap) {
+    pub fn into_components(self) -> (Vec<AccessScope<R>>, Vec<G>, Permissions) {
         (
             self.role_requirements,
             self.group_requirements,
@@ -251,7 +253,7 @@ mod tests {
         assert!(policy.has_requirements());
         assert!(policy.role_requirements().is_empty());
         assert!(policy.group_requirements().is_empty());
-        assert!(policy.permission_requirements().contains(42));
+        assert!(policy.permission_requirements().iter().any(|id| id == 42));
     }
 
     #[test]
@@ -266,10 +268,11 @@ mod tests {
         assert!(policy.has_requirements());
         assert_eq!(policy.role_requirements().len(), 2);
         assert_eq!(policy.group_requirements().len(), 1);
-        assert!(policy.permission_requirements().contains(42));
-        assert!(policy.permission_requirements().contains(1));
-        assert!(policy.permission_requirements().contains(2));
-        assert!(policy.permission_requirements().contains(3));
+        let perm_ids: Vec<u32> = policy.permission_requirements().iter().collect();
+        assert!(perm_ids.contains(&42));
+        assert!(perm_ids.contains(&1));
+        assert!(perm_ids.contains(&2));
+        assert!(perm_ids.contains(&3));
     }
 
     #[test]
@@ -281,6 +284,6 @@ mod tests {
         let (roles, groups, permissions) = policy.into_components();
         assert_eq!(roles.len(), 1);
         assert_eq!(groups.len(), 1);
-        assert!(permissions.contains(42));
+        assert!(permissions.iter().any(|id| id == 42));
     }
 }
