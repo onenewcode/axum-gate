@@ -150,7 +150,7 @@ fn update_user_permissions(new_permissions: Vec<String>) -> Result<()> {
 
 This validation system works seamlessly with the existing `axum-gate` permission system:
 
-- Uses the same `PermissionId::from_name()` hashing algorithm
+- Uses the same `PermissionId::from()` hashing algorithm
 - Compatible with `RoaringBitmap` permission storage
 - Integrates with the zero-synchronization distributed permission model
 - Complements compile-time validation macros

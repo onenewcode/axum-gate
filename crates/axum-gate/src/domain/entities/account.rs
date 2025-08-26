@@ -33,7 +33,7 @@ use uuid::Uuid;
 /// # let mut account = Account::<Role, Group>::new("user", &[], &[]);
 /// // Grant permissions
 /// account.grant_permission("read:api");
-/// account.grant_permission(PermissionId::from_name("write:api"));
+/// account.grant_permission(PermissionId::from("write:api"));
 ///
 /// // Check permissions directly
 /// if account.permissions.has("read:api") {
@@ -172,7 +172,7 @@ where
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("read:profile");
-    /// account.grant_permission(PermissionId::from_name("write:profile"));
+    /// account.grant_permission(PermissionId::from("write:profile"));
     /// ```
     pub fn grant_permission<P>(&mut self, permission: P)
     where
@@ -189,7 +189,7 @@ where
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("write:profile");
-    /// account.revoke_permission(PermissionId::from_name("write:profile"));
+    /// account.revoke_permission(PermissionId::from("write:profile"));
     /// ```
     pub fn revoke_permission<P>(&mut self, permission: P)
     where

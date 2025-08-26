@@ -33,22 +33,22 @@ async fn user(Extension(user): Extension<Account<Role, Group>>) -> Result<String
 async fn permissions(Extension(user): Extension<Account<Role, Group>>) -> Result<String, ()> {
     // Demonstrate zero-sync permission checking
     let has_read_api = PermissionHelper::has_permission(
-        &user.permissions,
+        user.permissions.as_ref(),
         &AppPermissions::Api(ApiPermission::Read),
     );
     let has_write_api = PermissionHelper::has_permission(
-        &user.permissions,
+        user.permissions.as_ref(),
         &AppPermissions::Api(ApiPermission::Write),
     );
     let has_read_repo = PermissionHelper::has_permission(
-        &user.permissions,
+        user.permissions.as_ref(),
         &AppPermissions::Repository(RepositoryPermission::Read),
     );
     let has_write_repo = PermissionHelper::has_permission(
-        &user.permissions,
+        user.permissions.as_ref(),
         &AppPermissions::Repository(RepositoryPermission::Write),
     );
-    let is_admin = PermissionHelper::is_admin(&user.permissions);
+    let is_admin = PermissionHelper::is_admin(user.permissions.as_ref());
 
     Ok(format!(
         "Hello {} and welcome to the consumer node. Your roles are {:?} and you are member of groups {:?}!\n\
@@ -139,8 +139,8 @@ async fn main() {
                 Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .with_policy(AccessPolicy::require_permission(
-                        axum_gate::PermissionId::from_name(
-                            &AppPermissions::Api(ApiPermission::Read).as_str(),
+                        axum_gate::PermissionId::from(
+                            AppPermissions::Api(ApiPermission::Read).as_str(),
                         ),
                     )),
             ),

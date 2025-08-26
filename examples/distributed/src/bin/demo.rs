@@ -55,7 +55,7 @@ fn main() {
     println!("   .layer(");
     println!("       Gate::new_cookie(issuer, codec)");
     println!(
-        "           .grant_permission(PermissionId::from_name(&AppPermissions::Repository(RepositoryPermission::Read).as_str()))"
+        "           .grant_permission(PermissionId::from(AppPermissions::Repository(RepositoryPermission::Read).as_str()))"
     );
     println!("   )");
     println!("   ```");

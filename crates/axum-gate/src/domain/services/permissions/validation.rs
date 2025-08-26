@@ -162,7 +162,7 @@ impl PermissionCollisionChecker {
 
         // Group permissions by their hash ID
         for permission in &self.permissions {
-            let id = PermissionId::from_name(permission);
+            let id = PermissionId::from(permission.as_str());
             id_to_permissions
                 .entry(id.as_u32())
                 .or_insert_with(Vec::new)
@@ -185,7 +185,7 @@ impl PermissionCollisionChecker {
         self.collision_map.clear();
 
         for permission in &self.permissions {
-            let id = PermissionId::from_name(permission).as_u32();
+            let id = PermissionId::from(permission.as_str()).as_u32();
             self.collision_map
                 .entry(id)
                 .or_insert_with(Vec::new)
@@ -207,7 +207,7 @@ impl PermissionCollisionChecker {
     /// Vector of permission strings that conflict with the given permission.
     /// The returned vector will not include the input permission itself.
     pub fn get_conflicting_permissions(&self, permission: &str) -> Vec<String> {
-        let id = PermissionId::from_name(permission).as_u32();
+        let id = PermissionId::from(permission).as_u32();
         self.collision_map
             .get(&id)
             .map(|perms| perms.iter().filter(|p| *p != permission).cloned().collect())

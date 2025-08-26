@@ -107,7 +107,7 @@
 //!     .layer(
 //!         Gate::cookie_deny_all("issuer", jwt_codec)
 //!             .with_cookie_template(cookie_template)
-//!             .with_policy(AccessPolicy::<MyRole, MyGroup>::require_permission(PermissionId::from_name("read:resource1")))
+//!             .with_policy(AccessPolicy::<MyRole, MyGroup>::require_permission(PermissionId::from("read:resource1")))
 //!     );
 //!
 //! async fn protected_handler() -> &'static str {
@@ -248,7 +248,7 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
         }
 
         // Check for hash collisions
-        let id = PermissionId::from_name(permission);
+        let id = PermissionId::from(permission);
         if let Some(existing_permission) = seen_ids.get(&id.as_u32()) {
             return Err(Error::Domain(DomainError::permission_collision(
                 id.as_u32(),

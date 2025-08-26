@@ -60,7 +60,7 @@ let mut user_permissions = RoaringBitmap::new();
 
 // Grant specific permission
 PermissionHelper::grant_permission(
-    &mut user_permissions, 
+    &mut user_permissions,
     &AppPermissions::Repository(RepositoryPermission::Read)
 );
 
@@ -75,7 +75,7 @@ PermissionHelper::grant_admin_access(&mut user_permissions); // all permissions
 ```rust
 // Direct permission check
 let can_read = PermissionHelper::has_permission(
-    &user.permissions, 
+    &user.permissions,
     &AppPermissions::Repository(RepositoryPermission::Read)
 );
 
@@ -94,8 +94,8 @@ let app = Router::new()
     .route("/api/data", get(get_data))
     .layer(
         Gate::new_cookie(issuer, jwt_codec)
-            .grant_permission(PermissionId::from_name(
-                &AppPermissions::Api(ApiPermission::Read).as_str()
+            .grant_permission(PermissionId::from(
+                AppPermissions::Api(ApiPermission::Read).as_str()
             ))
     );
 ```
@@ -175,20 +175,20 @@ The consumer node runs on `http://127.0.0.1:3001` and provides:
 - `/` - Public endpoint
 - `/permissions` - Shows user's permission analysis (requires API read)
 - `/user` - User-only endpoint
-- `/reporter` - Reporter-only endpoint  
+- `/reporter` - Reporter-only endpoint
 - `/admin` - Admin-only endpoint
 - `/secret-admin-group` - Admin group-only endpoint
 
 ## Key Benefits
 
-✓ **Zero Coordination**: No synchronization required between nodes  
-✓ **Type Safety**: Compile-time validation of permission usage  
-✓ **High Performance**: Optimized bitmap operations  
-✓ **Deterministic**: Same permission always generates same ID  
-✓ **Collision Resistant**: SHA-256 based permission IDs  
-✓ **Serializable**: Full strum integration for easy persistence  
-✓ **Organized**: Logical permission categorization  
-✓ **Iterator Support**: Easy bulk operations on permission sets  
+✓ **Zero Coordination**: No synchronization required between nodes
+✓ **Type Safety**: Compile-time validation of permission usage
+✓ **High Performance**: Optimized bitmap operations
+✓ **Deterministic**: Same permission always generates same ID
+✓ **Collision Resistant**: SHA-256 based permission IDs
+✓ **Serializable**: Full strum integration for easy persistence
+✓ **Organized**: Logical permission categorization
+✓ **Iterator Support**: Easy bulk operations on permission sets
 
 ## Architecture Advantages
 
@@ -201,7 +201,7 @@ The consumer node runs on `http://127.0.0.1:3001` and provides:
 ### Axum-Gate Zero-Sync with Nested Enums
 - No synchronization required
 - Zero network overhead for permission checks
-- Instant deployment across all nodes  
+- Instant deployment across all nodes
 - Type-safe permission management
 - Automatic serialization support
 - Organized permission structure

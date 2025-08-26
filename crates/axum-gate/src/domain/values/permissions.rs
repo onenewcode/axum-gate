@@ -110,10 +110,10 @@ impl Permissions {
     /// let mut permissions = Permissions::new();
     /// permissions
     ///     .grant("read:profile")
-    ///     .grant(PermissionId::from_name("write:profile"));
+    ///     .grant(PermissionId::from("write:profile"));
     ///
     /// assert!(permissions.has("read:profile"));
-    /// assert!(permissions.has(PermissionId::from_name("write:profile")));
+    /// assert!(permissions.has(PermissionId::from("write:profile")));
     /// ```
     pub fn grant<P>(&mut self, permission: P) -> &mut Self
     where
@@ -134,7 +134,7 @@ impl Permissions {
     /// use axum_gate::{Permissions, PermissionId};
     ///
     /// let mut permissions = Permissions::from_iter(["read:profile", "write:profile"]);
-    /// permissions.revoke(PermissionId::from_name("write:profile"));
+    /// permissions.revoke(PermissionId::from("write:profile"));
     ///
     /// assert!(permissions.has("read:profile"));
     /// assert!(!permissions.has("write:profile"));
@@ -158,7 +158,7 @@ impl Permissions {
     /// let permissions = Permissions::from_iter(["read:profile"]);
     ///
     /// assert!(permissions.has("read:profile"));
-    /// assert!(permissions.has(PermissionId::from_name("read:profile")));
+    /// assert!(permissions.has(PermissionId::from("read:profile")));
     /// assert!(!permissions.has("write:profile"));
     /// ```
     pub fn has<P>(&self, permission: P) -> bool
@@ -183,7 +183,7 @@ impl Permissions {
     /// ]);
     ///
     /// assert!(permissions.has_all(["read:profile", "write:profile"]));
-    /// assert!(permissions.has_all([PermissionId::from_name("read:profile")]));
+    /// assert!(permissions.has_all([PermissionId::from("read:profile")]));
     /// assert!(!permissions.has_all(["read:profile", "admin:users"]));
     /// ```
     pub fn has_all<I, P>(&self, permissions: I) -> bool
@@ -204,7 +204,7 @@ impl Permissions {
     /// let permissions = Permissions::from_iter(["read:profile"]);
     ///
     /// assert!(permissions.has_any(["read:profile", "write:profile"]));
-    /// assert!(permissions.has_any([PermissionId::from_name("read:profile")]));
+    /// assert!(permissions.has_any([PermissionId::from("read:profile")]));
     /// assert!(!permissions.has_any(["write:profile", "admin:users"]));
     /// ```
     pub fn has_any<I, P>(&self, permissions: I) -> bool
@@ -342,7 +342,7 @@ impl Permissions {
     ///
     /// let permissions = Permissions::new()
     ///     .with("read:profile")
-    ///     .with(PermissionId::from_name("write:profile"))
+    ///     .with(PermissionId::from("write:profile"))
     ///     .build();
     ///
     /// assert!(permissions.has("read:profile"));
@@ -413,6 +413,24 @@ impl Default for Permissions {
 impl fmt::Display for Permissions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Permissions({})", self.len())
+    }
+}
+
+impl From<roaring::RoaringBitmap> for Permissions {
+    fn from(bitmap: roaring::RoaringBitmap) -> Self {
+        Self { bitmap }
+    }
+}
+
+impl From<Permissions> for roaring::RoaringBitmap {
+    fn from(permissions: Permissions) -> Self {
+        permissions.bitmap
+    }
+}
+
+impl AsRef<roaring::RoaringBitmap> for Permissions {
+    fn as_ref(&self) -> &roaring::RoaringBitmap {
+        &self.bitmap
     }
 }
 

@@ -63,7 +63,7 @@
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
 //!     .with_policy(
-//!         AccessPolicy::<Role, Group>::require_permission(PermissionId::from_name("read:api"))
+//!         AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"))
 //!     );
 //! ```
 use self::cookie_service::CookieGateService;

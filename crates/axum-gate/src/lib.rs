@@ -11,7 +11,8 @@ mod ports;
 // Core domain entities that users work with directly
 pub use domain::entities::{Account, Credentials, Group, Role};
 pub use domain::values::{
-    AccessScope, PermissionId, Permissions, Secret, VerificationResult, const_sha256_u32,
+    AccessScope, AsPermissionName, PermissionId, Permissions, Secret, VerificationResult,
+    const_sha256_u32,
 };
 
 // Domain traits needed for custom implementations

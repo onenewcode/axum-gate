@@ -4,7 +4,7 @@
 //! distributed nodes without any coordination or synchronization.
 
 use axum_gate::validate_permissions;
-use axum_gate::{PermissionChecker, PermissionId};
+use axum_gate::{AsPermissionName, PermissionId, Permissions};
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
@@ -122,6 +122,12 @@ impl AppPermissions {
     }
 }
 
+impl AsPermissionName for AppPermissions {
+    fn as_permission_name(&self) -> String {
+        self.as_str()
+    }
+}
+
 // Validate permissions at compile time to ensure no hash collisions
 validate_permissions![
     "repository:read",
@@ -138,69 +144,70 @@ pub struct PermissionHelper;
 impl PermissionHelper {
     /// Grant repository access (read + write).
     pub fn grant_repository_access(user_permissions: &mut RoaringBitmap) {
-        PermissionChecker::grant_permission(
-            user_permissions,
-            &AppPermissions::Repository(RepositoryPermission::Read).as_str(),
-        );
-        PermissionChecker::grant_permission(
-            user_permissions,
-            &AppPermissions::Repository(RepositoryPermission::Write).as_str(),
-        );
+        let mut perms = Permissions::from(user_permissions.clone());
+        perms.grant(AppPermissions::Repository(RepositoryPermission::Read).as_str());
+        perms.grant(AppPermissions::Repository(RepositoryPermission::Write).as_str());
+        *user_permissions = perms.into();
     }
 
     /// Grant full repository access (read + write + delete).
     pub fn grant_full_repository_access(user_permissions: &mut RoaringBitmap) {
+        let mut perms = Permissions::from(user_permissions.clone());
         for permission in AppPermissions::all_repository() {
-            PermissionChecker::grant_permission(user_permissions, &permission.as_str());
+            perms.grant(permission.as_str());
         }
+        *user_permissions = perms.into();
     }
 
     /// Grant API access (read + write).
     pub fn grant_api_access(user_permissions: &mut RoaringBitmap) {
+        let mut perms = Permissions::from(user_permissions.clone());
         for permission in AppPermissions::all_api() {
-            PermissionChecker::grant_permission(user_permissions, &permission.as_str());
+            perms.grant(permission.as_str());
         }
+        *user_permissions = perms.into();
     }
 
     /// Grant admin access (all permissions).
     pub fn grant_admin_access(user_permissions: &mut RoaringBitmap) {
+        let mut perms = Permissions::from(user_permissions.clone());
         for permission in AppPermissions::all() {
-            PermissionChecker::grant_permission(user_permissions, &permission.as_str());
+            perms.grant(permission.as_str());
         }
+        *user_permissions = perms.into();
     }
 
-    /// Grant specific permission.
+    /// Grant specific permission using the new AsPermissionName trait.
     pub fn grant_permission(user_permissions: &mut RoaringBitmap, permission: &AppPermissions) {
-        PermissionChecker::grant_permission(user_permissions, &permission.as_str());
+        let mut perms = Permissions::from(user_permissions.clone());
+        // Use the consistent From trait approach
+        perms.grant(PermissionId::from(permission));
+        *user_permissions = perms.into();
     }
 
-    /// Check if user has specific permission.
+    /// Check if user has specific permission using the new AsPermissionName trait.
     pub fn has_permission(user_permissions: &RoaringBitmap, permission: &AppPermissions) -> bool {
-        PermissionChecker::has_permission(user_permissions, &permission.as_str())
+        let perms = Permissions::from(user_permissions.clone());
+        // Use the consistent From trait approach
+        perms.has(PermissionId::from(permission))
     }
 
     /// Check if user can access repository data.
     pub fn can_access_repository(user_permissions: &RoaringBitmap) -> bool {
-        Self::has_permission(
-            user_permissions,
-            &AppPermissions::Repository(RepositoryPermission::Read),
-        )
+        let perms = Permissions::from(user_permissions.clone());
+        perms.has(AppPermissions::Repository(RepositoryPermission::Read).as_str())
     }
 
     /// Check if user can modify repository data.
     pub fn can_modify_repository(user_permissions: &RoaringBitmap) -> bool {
-        Self::has_permission(
-            user_permissions,
-            &AppPermissions::Repository(RepositoryPermission::Write),
-        )
+        let perms = Permissions::from(user_permissions.clone());
+        perms.has(AppPermissions::Repository(RepositoryPermission::Write).as_str())
     }
 
     /// Check if user can delete repository data.
     pub fn can_delete_repository(user_permissions: &RoaringBitmap) -> bool {
-        Self::has_permission(
-            user_permissions,
-            &AppPermissions::Repository(RepositoryPermission::Delete),
-        )
+        let perms = Permissions::from(user_permissions.clone());
+        perms.has(AppPermissions::Repository(RepositoryPermission::Delete).as_str())
     }
 
     /// Check if user can access API.
@@ -215,10 +222,8 @@ impl PermissionHelper {
 
     /// Check if user is admin.
     pub fn is_admin(user_permissions: &RoaringBitmap) -> bool {
-        Self::has_permission(
-            user_permissions,
-            &AppPermissions::System(SystemPermission::Admin),
-        )
+        let perms = Permissions::from(user_permissions.clone());
+        perms.has(AppPermissions::System(SystemPermission::Admin).as_str())
     }
 
     /// Check if user has all permissions in a category.
@@ -230,9 +235,10 @@ impl PermissionHelper {
 
     /// Check if user has all API permissions.
     pub fn has_all_api_permissions(user_permissions: &RoaringBitmap) -> bool {
+        let perms = Permissions::from(user_permissions.clone());
         AppPermissions::all_api()
             .iter()
-            .all(|perm| Self::has_permission(user_permissions, perm))
+            .all(|perm| perms.has(perm.as_str()))
     }
 }
 
@@ -251,19 +257,19 @@ pub fn demonstrate_zero_sync() {
     println!("2. Deterministic Permission IDs:");
     let read_repo_perm = AppPermissions::Repository(RepositoryPermission::Read);
     let write_repo_perm = AppPermissions::Repository(RepositoryPermission::Write);
-    let read_repo_id = PermissionId::from_name(&read_repo_perm.as_str());
-    let write_repo_id = PermissionId::from_name(&write_repo_perm.as_str());
+    let read_repo_id = PermissionId::from(read_repo_perm.as_str());
+    let write_repo_id = PermissionId::from(write_repo_perm.as_str());
 
     println!("  '{}' -> ID: {}", read_repo_perm.as_str(), read_repo_id);
     println!("  '{}' -> ID: {}", write_repo_perm.as_str(), write_repo_id);
 
-    // Demonstrate that IDs are always the same
-    let read_repo_id_again = PermissionId::from_name(&read_repo_perm.as_str());
+    // Check determinism
+    let same_read_id = PermissionId::from(read_repo_perm.as_str());
     println!(
         "  Same permission generates same ID: {} == {} = {}",
         read_repo_id,
-        read_repo_id_again,
-        read_repo_id == read_repo_id_again
+        same_read_id,
+        read_repo_id == same_read_id
     );
     println!();
 
@@ -374,8 +380,8 @@ mod tests {
 
     #[test]
     fn permission_ids_are_deterministic() {
-        let id1 = PermissionId::from_name("test:permission");
-        let id2 = PermissionId::from_name("test:permission");
+        let id1 = PermissionId::from("test:permission");
+        let id2 = PermissionId::from("test:permission");
         assert_eq!(id1, id2);
     }
 
@@ -383,8 +389,8 @@ mod tests {
     fn different_permissions_have_different_ids() {
         let perm1 = AppPermissions::Repository(RepositoryPermission::Read);
         let perm2 = AppPermissions::Repository(RepositoryPermission::Write);
-        let id1 = PermissionId::from_name(&perm1.as_str());
-        let id2 = PermissionId::from_name(&perm2.as_str());
+        let id1 = PermissionId::from(perm1.as_str());
+        let id2 = PermissionId::from(perm2.as_str());
         assert_ne!(id1, id2);
     }
 
@@ -466,6 +472,54 @@ mod tests {
 ///
 /// Run with: `cargo run --bin demo` from the distributed example directory.
 pub fn main() {
+    println!("🆕 NEW: AsPermissionName Trait Demonstration");
+    println!("============================================");
+
+    // Demonstrate the new AsPermissionName trait
+    let repo_read = AppPermissions::Repository(RepositoryPermission::Read);
+    let api_write = AppPermissions::Api(ApiPermission::Write);
+
+    // Old way: manual string conversion
+    let old_id1 = PermissionId::from(repo_read.as_str());
+    let old_id2 = PermissionId::from(api_write.as_str());
+
+    // New way: direct trait-based conversion (same as old way now!)
+    let new_id1 = PermissionId::from(&repo_read);
+    let new_id2 = PermissionId::from(&api_write);
+
+    // All use the same consistent From trait approach
+    let consistent_id1 = PermissionId::from(&repo_read);
+    let consistent_id2 = PermissionId::from(&api_write);
+
+    println!("Repository Read Permission:");
+    println!("  String:     {} ({})", old_id1, old_id1.as_u32());
+    println!("  Enum:       {} ({})", new_id1, new_id1.as_u32());
+    println!(
+        "  Consistent: {} ({})",
+        consistent_id1,
+        consistent_id1.as_u32()
+    );
+    println!(
+        "  All equal: {}",
+        old_id1 == new_id1 && new_id1 == consistent_id1
+    );
+
+    println!("\nAPI Write Permission:");
+    println!("  String:     {} ({})", old_id2, old_id2.as_u32());
+    println!("  Enum:       {} ({})", new_id2, new_id2.as_u32());
+    println!(
+        "  Consistent: {} ({})",
+        consistent_id2,
+        consistent_id2.as_u32()
+    );
+    println!(
+        "  All equal: {}",
+        old_id2 == new_id2 && new_id2 == consistent_id2
+    );
+
+    println!("\n{}", "=".repeat(50));
+    println!("Original Zero-Sync Permission System Demo");
+    println!("{}", "=".repeat(50));
     demonstrate_zero_sync();
 
     println!("\n=== Performance Comparison ===");
@@ -474,7 +528,7 @@ pub fn main() {
     let start = std::time::Instant::now();
     for _ in 0..100_000 {
         let perm = AppPermissions::Repository(RepositoryPermission::Read);
-        let _id = PermissionId::from_name(&perm.as_str());
+        let _id = PermissionId::from(perm.as_str().as_str());
     }
     let duration = start.elapsed();
     println!(
@@ -488,14 +542,17 @@ pub fn main() {
     let start = std::time::Instant::now();
     for i in 0..100_000 {
         let perm_name = format!("permission:{}", i);
-        PermissionChecker::grant_permission(&mut permissions, &perm_name);
+        let mut perms = Permissions::from(permissions.clone());
+        perms.grant(perm_name);
+        permissions = perms.into();
     }
     let grant_duration = start.elapsed();
 
     let start = std::time::Instant::now();
     for i in 0..100_000 {
         let perm_name = format!("permission:{}", i);
-        let _has = PermissionChecker::has_permission(&permissions, &perm_name);
+        let perms = Permissions::from(permissions.clone());
+        let _has = perms.has(perm_name);
     }
     let check_duration = start.elapsed();
 

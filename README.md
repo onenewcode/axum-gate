@@ -135,7 +135,7 @@ axum_gate::validate_permissions![
 
 // Grant access based on permissions
 let policy = AccessPolicy::<Role, Group>::require_permission(
-    PermissionId::from_name("read:api")
+    PermissionId::from("read:api")
 );
 ```
 
