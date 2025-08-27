@@ -32,7 +32,7 @@ axum-gate provides production-ready JWT cookie authentication with role-based ac
 ## ✨ Features
 
 ### 🔐 Authentication & Authorization
-- **JWT cookie authentication** with automatic renewal and secure defaults
+- **JWT cookie authentication** with secure defaults and automatic expiration handling
 - **Hierarchical role-based access control** with supervisor/subordinate relationships
 - **Group-based permissions** for organization-level access management
 - **Fine-grained permission system** with compile-time validation
@@ -330,12 +330,30 @@ async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
 - [ ] Monitoring and observability integrations
 - [ ] Stability guarantees and SemVer compliance
 
+## 📋 Planned Features
+
+### Automatic JWT Renewal
+- **Transparent token refresh** - Automatically renew JWT tokens before expiration
+- **Sliding expiration** - Extend token lifetime on active usage
+- **Background renewal** - Refresh tokens without user interaction
+- **Graceful degradation** - Handle renewal failures elegantly
+
+### Additional Authentication Methods
+- **Bearer token support** - Header-based authentication alongside cookies
+- **Multi-factor authentication** - TOTP and SMS verification integration
+- **OAuth2/OIDC provider** - Social login and enterprise identity providers
+
+### Enhanced Security Features
+- **Rate limiting** - Built-in protection against brute force attacks
+- **Session management** - Advanced session control and monitoring
+- **Audit logging** - Comprehensive security event tracking
+
 ### Future Ideas 💡
 - WebAssembly support for client-side validation
-- OAuth2/OIDC provider integration
-- Rate limiting and abuse protection
 - Multi-tenant architecture support
 - Real-time permission updates
+- Advanced caching strategies
+- Distributed session storage
 
 **Want to influence the roadmap?** Join our discussions in [GitHub Issues](https://github.com/your-org/axum-gate/issues) or start a [Discussion](https://github.com/your-org/axum-gate/discussions).
 
