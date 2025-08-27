@@ -150,15 +150,8 @@ where
 
     match result {
         LoginResult::Success(jwt_string) => {
-            let json_string = match serde_json::to_string(&jwt_string) {
-                Ok(enc) => enc,
-                Err(e) => {
-                    error!("Error serializing JWT: {}", e);
-                    return Err(StatusCode::INTERNAL_SERVER_ERROR);
-                }
-            };
             let mut cookie = cookie_template.build();
-            cookie.set_value(json_string);
+            cookie.set_value(jwt_string);
             Ok(cookie_jar.add(cookie))
         }
         LoginResult::InvalidCredentials => Err(StatusCode::UNAUTHORIZED),
