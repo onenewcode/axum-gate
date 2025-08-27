@@ -7,9 +7,10 @@ use axum_gate::{
     advanced::Codec,
     auth::{AccountInsertService, Credentials, Group, Role, login, logout},
     http::{CookieJar, cookie},
-    jwt::{JsonWebToken, JwtClaims, RegisteredClaims},
+    jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions},
     prelude::{AccessPolicy, Account, Gate},
     storage::{MemoryAccountRepository, MemorySecretRepository},
+    utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
 };
 
 use std::sync::Arc;
@@ -18,10 +19,15 @@ use axum::{
     Form, Router,
     extract::{Extension, State},
     http::StatusCode,
-    response::{Html, Redirect},
+    response::{Html, Json, Redirect},
     routing::{get, post},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize)]
+struct DebugInfo {
+    account_details: Option<Account<Role, Group>>,
+}
 
 #[derive(Deserialize)]
 struct LoginForm {
@@ -40,45 +46,83 @@ async fn main() {
     // Create some test users
     create_test_users(Arc::clone(&account_repo), Arc::clone(&secret_repo)).await;
 
-    // Create JWT codec
-    let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    // Create JWT codec with proper shared secret
+    let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
+    let jwt_options = JsonWebTokenOptions {
+        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Default::default(),
+        validation: Some(Validation::default()),
+    };
+    let jwt_codec =
+        Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
 
     // Build app with different protection levels
     let app = Router::new()
         // Admin-only area
-        .route("/admin", get(admin_handler))
-        .layer(
-            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(AccessPolicy::require_role(Role::Admin)),
+        .route(
+            "/admin",
+            get(admin_handler).layer(
+                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                    .with_policy(AccessPolicy::require_role(Role::Admin))
+                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+            ),
         )
         // Staff area - multiple roles allowed
-        .route("/staff", get(staff_handler))
-        .layer(
-            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec)).with_policy(
-                AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
+        .route(
+            "/staff",
+            get(staff_handler).layer(
+                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                    .with_policy(
+                        AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
+                    )
+                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
             ),
         )
         // Engineering team area - group-based access
-        .route("/engineering", get(engineering_handler))
-        .layer(
-            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(AccessPolicy::require_group(Group::new("engineering"))),
+        .route(
+            "/engineering",
+            get(engineering_handler).layer(
+                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                    .with_policy(AccessPolicy::require_group(Group::new("engineering")))
+                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+            ),
         )
         // Any logged-in user
-        .route("/profile", get(profile_handler))
-        .layer(
-            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec)).with_policy(
-                AccessPolicy::require_role(Role::User)
-                    .or_require_role(Role::Reporter)
-                    .or_require_role(Role::Moderator)
-                    .or_require_role(Role::Admin),
+        .route(
+            "/profile",
+            get(profile_handler).layer(
+                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                    .with_policy(
+                        AccessPolicy::require_role(Role::User)
+                            .or_require_role(Role::Reporter)
+                            .or_require_role(Role::Moderator)
+                            .or_require_role(Role::Admin),
+                    )
+                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+            ),
+        )
+        // Home page - unprotected, shows login form
+        .route("/", get(home_handler))
+        // Dashboard - protected, shows dashboard for authenticated users
+        .route(
+            "/dashboard",
+            get(dashboard_handler).layer(
+                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                    .with_policy(
+                        AccessPolicy::require_role(Role::User)
+                            .or_require_role(Role::Reporter)
+                            .or_require_role(Role::Moderator)
+                            .or_require_role(Role::Admin),
+                    )
+                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
             ),
         )
         // Authentication endpoints
-        .route("/login", post(login_handler))
+        .route("/login", get(login_page_handler).post(login_handler))
         .route("/logout", post(logout_handler))
-        // Home page - shows login form if not authenticated, dashboard if authenticated
-        .route("/", get(home_handler))
+        // Debug endpoint
+        .route("/debug", get(debug_handler))
         // Add repositories and JWT codec to state for handlers
         .with_state(AppState {
             account_repo,
@@ -88,7 +132,8 @@ async fn main() {
 
     println!("🚀 Server starting on http://localhost:3000");
     println!("📚 Available endpoints:");
-    println!("  • GET  / - Home page (login form or dashboard)");
+    println!("  • GET  / - Home page (login form)");
+    println!("  • GET  /dashboard - Dashboard (authenticated users)");
     println!("  • POST /login - Process login");
     println!("  • POST /logout - Logout");
     println!("  • GET  /profile - User profile (authenticated)");
@@ -118,27 +163,63 @@ struct AppState {
     jwt_codec: Arc<JsonWebToken<JwtClaims<Account<Role, Group>>>>,
 }
 
-// Helper function to check if user is authenticated
-async fn get_current_user(
-    cookie_jar: &CookieJar,
-    jwt_codec: &JsonWebToken<JwtClaims<Account<Role, Group>>>,
-) -> Option<Account<Role, Group>> {
-    if let Some(auth_cookie) = cookie_jar.get("auth-token") {
-        if let Ok(claims) = jwt_codec.decode(auth_cookie.value().as_bytes()) {
-            return Some(claims.custom_claims);
-        }
-    }
-    None
+// Handler for unauthenticated users
+async fn login_page_handler() -> Html<String> {
+    // Redirect to home page which now contains the login form
+    Html(r#"<script>window.location.href = '/';</script>"#.to_string())
 }
 
 // Route handlers
 
-async fn home_handler(State(state): State<AppState>, cookie_jar: CookieJar) -> Html<String> {
-    // Check if user is authenticated
-    if let Some(user) = get_current_user(&cookie_jar, &state.jwt_codec).await {
-        // User is authenticated, show dashboard
-        Html(format!(
-            r#"
+async fn home_handler() -> Html<String> {
+    Html(r#"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Axum Gate - Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+        .btn:hover { opacity: 0.8; }
+        .info { background: #e7f3ff; padding: 15px; border-radius: 4px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Login to Axum Gate Demo</h1>
+
+    <form method="post" action="/login">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn">Login</button>
+    </form>
+
+    <div class="info">
+        <h3>📚 Test Accounts</h3>
+        <p>Try these test accounts:</p>
+        <ul>
+            <li><strong>admin/admin</strong> - Full admin access</li>
+            <li><strong>moderator/moderator</strong> - Staff access</li>
+            <li><strong>engineer/engineer</strong> - Engineering access</li>
+            <li><strong>user/user</strong> - Basic user access</li>
+        </ul>
+    </div>
+</body>
+</html>
+    "#.to_string())
+}
+
+async fn dashboard_handler(Extension(user): Extension<Account<Role, Group>>) -> Html<String> {
+    Html(format!(
+        r#"
 <!DOCTYPE html>
 <html>
 <head>
@@ -162,7 +243,7 @@ async fn home_handler(State(state): State<AppState>, cookie_jar: CookieJar) -> H
     </div>
 
     <nav class="nav">
-        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/profile">Profile</a>
         <a href="/staff">Staff Area</a>
         <a href="/engineering">Engineering</a>
@@ -205,59 +286,23 @@ async fn home_handler(State(state): State<AppState>, cookie_jar: CookieJar) -> H
     </div>
 </body>
 </html>
-        "#,
-            user.user_id,
-            user.user_id,
-            user.roles,
-            user.groups,
-            user.permissions.len()
-        ))
+    "#,
+        user.user_id,
+        user.user_id,
+        user.roles,
+        user.groups,
+        user.permissions.len()
+    ))
+}
+
+async fn debug_handler(user_ext: Option<Extension<Account<Role, Group>>>) -> Json<DebugInfo> {
+    let account_details = if let Some(Extension(user)) = user_ext {
+        Some(user)
     } else {
-        // User is not authenticated, show login form
-        Html(r#"
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Axum Gate - Login</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 400px; margin: 100px auto; padding: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn:hover { opacity: 0.8; }
-        .info { background: #e7f3ff; padding: 15px; border-radius: 4px; margin: 20px 0; }
-    </style>
-</head>
-<body>
-    <h1>🔐 Login to Axum Gate Demo</h1>
+        None
+    };
 
-    <form method="post" action="/login">
-        <div class="form-group">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required>
-        </div>
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        <button type="submit" class="btn">Login</button>
-    </form>
-
-    <div class="info">
-        <h3>📚 Test Accounts</h3>
-        <p>Try these test accounts:</p>
-        <ul>
-            <li><strong>admin/admin</strong> - Full admin access</li>
-            <li><strong>moderator/moderator</strong> - Staff access</li>
-            <li><strong>engineer/engineer</strong> - Engineering access</li>
-            <li><strong>user/user</strong> - Basic user access</li>
-        </ul>
-    </div>
-</body>
-</html>
-        "#.to_string())
-    }
+    Json(DebugInfo { account_details })
 }
 
 async fn admin_handler(Extension(user): Extension<Account<Role, Group>>) -> Html<String> {
@@ -286,7 +331,7 @@ async fn admin_handler(Extension(user): Extension<Account<Role, Group>>) -> Html
     </div>
 
     <nav class="nav">
-        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/profile">Profile</a>
         <a href="/staff">Staff Area</a>
         <a href="/engineering">Engineering</a>
@@ -338,7 +383,7 @@ async fn staff_handler(Extension(user): Extension<Account<Role, Group>>) -> Html
     </div>
 
     <nav class="nav">
-        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/profile">Profile</a>
         <a href="/staff">Staff Area</a>
         <a href="/engineering">Engineering</a>
@@ -390,7 +435,7 @@ async fn engineering_handler(Extension(user): Extension<Account<Role, Group>>) -
     </div>
 
     <nav class="nav">
-        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/profile">Profile</a>
         <a href="/staff">Staff Area</a>
         <a href="/engineering">Engineering</a>
@@ -442,7 +487,7 @@ async fn profile_handler(Extension(user): Extension<Account<Role, Group>>) -> Ht
     </div>
 
     <nav class="nav">
-        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/profile">Profile</a>
         <a href="/staff">Staff Area</a>
         <a href="/engineering">Engineering</a>
@@ -485,7 +530,7 @@ async fn login_handler(
         (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
     );
 
-    let cookie_template = cookie::CookieBuilder::new("auth-token", "")
+    let cookie_template = cookie::CookieBuilder::new("my-app", "")
         .http_only(true)
         .secure(false) // Set to true in production with HTTPS
         .max_age(cookie::time::Duration::hours(24));
@@ -502,8 +547,8 @@ async fn login_handler(
     .await
     {
         Ok(updated_jar) => {
-            // Login successful, redirect to home
-            Ok((updated_jar, Redirect::to("/")))
+            // Login successful, redirect to dashboard
+            Ok((updated_jar, Redirect::to("/dashboard")))
         }
         Err(_) => {
             // Login failed, show login form with error
@@ -560,7 +605,7 @@ async fn login_handler(
 }
 
 async fn logout_handler(cookie_jar: CookieJar) -> (CookieJar, Redirect) {
-    let cookie_template = cookie::CookieBuilder::new("auth-token", "");
+    let cookie_template = cookie::CookieBuilder::new("my-app", "");
     let updated_jar = logout(cookie_jar, cookie_template).await;
     (updated_jar, Redirect::to("/"))
 }
