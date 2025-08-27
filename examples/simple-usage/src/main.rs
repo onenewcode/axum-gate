@@ -4,15 +4,17 @@
 //! authentication tasks much more straightforward and fun to use.
 
 use axum_gate::{
+    auth::{AccountInsertService, Credentials, Group, Role, login, logout},
+    http::{CookieJar, cookie},
+    jwt::{JsonWebToken, JwtClaims, RegisteredClaims},
+    prelude::{AccessPolicy, Account, Gate},
     storage::{MemoryAccountRepository, MemorySecretRepository},
-    AccessPolicy, Account, AccountInsertService, Gate, Group, JsonWebToken,
-    JwtClaims, Role, login, logout, Credentials, RegisteredClaims, CookieJar
 };
 
 use std::sync::Arc;
 
+use axum::{Json, Router, extract::Extension, routing::get};
 use serde::Deserialize;
-use axum::{extract::Extension, routing::get, Router, Json};
 
 #[derive(Deserialize)]
 struct LoginRequest {
@@ -22,7 +24,7 @@ struct LoginRequest {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::init();
+    tracing_subscriber::fmt().init();
 
     // Set up storage (in-memory for this example)
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
@@ -40,45 +42,39 @@ async fn main() {
         .route("/admin", get(admin_handler))
         .layer(
             Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(AccessPolicy::require_role(Role::Admin))
+                .with_policy(AccessPolicy::require_role(Role::Admin)),
         )
-
         // Staff area - multiple roles allowed
         .route("/staff", get(staff_handler))
         .layer(
-            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(
-                    AccessPolicy::require_role(Role::Admin)
-                        .or_require_role(Role::Moderator)
-                )
+            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec)).with_policy(
+                AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
+            ),
         )
-
         // Engineering team area - group-based access
         .route("/engineering", get(engineering_handler))
         .layer(
             Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(AccessPolicy::require_group(Group::new("engineering")))
+                .with_policy(AccessPolicy::require_group(Group::new("engineering"))),
         )
-
         // Any logged-in user
         .route("/profile", get(profile_handler))
         .layer(
-            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
-                .with_policy(
-                    AccessPolicy::require_role(Role::User)
-                        .or_require_role(Role::Reporter)
-                        .or_require_role(Role::Moderator)
-                        .or_require_role(Role::Admin)
-                )
+            Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec)).with_policy(
+                AccessPolicy::require_role(Role::User)
+                    .or_require_role(Role::Reporter)
+                    .or_require_role(Role::Moderator)
+                    .or_require_role(Role::Admin),
+            ),
         )
-
         // Authentication endpoints - clean and simple
         .route("/login", axum::routing::post(login_handler))
         .route("/logout", axum::routing::post(logout_handler))
-
         // Public endpoint - no protection
-        .route("/", get(|| async { "🌍 Welcome! Try logging in with admin/admin" }))
-
+        .route(
+            "/",
+            get(|| async { "🌍 Welcome! Try logging in with admin/admin" }),
+        )
         // Add repositories and JWT codec to state for handlers
         .with_state(AppState {
             account_repo,
@@ -115,21 +111,33 @@ struct AppState {
 // Route handlers - notice how clean they are!
 
 async fn admin_handler(Extension(user): Extension<Account<Role, Group>>) -> String {
-    format!("🔐 Admin Area\nWelcome {}!\nYour roles: {:?}", user.user_id, user.roles)
+    format!(
+        "🔐 Admin Area\nWelcome {}!\nYour roles: {:?}",
+        user.user_id, user.roles
+    )
 }
 
 async fn staff_handler(Extension(user): Extension<Account<Role, Group>>) -> String {
-    format!("👥 Staff Area\nWelcome {}!\nYour roles: {:?}", user.user_id, user.roles)
+    format!(
+        "👥 Staff Area\nWelcome {}!\nYour roles: {:?}",
+        user.user_id, user.roles
+    )
 }
 
 async fn engineering_handler(Extension(user): Extension<Account<Role, Group>>) -> String {
-    format!("⚙️  Engineering Area\nWelcome {}!\nYour groups: {:?}", user.user_id, user.groups)
+    format!(
+        "⚙️  Engineering Area\nWelcome {}!\nYour groups: {:?}",
+        user.user_id, user.groups
+    )
 }
 
 async fn profile_handler(Extension(user): Extension<Account<Role, Group>>) -> String {
     format!(
         "👤 Your Profile\n\nUser ID: {}\nRoles: {:?}\nGroups: {:?}\nPermissions: {} total",
-        user.user_id, user.roles, user.groups, user.permissions.count()
+        user.user_id,
+        user.roles,
+        user.groups,
+        user.permissions.len()
     )
 }
 
@@ -140,16 +148,16 @@ async fn login_handler(
     cookie_jar: CookieJar,
     Json(request): Json<LoginRequest>,
 ) -> Result<CookieJar, axum::http::StatusCode> {
-    let credentials = Credentials::new(request.username, request.password);
+    let credentials = Credentials::new(&request.username, &request.password);
     let registered_claims = RegisteredClaims::new(
         "my-app",
         (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
     );
 
-    let cookie_template = axum_gate::cookie::CookieBuilder::new("auth-token", "")
+    let cookie_template = cookie::CookieBuilder::new("auth-token", "")
         .http_only(true)
         .secure(false) // Set to true in production with HTTPS
-        .max_age(axum_gate::Duration::hours(24));
+        .max_age(cookie::time::Duration::hours(24));
 
     login(
         cookie_jar,
@@ -159,11 +167,12 @@ async fn login_handler(
         state.account_repo,
         state.jwt_codec,
         cookie_template,
-    ).await
+    )
+    .await
 }
 
 async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
-    let cookie_template = axum_gate::cookie::CookieBuilder::new("auth-token", "");
+    let cookie_template = cookie::CookieBuilder::new("auth-token", "");
     logout(cookie_jar, cookie_template).await
 }
 

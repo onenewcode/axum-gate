@@ -5,6 +5,7 @@ members = [
     "examples/distributed",
     "examples/permission-validation",
     "examples/sea-orm",
+    "examples/simple-usage",
     "examples/surrealdb",
 ]
 resolver = "3"
