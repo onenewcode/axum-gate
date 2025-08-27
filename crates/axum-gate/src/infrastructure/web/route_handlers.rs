@@ -79,11 +79,9 @@
 //! }
 //! ```
 use crate::application::auth::{LoginResult, LoginService, LogoutService};
-use crate::domain::entities::Credentials;
-use crate::http::cookie::CookieBuilder;
-use crate::prelude::Account;
-
+use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
+use crate::http::cookie::CookieBuilder;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
 use crate::ports::Codec;
 use crate::ports::auth::CredentialsVerifier;

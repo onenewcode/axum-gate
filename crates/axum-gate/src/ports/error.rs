@@ -4,6 +4,7 @@
 //! and contract violations between the application layer and external adapters.
 
 use std::fmt;
+
 use thiserror::Error;
 
 /// Port layer errors for interface contract violations.

@@ -5,8 +5,7 @@
 //! specify what roles, groups, or permissions are required for access.
 
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::AccessScope;
-use crate::domain::values::Permissions;
+use crate::domain::values::{AccessScope, Permissions};
 
 /// Domain object representing access requirements for a protected resource.
 ///

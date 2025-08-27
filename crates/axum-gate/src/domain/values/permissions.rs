@@ -5,9 +5,11 @@
 //! an intuitive API for working with permissions.
 
 use crate::domain::values::PermissionId;
+
+use std::fmt;
+
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 
 /// A collection of permissions that provides a clean API for permission management.
 ///

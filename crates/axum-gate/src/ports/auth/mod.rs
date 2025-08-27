@@ -9,9 +9,3 @@ mod hashing;
 
 pub use credentials_verifier::CredentialsVerifier;
 pub use hashing::HashingService;
-
-// TODO: Define additional authentication ports such as:
-// - AuthenticationPort: For external authentication providers
-// - TokenValidationPort: For token validation services
-// - CredentialStoragePort: For credential storage systems
-// - SessionManagementPort: For session management systems

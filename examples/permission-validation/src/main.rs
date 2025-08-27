@@ -9,8 +9,8 @@
 
 use axum_gate::advanced::{ApplicationValidator, PermissionCollisionChecker};
 use axum_gate::errors::Result;
-use serde::{Deserialize, Serialize};
 
+use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
 #[derive(Debug, Serialize, Deserialize)]

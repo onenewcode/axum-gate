@@ -1,6 +1,6 @@
+use crate::errors::Result;
 use crate::{domain::entities::Account, domain::traits::AccessHierarchy};
 
-use crate::errors::Result;
 use std::future::Future;
 
 /// An account repository has access to the collection of [Account]s

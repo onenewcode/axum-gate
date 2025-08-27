@@ -1,9 +1,9 @@
+use crate::domain::entities::Account;
 use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::services::authorization::AuthorizationService;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::jwt::{JwtClaims, JwtValidationResult, JwtValidationService};
 use crate::ports::Codec;
-use crate::prelude::Account;
 
 use std::convert::Infallible;
 use std::fmt::Debug;

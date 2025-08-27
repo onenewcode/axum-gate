@@ -3,14 +3,16 @@
 //! This example demonstrates how the restructured API makes common
 //! authentication tasks much more straightforward and fun to use.
 
-use axum::{extract::Extension, routing::get, Router, Json};
 use axum_gate::{
     storage::{MemoryAccountRepository, MemorySecretRepository},
     AccessPolicy, Account, AccountInsertService, Gate, Group, JsonWebToken,
     JwtClaims, Role, login, logout, Credentials, RegisteredClaims, CookieJar
 };
+
 use std::sync::Arc;
+
 use serde::Deserialize;
+use axum::{extract::Extension, routing::get, Router, Json};
 
 #[derive(Deserialize)]
 struct LoginRequest {

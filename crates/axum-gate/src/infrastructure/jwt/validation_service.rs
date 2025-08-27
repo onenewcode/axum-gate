@@ -1,7 +1,7 @@
+use crate::domain::entities::Account;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::jwt::JwtClaims;
 use crate::ports::Codec;
-use crate::prelude::Account;
 
 use std::sync::Arc;
 use tracing::{debug, warn};

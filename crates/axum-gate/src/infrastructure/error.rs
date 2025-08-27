@@ -4,6 +4,7 @@
 //! databases, web servers, and other infrastructure components.
 
 use std::fmt;
+
 use thiserror::Error;
 
 /// Infrastructure layer errors for external system integration failures.

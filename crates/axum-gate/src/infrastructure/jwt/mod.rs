@@ -1,12 +1,11 @@
 //! Claims and JWT models.
-use crate::errors::{Error, InfrastructureError, JwtOperation};
+use crate::errors::{Error, InfrastructureError, JwtOperation, Result};
 use crate::ports::Codec;
 use crate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use crate::errors::Result;
 use chrono::Utc;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;

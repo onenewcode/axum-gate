@@ -1,9 +1,8 @@
 //! Value hashing implementations.
 use crate::domain::values::VerificationResult;
-use crate::errors::{Error, HashingOperation, PortError};
+use crate::errors::{Error, HashingOperation, PortError, Result};
 use crate::ports::auth::HashingService;
 
-use crate::errors::Result;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 

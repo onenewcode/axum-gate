@@ -1,17 +1,15 @@
 //! Repository implementations that use surrealdb as backend.
 
 use super::TableNames;
+use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::Secret;
-use crate::domain::values::VerificationResult;
-use crate::errors::{DatabaseOperation, Error, InfrastructureError};
+use crate::domain::values::{Secret, VerificationResult};
+use crate::errors::{DatabaseOperation, Error, InfrastructureError, Result};
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::prelude::{Account, Credentials};
 
 use std::default::Default;
 
-use crate::errors::Result;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use surrealdb::{Connection, RecordId, RecordIdKey, Surreal};

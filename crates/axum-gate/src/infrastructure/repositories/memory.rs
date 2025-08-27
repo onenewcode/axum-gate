@@ -55,19 +55,17 @@
 //! let secret_repo = MemorySecretRepository::from(secrets);
 //! ```
 
+use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::Secret;
-use crate::domain::values::VerificationResult;
-use crate::errors::{Error, PortError, RepositoryType};
+use crate::domain::values::{Secret, VerificationResult};
+use crate::errors::{Error, PortError, RepositoryType, Result};
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::prelude::{Account, Credentials};
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::errors::Result;
 use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;

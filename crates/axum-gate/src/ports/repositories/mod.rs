@@ -9,7 +9,3 @@ mod secret;
 
 pub use account::AccountRepository;
 pub use secret::SecretRepository;
-
-// TODO: Define additional repository traits
-// - RoleRepository: For role management
-// - GroupRepository: For group management

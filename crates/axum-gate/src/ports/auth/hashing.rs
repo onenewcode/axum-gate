@@ -1,7 +1,6 @@
 use crate::domain::values::VerificationResult;
-use crate::infrastructure::hashing::HashedValue;
-
 use crate::errors::Result;
+use crate::infrastructure::hashing::HashedValue;
 
 /// Responsible for hashing a plain value.
 pub trait HashingService {

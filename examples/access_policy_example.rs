@@ -4,13 +4,15 @@
 //! clear separation between business logic (access requirements) and web
 //! infrastructure (HTTP/cookie handling).
 
-use axum::{routing::get, Router};
 use axum_gate::{
     AccessPolicy, AuthorizationService, Gate, Group, Role, Account,
     infrastructure::jwt::JsonWebTokenOptions,
     infrastructure::repositories::memory::MemoryAccountRepository,
 };
+
 use std::sync::Arc;
+
+use axum::{routing::get, Router};
 
 #[tokio::main]
 async fn main() {
