@@ -4,10 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "demo"
-path = "src/bin/demo.rs"
-
-[[bin]]
 name = "auth_node"
 path = "src/bin/auth_node.rs"
 
