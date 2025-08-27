@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/axum-gate.svg)](https://crates.io/crates/axum-gate)
 [![Documentation](https://docs.rs/axum-gate/badge.svg)](https://docs.rs/axum-gate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://github.com/your-org/axum-gate/workflows/CI/badge.svg)](https://github.com/your-org/axum-gate/actions)
+[![Build Status](https://github.com/emirror-de/axum-gate/workflows/CI/badge.svg)](https://github.com/emirror-de/axum-gate/actions)
 
 **The most flexible and developer-friendly authentication middleware for axum applications.**
 
@@ -19,7 +19,7 @@ axum-gate provides production-ready JWT cookie authentication with role-based ac
 
 ### Developer Experience That Just Works
 - **Sensible defaults** - Get started with authentication in minutes
-- **Composable architecture** - Mix and match components for your specific needs  
+- **Composable architecture** - Mix and match components for your specific needs
 - **Rich error handling** - Clear, actionable error messages at every layer
 - **Extensive documentation** - From quick start to advanced patterns
 
@@ -27,7 +27,7 @@ axum-gate provides production-ready JWT cookie authentication with role-based ac
 - **Multiple storage backends** - SurrealDB, SeaORM, or bring your own
 - **Distributed system support** - Scale horizontally without authentication bottlenecks
 - **Security best practices** - Built-in protection against common vulnerabilities
-- **Production battle-tested** - Used in high-traffic applications
+- **Production ready** - Designed for real-world applications with comprehensive testing
 
 ## ✨ Features
 
@@ -55,80 +55,9 @@ axum-gate provides production-ready JWT cookie authentication with role-based ac
 ### 🚀 Production Features
 - **High performance** with minimal memory allocation and CPU overhead
 - **Horizontal scaling** support with stateless JWT design
-- **Security hardening** with configurable cookie settings and CSRF protection
-- **Observability ready** with structured logging and metrics hooks
-- **Battle-tested** in production environments
-
-## 🚀 Quick Start
-
-Add axum-gate to your `Cargo.toml`:
-
-```toml
-[dependencies]
-axum-gate = "0.1"
-tokio = { version = "1.0", features = ["full"] }
-axum = "0.7"
-```
-
-Protect your routes in just a few lines:
-
-```rust
-use axum::{routing::get, Router};
-use axum_gate::{Gate, AccessPolicy, auth, storage, jwt};
-use std::sync::Arc;
-
-#[tokio::main]
-async fn main() {
-    // Set up storage (in-memory for development)
-    let account_repo = Arc::new(storage::MemoryAccountRepository::default());
-    let secret_repo = Arc::new(storage::MemorySecretRepository::default());
-    
-    // Create a test admin user
-    auth::AccountInsertService::insert("admin@example.com", "secure_password")
-        .with_roles(vec![auth::Role::Admin])
-        .into_repositories(account_repo.clone(), secret_repo.clone())
-        .await
-        .unwrap();
-
-    // JWT handling with secure defaults
-    let jwt_codec = Arc::new(jwt::JsonWebToken::default());
-
-    // Build your protected application
-    let app = Router::new()
-        // Admin-only routes
-        .route("/admin/dashboard", get(admin_dashboard))
-        .route("/admin/users", get(manage_users))
-        .layer(
-            Gate::cookie_deny_all("my-app", jwt_codec.clone())
-                .with_policy(AccessPolicy::require_role(auth::Role::Admin))
-        )
-        
-        // User routes
-        .route("/profile", get(user_profile))
-        .layer(
-            Gate::cookie_deny_all("my-app", jwt_codec.clone())
-                .with_policy(AccessPolicy::require_role_or_supervisor(auth::Role::User))
-        )
-        
-        // Public authentication routes
-        .route("/login", axum::routing::post(login_handler))
-        .route("/logout", axum::routing::post(logout_handler));
-
-    // Run your server
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
-    println!("🚀 Server running at http://127.0.0.1:3000");
-    axum::serve(listener, app).await.unwrap();
-}
-
-// Your protected route handlers
-async fn admin_dashboard() -> &'static str { "Welcome to the admin dashboard!" }
-async fn manage_users() -> &'static str { "User management panel" }
-async fn user_profile() -> &'static str { "Your user profile" }
-async fn login_handler() -> &'static str { "Login endpoint" }
-async fn logout_handler() -> &'static str { "Logout endpoint" }
-```
-
-That's it! You now have a fully functional authentication system with role-based access control.
+- **Security hardening** with configurable cookie settings
+- **Observability ready** with structured logging and tracing support
+- **Production ready** design with comprehensive testing
 
 ## 🏛️ Architecture Overview
 
@@ -174,134 +103,17 @@ This architecture ensures:
 - **Maintainability** - Clear boundaries and responsibilities
 - **Extensibility** - Add new features without breaking existing functionality
 
-## 📚 Detailed Examples
+## 📚 Usage & Examples
 
-### Custom Roles and Hierarchies
+For detailed usage examples, code samples, and implementation guides, please refer to:
 
-Define your own role system with automatic hierarchy support:
-
-```rust
-use axum_gate::advanced::AccessHierarchy;
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-enum CompanyRole {
-    CEO,
-    CTO,
-    TeamLead,
-    SeniorDeveloper,
-    Developer,
-    Intern,
-}
-
-impl AccessHierarchy for CompanyRole {
-    fn supervisor(&self) -> Option<Self> {
-        match self {
-            Self::CEO => None,
-            Self::CTO => Some(Self::CEO),
-            Self::TeamLead => Some(Self::CTO),
-            Self::SeniorDeveloper => Some(Self::TeamLead),
-            Self::Developer => Some(Self::SeniorDeveloper),
-            Self::Intern => Some(Self::Developer),
-        }
-    }
-}
-
-// Now you can use hierarchical access control
-AccessPolicy::require_role_or_supervisor(CompanyRole::Developer)
-// This grants access to Developer, SeniorDeveloper, TeamLead, CTO, and CEO
-```
-
-### Advanced Permission Systems
-
-Create type-safe, nested permission enums:
-
-```rust
-#[derive(Debug, Clone, PartialEq)]
-enum ApiPermission {
-    Read,
-    Write,
-    Delete,
-    Admin,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum Permission {
-    Api(ApiPermission),
-    System(String),
-    Custom { resource: String, action: String },
-}
-
-impl AsPermissionName for Permission {
-    fn as_permission_name(&self) -> String {
-        match self {
-            Permission::Api(api) => format!("api:{:?}", api).to_lowercase(),
-            Permission::System(sys) => format!("system:{}", sys),
-            Permission::Custom { resource, action } => {
-                format!("{}:{}", resource, action)
-            }
-        }
-    }
-}
-
-// Compile-time validation ensures no conflicts
-axum_gate::validate_permissions![
-    Permission::Api(ApiPermission::Read),
-    Permission::Api(ApiPermission::Write),
-    Permission::System("health".to_string()),
-    Permission::Custom { 
-        resource: "documents".to_string(), 
-        action: "publish".to_string() 
-    },
-];
-```
-
-### Production Database Integration
-
-Scale to production with real databases:
-
-```rust
-// SurrealDB example
-#[cfg(feature = "storage-surrealdb")]
-async fn setup_surrealdb_storage() -> Result<(), Box<dyn std::error::Error>> {
-    use axum_gate::storage::surrealdb::{SurrealDbRepository, DatabaseScope};
-    use axum_gate::storage::TableNames;
-    
-    let db = surrealdb::Surreal::new::<surrealdb::engine::remote::ws::Ws>(
-        "127.0.0.1:8000"
-    ).await?;
-    
-    let scope = DatabaseScope {
-        table_names: TableNames::default(),
-        namespace: "production".to_string(),
-        database: "auth".to_string(),
-    };
-    
-    let repo = Arc::new(SurrealDbRepository::new(db, scope));
-    // repo implements both AccountRepository and SecretRepository
-    
-    Ok(())
-}
-
-// SeaORM example  
-#[cfg(feature = "storage-seaorm")]
-async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
-    use axum_gate::storage::seaorm::SeaOrmRepository;
-    use sea_orm::{Database, ConnectOptions};
-    
-    let mut opt = ConnectOptions::new("postgresql://user:pass@localhost/auth");
-    opt.sqlx_logging_level(log::LevelFilter::Info);
-    
-    let db = Database::connect(opt).await?;
-    let repo = Arc::new(SeaOrmRepository::new(&db));
-    
-    Ok(())
-}
-```
+- **[API Documentation](https://docs.rs/axum-gate)** - Complete module documentation with examples
+- **[Examples Directory](https://github.com/emirror-de/axum-gate/tree/main/examples)** - Real-world implementation patterns
+- **[Getting Started Guide](https://docs.rs/axum-gate/latest/axum_gate/#getting-started)** - Quick setup and basic usage
 
 ## 🗺️ Roadmap
 
-### Current Status: v0.1 - Foundation ✅
+### Current Status: v1.0.0 - Foundation ✅
 - [x] Core authentication and authorization
 - [x] JWT cookie support
 - [x] Role-based access control
@@ -309,7 +121,7 @@ async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
 - [x] In-memory, SurrealDB, and SeaORM storage
 - [x] Comprehensive documentation
 
-### v0.2 - Enhanced Security 🚧
+### v1.1 - Enhanced Security 🚧
 - [ ] Rate limiting middleware for authentication endpoints
 - [ ] Bearer token authentication layer
 - [ ] Rotating key sets for JWT validation
@@ -317,19 +129,19 @@ async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
 - [ ] Enhanced CSRF protection
 - [ ] Audit logging system
 
-### v0.3 - Developer Experience 🔮
+### v1.2 - Developer Experience 🔮
 - [ ] CLI tooling for permission management
 - [ ] Migration utilities between storage backends
 - [ ] Performance optimization and caching
 - [ ] Additional storage backend implementations
 - [ ] GraphQL integration examples
 
-### v1.0 - Production Hardening 🎯
-- [ ] Comprehensive security audit
-- [ ] Performance benchmarking
-- [ ] Production deployment guides
-- [ ] Monitoring and observability integrations
-- [ ] Stability guarantees and SemVer compliance
+### v2.0 - Advanced Features 🎯
+- [ ] Multi-tenant architecture support
+- [ ] Real-time permission updates
+- [ ] WebAssembly support for client-side validation
+- [ ] Advanced caching strategies
+- [ ] Distributed session storage
 
 ## 📋 Planned Features
 
@@ -346,18 +158,11 @@ async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Enhanced Security Features
 - **Timing attack protection** - Constant-time operations prevent user enumeration attacks ✅
-- **Rate limiting** - Built-in protection against brute force attacks (planned for v0.2)
+- **Rate limiting** - Built-in protection against brute force attacks
 - **Session management** - Advanced session control and monitoring
 - **Audit logging** - Comprehensive security event tracking
 
-### Future Ideas 💡
-- WebAssembly support for client-side validation
-- Multi-tenant architecture support
-- Real-time permission updates
-- Advanced caching strategies
-- Distributed session storage
-
-**Want to influence the roadmap?** Join our discussions in [GitHub Issues](https://github.com/your-org/axum-gate/issues) or start a [Discussion](https://github.com/your-org/axum-gate/discussions).
+**Want to influence the roadmap?** Join our discussions in [GitHub Issues](https://github.com/emirror-de/axum-gate/issues) or start a [Discussion](https://github.com/emirror-de/axum-gate/discussions).
 
 ## 🤝 Contributing
 
@@ -372,7 +177,7 @@ We love contributions! axum-gate is built by the community, for the community. W
 - 🧪 **Test coverage** - Help us maintain high quality
 
 **Documentation & Community**
-- 📚 **Documentation** - Improve guides, examples, and API docs  
+- 📚 **Documentation** - Improve guides, examples, and API docs
 - 🎓 **Tutorials** - Create learning resources for the community
 - 💬 **Support** - Help other users in discussions and issues
 - 🎨 **Examples** - Showcase real-world usage patterns
@@ -398,7 +203,7 @@ We love contributions! axum-gate is built by the community, for the community. W
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/axum-gate.git
+git clone https://github.com/emirror-de/axum-gate.git
 cd axum-gate
 
 # Install development dependencies
@@ -431,7 +236,7 @@ cargo clippy -- -D warnings
 
 Contributors are recognized in:
 - 📝 **Changelog** - Every release highlights contributor efforts
-- 👥 **Contributors page** - Permanent recognition on our website  
+- 👥 **Contributors page** - Permanent recognition on our website
 - 💬 **Social media** - We love to celebrate contributions publicly
 - 🎁 **Contributor perks** - Special access to pre-release features and discussions
 
@@ -441,24 +246,18 @@ Join our growing community of developers building secure, scalable web applicati
 
 ### 💬 Get Help & Connect
 
-- **GitHub Discussions** - [Ask questions, share ideas](https://github.com/your-org/axum-gate/discussions)
-- **Discord** - [Join our community chat](https://discord.gg/axum-gate) 
-- **GitHub Issues** - [Report bugs, request features](https://github.com/your-org/axum-gate/issues)
+- **GitHub Discussions** - [Ask questions, share ideas](https://github.com/emirror-de/axum-gate/discussions)
+- **GitHub Issues** - [Report bugs, request features](https://github.com/emirror-de/axum-gate/issues)
 - **Stack Overflow** - [Use the `axum-gate` tag](https://stackoverflow.com/questions/tagged/axum-gate)
 
 ### 📢 Stay Updated
 
-- **GitHub** - [Watch the repository](https://github.com/your-org/axum-gate) for releases
+- **GitHub** - [Watch the repository](https://github.com/emirror-de/axum-gate) for releases
 - **Crates.io** - [Follow axum-gate](https://crates.io/crates/axum-gate) for updates
-- **Blog** - [Read our technical posts](https://blog.axum-gate.dev)
-- **Twitter** - [@axumgate](https://twitter.com/axumgate) for announcements
 
 ### 📖 Learning Resources
 
-- **Examples Repository** - Real-world applications and patterns
-- **Tutorial Series** - Step-by-step guides from basics to advanced
-- **Video Tutorials** - Community-created learning content
-- **Best Practices Guide** - Security and performance recommendations
+- **Examples Repository** - Real-world applications and patterns available in the `/examples` directory
 
 ## 📄 License
 
@@ -474,7 +273,7 @@ axum-gate builds upon the amazing work of the Rust web ecosystem:
 - **[SeaORM](https://github.com/SeaQL/sea-orm)** - Async & dynamic ORM for Rust
 - **[tokio](https://tokio.rs/)** - Asynchronous runtime for Rust
 
-Special thanks to all [contributors](https://github.com/your-org/axum-gate/graphs/contributors) who have helped make axum-gate better!
+Special thanks to all [contributors](https://github.com/emirror-de/axum-gate/graphs/contributors) who have helped make axum-gate better!
 
 ---
 
@@ -482,6 +281,6 @@ Special thanks to all [contributors](https://github.com/your-org/axum-gate/graph
 
 **Built with ❤️ by the Rust community**
 
-[Documentation](https://docs.rs/axum-gate) • [Examples](https://github.com/your-org/axum-gate/tree/main/examples) • [Contributing](CONTRIBUTING.md) • [Changelog](CHANGELOG.md)
+[Documentation](https://docs.rs/axum-gate) • [Examples](https://github.com/emirror-de/axum-gate/tree/main/examples) • [Changelog](CHANGELOG.md)
 
 </div>
