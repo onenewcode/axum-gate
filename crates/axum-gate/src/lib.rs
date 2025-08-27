@@ -1,9 +1,18 @@
 #![deny(missing_docs)]
-#![doc = include_str!("../../../README.md")]
 
 //! # axum-gate
 //!
-//! The most developer-friendly JWT cookie authentication for axum.
+//! Fully customizable role-based JWT cookie authentication for axum, designed for both single nodes and distributed systems.
+//!
+//! ## Key Features
+//!
+//! - **Role-based access control** - Hierarchical roles with customizable permissions
+//! - **JWT cookie authentication** - Secure, stateless authentication
+//! - **Multiple storage backends** - In-memory, SurrealDB, SeaORM support
+//! - **Permission system** - Static validation with collision detection
+//! - **Zero-synchronization permissions** - Deterministic hashing eliminates sync needs
+//! - **Distributed system ready** - Separate account/secret storage for enhanced security
+//! - **Pre-built handlers** - Login/logout endpoints included
 //!
 //! ## Quick Start
 //!
@@ -14,10 +23,14 @@
 //!
 //! #[tokio::main]
 //! async fn main() {
-//!     // Create JWT codec with sensible defaults
+//!     // Set up storage
+//!     let account_repo = Arc::new(storage::MemoryAccountRepository::default());
+//!     let secret_repo = Arc::new(storage::MemorySecretRepository::default());
+//!
+//!     // Create JWT codec
 //!     let jwt_codec = Arc::new(jwt::JsonWebToken::default());
 //!
-//!     // Admin-only protection
+//!     // Protect routes with role-based access
 //!     let app = Router::new()
 //!         .route("/admin", get(admin_handler))
 //!         .layer(
@@ -26,8 +39,135 @@
 //!         );
 //! }
 //!
-//! async fn admin_handler() -> &'static str { "Hello admin!" }
+//! async fn admin_handler() -> &'static str { "Admin access granted!" }
 //! ```
+//!
+//! ## Access Control
+//!
+//! ### Role-Based
+//! ```rust
+//! // Single role
+//! AccessPolicy::require_role(Role::Admin)
+//!
+//! // Multiple roles
+//! AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator)
+//!
+//! // Hierarchical (role + supervisors)
+//! AccessPolicy::require_role_or_supervisor(Role::User)
+//! ```
+//!
+//! ### Group-Based
+//! ```rust
+//! AccessPolicy::require_group(Group::new("engineering"))
+//!     .or_require_group(Group::new("management"))
+//! ```
+//!
+//! ### Permission-Based
+//! ```rust
+//! // Validate permissions at compile-time
+//! axum_gate::validate_permissions!["read:api", "write:api", "admin:system"];
+//!
+//! // Use in policies
+//! AccessPolicy::require_permission(PermissionId::from("read:api"))
+//! ```
+//!
+//! ### Nested Enum Permissions
+//! ```rust
+//! #[derive(Debug, Clone, PartialEq)]
+//! enum ApiPermission {
+//!     Read,
+//!     Write,
+//!     Delete,
+//! }
+//!
+//! #[derive(Debug, Clone, PartialEq)]
+//! enum Permission {
+//!     Api(ApiPermission),
+//!     System(String),
+//! }
+//!
+//! impl AsPermissionName for Permission {
+//!     fn as_permission_name(&self) -> String {
+//!         match self {
+//!             Permission::Api(api) => format!("api:{:?}", api).to_lowercase(),
+//!             Permission::System(sys) => format!("system:{}", sys),
+//!         }
+//!     }
+//! }
+//!
+//! // Usage
+//! let permissions = Permissions::from_iter([
+//!     Permission::Api(ApiPermission::Read),
+//!     Permission::System("health".to_string()),
+//! ]);
+//! ```
+//!
+//! ## Account Management
+//!
+//! ```rust
+//! use axum_gate::auth::{AccountInsertService, AccountDeleteService};
+//!
+//! // Create account with roles and permissions
+//! let account = AccountInsertService::insert("user@example.com", "password")
+//!     .with_roles(vec![Role::User])
+//!     .with_groups(vec![Group::new("staff")])
+//!     .with_permissions(Permissions::from_iter(["read:profile"]))
+//!     .into_repositories(account_repo, secret_repo)
+//!     .await?;
+//! ```
+//!
+//! ## Storage Backends
+//!
+//! ### In-Memory (Development)
+//! ```rust
+//! let account_repo = Arc::new(storage::MemoryAccountRepository::default());
+//! let secret_repo = Arc::new(storage::MemorySecretRepository::default());
+//! ```
+//!
+//! ### SurrealDB (Feature: `storage-surrealdb`)
+//! ```rust
+//! # #[cfg(feature = "storage-surrealdb")]
+//! # {
+//! let repo = Arc::new(storage::surrealdb::SurrealDbRepository::new(db, scope));
+//! # }
+//! ```
+//!
+//! ### SeaORM (Feature: `storage-seaorm`)
+//! ```rust
+//! # #[cfg(feature = "storage-seaorm")]
+//! # {
+//! let repo = Arc::new(storage::seaorm::SeaOrmRepository::new(&db));
+//! # }
+//! ```
+//!
+//! ## Authentication Handlers
+//!
+//! ```rust
+//! use axum_gate::auth::{login, logout};
+//!
+//! let auth_routes = Router::new()
+//!     .route("/login", post(login))
+//!     .route("/logout", post(logout));
+//! ```
+//!
+//! ## User Data in Handlers
+//!
+//! ```rust
+//! use axum::extract::Extension;
+//! use axum_gate::auth::Account;
+//!
+//! async fn profile_handler(Extension(user): Extension<Account>) -> String {
+//!     format!("Hello {}, roles: {:?}", user.user_id, user.roles)
+//! }
+//! ```
+//!
+//! ## Security Best Practices
+//!
+//! - Use HTTPS with `secure(true)` cookies in production
+//! - Enable `http_only(true)` to prevent XSS attacks
+//! - Set appropriate JWT expiration times
+//! - Validate permissions at application startup
+//! - Use strong, random JWT signing keys
 
 mod application;
 mod domain;
