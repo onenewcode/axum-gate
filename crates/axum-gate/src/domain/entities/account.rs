@@ -48,7 +48,7 @@ use uuid::Uuid;
 pub struct Account<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// The unique identifier of the account generated during registration.
     ///

@@ -12,7 +12,7 @@ use crate::errors::Result;
 pub struct AccountDeleteService<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     account: Account<R, G>,
 }
@@ -20,7 +20,7 @@ where
 impl<R, G> AccountDeleteService<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// Creates a new instance with the account that should be deleted.
     pub fn delete(account: Account<R, G>) -> Self {

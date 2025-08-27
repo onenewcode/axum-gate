@@ -105,7 +105,7 @@ use uuid::Uuid;
 pub struct MemoryAccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     accounts: Arc<RwLock<HashMap<String, Account<R, G>>>>,
 }
@@ -113,7 +113,7 @@ where
 impl<R, G> Default for MemoryAccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     fn default() -> Self {
         Self {
@@ -125,7 +125,7 @@ where
 impl<R, G> From<Vec<Account<R, G>>> for MemoryAccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     fn from(value: Vec<Account<R, G>>) -> Self {
         let mut accounts = HashMap::new();
@@ -142,7 +142,7 @@ impl<R, G> AccountRepository<R, G> for MemoryAccountRepository<R, G>
 where
     Account<R, G>: Clone,
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let read = self.accounts.read().await;
@@ -284,10 +284,44 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
         &self,
         credentials: Credentials<Uuid>,
     ) -> Result<VerificationResult> {
+        use crate::ports::auth::HashingService;
+        use subtle::Choice;
+
         let read = self.store.read().await;
-        let Some(stored_secret) = read.get(&credentials.id) else {
-            return Ok(VerificationResult::Unauthorized);
+
+        // Get stored secret or use dummy hash to ensure constant-time operation
+        let (stored_secret_str, user_exists_choice) = match read.get(&credentials.id) {
+            Some(stored_secret) => (stored_secret.secret.as_str(), Choice::from(1u8)),
+            None => {
+                // Use a realistic dummy Argon2 hash to maintain constant timing
+                // This hash was generated with the same parameters as real hashes
+                let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQxMjM0NTY3ODkwYWJjZGVmZ2hpams$+U4VpzOTOuH3Lz3dN2CX2z6VZhUZP1c1xN1y2Z3Z4aA";
+                (dummy_hash, Choice::from(0u8))
+            }
         };
-        stored_secret.verify(&credentials.secret, Argon2Hasher)
+
+        // ALWAYS perform Argon2 verification (constant time regardless of user existence)
+        let hasher = Argon2Hasher;
+        let hash_verification_result =
+            hasher.verify_value(&credentials.secret, stored_secret_str)?;
+
+        // Convert hash verification result to Choice for constant-time operations
+        let hash_matches_choice = Choice::from(match hash_verification_result {
+            VerificationResult::Ok => 1u8,
+            VerificationResult::Unauthorized => 0u8,
+        });
+
+        // Combine results using constant-time AND operation
+        // Success only if: user exists AND password hash matches
+        let final_success_choice = user_exists_choice & hash_matches_choice;
+
+        // Convert back to VerificationResult
+        let final_result = if bool::from(final_success_choice) {
+            VerificationResult::Ok
+        } else {
+            VerificationResult::Unauthorized
+        };
+
+        Ok(final_result)
     }
 }

@@ -13,7 +13,7 @@ use tracing::debug;
 pub struct AuthorizationService<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    G: Eq + Clone,
 {
     policy: AccessPolicy<R, G>,
 }
@@ -21,7 +21,7 @@ where
 impl<R, G> AuthorizationService<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// Creates a new authorization service with the given access policy.
     pub fn new(policy: AccessPolicy<R, G>) -> Self {

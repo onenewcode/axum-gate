@@ -52,7 +52,7 @@ impl<C, R, G> JwtValidationService<C>
 where
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// Validates a JWT token from its raw string representation.
     ///

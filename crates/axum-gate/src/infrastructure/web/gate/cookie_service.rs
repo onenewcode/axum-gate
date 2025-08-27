@@ -24,7 +24,7 @@ pub struct CookieGateService<C, R, G, S>
 where
     C: Codec,
     R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    G: Eq + Clone,
 {
     inner: S,
     authorization_service: AuthorizationService<R, G>,
@@ -36,7 +36,7 @@ impl<C, R, G, S> CookieGateService<C, R, G, S>
 where
     C: Codec,
     R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// Creates a new instance of a cookie gate service.
     pub fn new(
@@ -59,7 +59,7 @@ impl<C, R, G, S> CookieGateService<C, R, G, S>
 where
     C: Codec,
     R: AccessHierarchy + Eq + std::fmt::Display,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// Queries the axum-gate auth cookie from the request.
     pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie<'_>> {
@@ -84,7 +84,7 @@ where
     Account<R, G>: Clone,
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
     R: AccessHierarchy + Eq + std::fmt::Display + Sync + Send + 'static,
-    G: Eq + Sync + Send + 'static,
+    G: Eq + Clone + Sync + Send + 'static,
 {
     type Response = Response<Body>;
     type Error = Infallible;

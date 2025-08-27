@@ -225,7 +225,10 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
         &self,
         credentials: Credentials<Uuid>,
     ) -> Result<VerificationResult> {
-        let Some(model) = seaorm_credentials::Entity::find()
+        use crate::ports::auth::HashingService;
+        use subtle::Choice;
+
+        let model_result = seaorm_credentials::Entity::find()
             .filter(seaorm_credentials::Column::AccountId.eq(credentials.id))
             .one(&self.db)
             .await
@@ -236,12 +239,40 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
                     table: Some("credentials".to_string()),
                     record_id: Some(credentials.id.to_string()),
                 })
-            })?
-        else {
-            return Ok(VerificationResult::Unauthorized);
+            })?;
+
+        // Determine user existence and prepare hash for verification using constant-time operations
+        let (stored_secret_str, user_exists_choice) = match model_result {
+            Some(model) => (model.secret, Choice::from(1u8)),
+            None => {
+                // Use a realistic dummy Argon2 hash for constant-time operation
+                let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQxMjM0NTY3ODkwYWJjZGVmZ2hpams$+U4VpzOTOuH3Lz3dN2CX2z6VZhUZP1c1xN1y2Z3Z4aA".to_string();
+                (dummy_hash, Choice::from(0u8))
+            }
         };
 
-        let secret = Secret::from_hashed(&model.account_id, &model.secret);
-        secret.verify(&credentials.secret, Argon2Hasher)
+        // ALWAYS perform Argon2 verification (constant time regardless of user existence)
+        let hasher = Argon2Hasher;
+        let hash_verification_result =
+            hasher.verify_value(&credentials.secret, &stored_secret_str)?;
+
+        // Convert hash verification result to Choice for constant-time operations
+        let hash_matches_choice = Choice::from(match hash_verification_result {
+            VerificationResult::Ok => 1u8,
+            VerificationResult::Unauthorized => 0u8,
+        });
+
+        // Combine results using constant-time AND operation
+        // Success only if: user exists AND password hash matches
+        let final_success_choice = user_exists_choice & hash_matches_choice;
+
+        // Convert back to VerificationResult
+        let final_result = if bool::from(final_success_choice) {
+            VerificationResult::Ok
+        } else {
+            VerificationResult::Unauthorized
+        };
+
+        Ok(final_result)
     }
 }

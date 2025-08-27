@@ -8,7 +8,7 @@ use std::future::Future;
 pub trait AccountRepository<R, G>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
 {
     /// Stores the given account in the repository returning it again on success.
     fn store_account(

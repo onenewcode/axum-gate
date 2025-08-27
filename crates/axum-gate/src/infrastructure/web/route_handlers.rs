@@ -115,14 +115,12 @@ use uuid::Uuid;
 /// # Returns
 /// * `Ok(CookieJar)` - Updated cookie jar with authentication cookie
 /// * `Err(StatusCode)` - HTTP error code indicating failure reason
-///   - `NOT_FOUND` - Account doesn't exist
-///   - `UNAUTHORIZED` - Invalid credentials
+///   - `UNAUTHORIZED` - Invalid credentials (covers both non-existent users and wrong passwords)
 ///   - `INTERNAL_SERVER_ERROR` - System error during authentication
 ///
 /// # Example Response Codes
 /// - 200: Login successful, cookie set
-/// - 401: Invalid username/password
-/// - 404: Account not found
+/// - 401: Invalid username/password or account not found
 /// - 500: Internal server error
 pub async fn login<CredVeri, AccRepo, C, R, G>(
     cookie_jar: CookieJar,
@@ -135,7 +133,7 @@ pub async fn login<CredVeri, AccRepo, C, R, G>(
 ) -> Result<CookieJar, StatusCode>
 where
     R: AccessHierarchy + Eq,
-    G: Eq,
+    G: Eq + Clone,
     CredVeri: CredentialsVerifier<Uuid>,
     AccRepo: AccountRepository<R, G>,
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
@@ -165,7 +163,6 @@ where
             cookie.set_value(json_string);
             Ok(cookie_jar.add(cookie))
         }
-        LoginResult::AccountNotFound => Err(StatusCode::NOT_FOUND),
         LoginResult::InvalidCredentials => Err(StatusCode::UNAUTHORIZED),
         LoginResult::InternalError(msg) => {
             error!("Login internal error: {}", msg);

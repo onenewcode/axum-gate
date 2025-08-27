@@ -168,6 +168,19 @@
 //! - Set appropriate JWT expiration times
 //! - Validate permissions at application startup
 //! - Use strong, random JWT signing keys
+//!
+//! ## Timing Attack Protection
+//!
+//! This crate includes built-in protection against timing attacks in authentication:
+//!
+//! - **Constant-time credential verification**: Uses the `subtle` crate for constant-time operations
+//! - **Always performs password verification**: Even for non-existent users, using dummy hashes
+//! - **Unified error responses**: Returns `InvalidCredentials` for both wrong passwords and non-existent users
+//! - **Database-agnostic protection**: Applied to all storage backends (Memory, SurrealDB, SeaORM)
+//!
+//! These protections prevent attackers from enumerating valid usernames through timing differences
+//! in the authentication process. The login service now takes approximately the same time whether
+//! a user exists or not, making timing-based user enumeration attacks infeasible.
 
 mod application;
 mod domain;

@@ -224,15 +224,55 @@ where
     Id: Into<RecordIdKey>,
 {
     async fn verify_credentials(&self, credentials: Credentials<Id>) -> Result<VerificationResult> {
+        use subtle::Choice;
+
         self.use_ns_db().await?;
         let record_id =
             RecordId::from_table_key(&self.scope_settings.table_names.credentials, credentials.id);
-        let query = "crypto::argon2::compare((SELECT secret from only $record_id).secret, type::string($request_secret))".to_string();
 
-        let mut response = self
+        // Step 1: Check if user exists by querying the secret
+        let exists_query = "SELECT secret FROM only $record_id".to_string();
+        let mut exists_response = self
             .db
-            .query(query)
-            .bind(("record_id", record_id))
+            .query(exists_query)
+            .bind(("record_id", &record_id))
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to check user existence: {}", e),
+                    table: Some(self.scope_settings.table_names.credentials.clone()),
+                    record_id: None,
+                })
+            })?;
+
+        let stored_secret: Option<String> = exists_response.take(0).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Query,
+                message: format!("Failed to extract secret: {}", e),
+                table: Some(self.scope_settings.table_names.credentials.clone()),
+                record_id: None,
+            })
+        })?;
+
+        // Step 2: Determine user existence and prepare hash for verification
+        let (hash_for_verification, user_exists_choice) = match stored_secret {
+            Some(secret) => (secret, Choice::from(1u8)),
+            None => {
+                // Use a realistic dummy Argon2 hash for constant-time operation
+                let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQxMjM0NTY3ODkwYWJjZGVmZ2hpams$+U4VpzOTOuH3Lz3dN2CX2z6VZhUZP1c1xN1y2Z3Z4aA".to_string();
+                (dummy_hash, Choice::from(0u8))
+            }
+        };
+
+        // Step 3: ALWAYS perform Argon2 verification (constant time)
+        let verify_query =
+            "crypto::argon2::compare(type::string($stored_hash), type::string($request_secret))"
+                .to_string();
+        let mut verify_response = self
+            .db
+            .query(verify_query)
+            .bind(("stored_hash", hash_for_verification))
             .bind(("request_secret", credentials.secret))
             .await
             .map_err(|e| {
@@ -243,7 +283,8 @@ where
                     record_id: None,
                 })
             })?;
-        let result: Option<bool> = response.take(0).map_err(|e| {
+
+        let hash_matches: Option<bool> = verify_response.take(0).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Query,
                 message: format!("Failed to extract verification result: {}", e),
@@ -252,7 +293,22 @@ where
             })
         })?;
 
-        Ok(VerificationResult::from(result.unwrap_or(false)))
+        // Step 4: Combine results using constant-time operations
+        let hash_matches_choice = Choice::from(if hash_matches.unwrap_or(false) {
+            1u8
+        } else {
+            0u8
+        });
+        let final_success_choice = user_exists_choice & hash_matches_choice;
+
+        // Step 5: Convert back to VerificationResult
+        let final_result = if bool::from(final_success_choice) {
+            VerificationResult::Ok
+        } else {
+            VerificationResult::Unauthorized
+        };
+
+        Ok(final_result)
     }
 }
 
