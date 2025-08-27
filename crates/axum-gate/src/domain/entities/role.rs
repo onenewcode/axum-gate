@@ -66,8 +66,11 @@
 //! }
 //! ```
 
-use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
+use crate::domain::traits::AccessHierarchy;
+#[cfg(feature = "storage-seaorm")]
+use crate::domain::traits::CommaSeparatedValue;
 
+#[cfg(feature = "storage-seaorm")]
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
@@ -158,6 +161,7 @@ impl AccessHierarchy for Role {
     }
 }
 
+#[cfg(feature = "storage-seaorm")]
 impl CommaSeparatedValue for Vec<Role> {
     fn from_csv(value: &str) -> Result<Self, String> {
         let mut role_str = value.split(',').collect::<Vec<&str>>();

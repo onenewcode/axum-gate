@@ -41,6 +41,7 @@
 //!     );
 //! ```
 
+#[cfg(feature = "storage-seaorm")]
 use crate::domain::traits::CommaSeparatedValue;
 
 use serde::{Deserialize, Serialize};
@@ -97,6 +98,7 @@ impl Group {
     }
 }
 
+#[cfg(feature = "storage-seaorm")]
 impl CommaSeparatedValue for Vec<Group> {
     fn from_csv(value: &str) -> Result<Self, String> {
         Ok(value
