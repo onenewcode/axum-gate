@@ -1,13 +1,13 @@
-use crate::domain::entities::Credentials;
+use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::VerificationResult;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
 use crate::ports::Codec;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::AccountRepository;
-use crate::prelude::Account;
 
 use std::sync::Arc;
+
 use subtle::Choice;
 use tracing::{debug, error};
 use uuid::Uuid;

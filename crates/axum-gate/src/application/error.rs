@@ -4,6 +4,7 @@
 //! services, use case orchestration, and business workflow coordination.
 
 use std::fmt;
+
 use thiserror::Error;
 
 /// Application layer errors for service orchestration and use case failures.

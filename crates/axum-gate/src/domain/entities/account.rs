@@ -1,8 +1,7 @@
 use crate::domain::traits::AccessHierarchy;
 #[cfg(feature = "storage-seaorm")]
 use crate::domain::traits::CommaSeparatedValue;
-use crate::domain::values::PermissionId;
-use crate::domain::values::Permissions;
+use crate::domain::values::{PermissionId, Permissions};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

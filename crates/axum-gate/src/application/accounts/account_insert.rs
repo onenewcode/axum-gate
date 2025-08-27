@@ -1,11 +1,10 @@
 use crate::advanced::{AccessHierarchy, AccountRepository, Argon2Hasher, Secret, SecretRepository};
-use crate::errors::{AccountOperation, ApplicationError, Error};
-use crate::prelude::Account;
+use crate::domain::entities::Account;
+use crate::domain::values::Permissions;
+use crate::errors::{AccountOperation, ApplicationError, Error, Result};
 
 use std::sync::Arc;
 
-use crate::domain::values::Permissions;
-use crate::errors::Result;
 use tracing::debug;
 
 /// Service for creating new user accounts with their associated authentication secrets.
@@ -18,7 +17,7 @@ use tracing::debug;
 ///
 /// ```rust
 /// use axum_gate::{AccountInsertService, Role, Group};
-/// use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+/// use axum_gate::storage::memory::{MemoryAccountRepository, MemorySecretRepository};
 /// use std::sync::Arc;
 ///
 /// # tokio_test::block_on(async {

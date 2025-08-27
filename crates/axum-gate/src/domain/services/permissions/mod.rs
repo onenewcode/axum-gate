@@ -214,10 +214,10 @@
 
 pub mod validation;
 
-use std::collections::{HashMap, HashSet};
-
 use crate::domain::values::PermissionId;
 use crate::errors::{DomainError, Error, Result};
+
+use std::collections::{HashMap, HashSet};
 
 /// Validates that a set of permission names don't have hash collisions.
 ///
@@ -289,7 +289,6 @@ macro_rules! validate_permissions {
     ($($permission:expr),* $(,)?) => {
         #[cfg(test)]
         mod __axum_gate_permission_validation {
-            //use super::*;
 
             #[test]
             fn validate_permission_uniqueness() {
