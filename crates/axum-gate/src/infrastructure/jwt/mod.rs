@@ -1,7 +1,7 @@
 //! Claims and JWT models.
 use crate::errors::{Error, InfrastructureError, JwtOperation};
 use crate::ports::Codec;
-use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use crate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 
 use std::collections::HashSet;
 use std::marker::PhantomData;

@@ -4,8 +4,8 @@
 //! distributed nodes without any coordination or synchronization.
 
 use axum_gate::advanced::AsPermissionName;
+use axum_gate::auth::{PermissionId, Permissions};
 use axum_gate::validate_permissions;
-use axum_gate::{PermissionId, Permissions};
 use roaring::RoaringBitmap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};

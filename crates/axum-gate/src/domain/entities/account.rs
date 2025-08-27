@@ -1,6 +1,7 @@
 use crate::domain::traits::AccessHierarchy;
 #[cfg(feature = "storage-seaorm")]
 use crate::domain::traits::CommaSeparatedValue;
+use crate::domain::values::PermissionId;
 use crate::domain::values::Permissions;
 
 use serde::{Deserialize, Serialize};
@@ -176,7 +177,7 @@ where
     /// ```
     pub fn grant_permission<P>(&mut self, permission: P)
     where
-        P: Into<crate::PermissionId>,
+        P: Into<PermissionId>,
     {
         self.permissions.grant(permission);
     }
@@ -193,7 +194,7 @@ where
     /// ```
     pub fn revoke_permission<P>(&mut self, permission: P)
     where
-        P: Into<crate::PermissionId>,
+        P: Into<PermissionId>,
     {
         self.permissions.revoke(permission);
     }

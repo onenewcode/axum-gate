@@ -1,7 +1,9 @@
-use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::{Account, Credentials, Group, Role, cookie};
-use axum_gate::{AccountInsertService, storage::SeaOrmRepository};
-use axum_gate::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
+use axum_gate::auth::AccountInsertService;
+use axum_gate::http::cookie;
+use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
+use axum_gate::storage::SeaOrmRepository;
+use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use axum_gate::{Account, Credentials, Group, Role};
 
 use std::sync::Arc;
 
@@ -110,7 +112,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, request_credentials: Json<Credentials<String>>| {
-                    axum_gate::login(
+                    axum_gate::auth::login(
                         cookie_jar,
                         request_credentials,
                         registered_claims,
@@ -124,7 +126,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get(move |cookie_jar| axum_gate::logout(cookie_jar, cookie_template)),
+            get(move |cookie_jar| axum_gate::auth::logout(cookie_jar, cookie_template)),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")

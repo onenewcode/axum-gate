@@ -67,9 +67,9 @@
 //!     );
 //! ```
 use self::cookie_service::CookieGateService;
-use crate::cookie::CookieBuilder;
 use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::traits::AccessHierarchy;
+use crate::http::cookie::CookieBuilder;
 use crate::ports::Codec;
 
 use std::sync::Arc;

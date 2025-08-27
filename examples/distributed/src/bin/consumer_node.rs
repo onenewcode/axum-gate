@@ -1,9 +1,10 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
-use axum_gate::advanced::JsonWebTokenOptions;
-use axum_gate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::{AccessPolicy, Account, Gate, Group, Role, cookie};
-use axum_gate::{JsonWebToken, JwtClaims};
+use axum_gate::auth::PermissionId;
+use axum_gate::http::cookie;
+use axum_gate::jwt::{JsonWebToken, JwtClaims, advanced::JsonWebTokenOptions};
+use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use axum_gate::{AccessPolicy, Account, Gate, Group, Role};
 
 use std::sync::Arc;
 
@@ -139,11 +140,9 @@ async fn main() {
             get(permissions).layer(
                 Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .with_policy(AccessPolicy::require_permission(
-                        axum_gate::PermissionId::from(
-                            AppPermissions::Api(ApiPermission::Read).as_str(),
-                        ),
-                    )),
+                    .with_policy(AccessPolicy::require_permission(PermissionId::from(
+                        AppPermissions::Api(ApiPermission::Read).as_str(),
+                    ))),
             ),
         )
         .route("/", get(index));
