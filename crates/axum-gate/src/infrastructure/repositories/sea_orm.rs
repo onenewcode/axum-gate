@@ -1,18 +1,15 @@
 //! Support for SQL database repository through [sea-orm](sea_orm).
 
-use crate::Credentials;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use crate::domain::values::Secret;
 use crate::domain::values::VerificationResult;
+use crate::errors::{DatabaseOperation, Error, InfrastructureError};
 use crate::infrastructure::hashing::Argon2Hasher;
+use crate::infrastructure::repositories::sea_orm::models::account as seaorm_account;
+use crate::infrastructure::repositories::sea_orm::models::credentials as seaorm_credentials;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::{
-    Account,
-    errors::{DatabaseOperation, Error, InfrastructureError},
-    infrastructure::repositories::sea_orm::models::account as seaorm_account,
-    infrastructure::repositories::sea_orm::models::credentials as seaorm_credentials,
-};
+use crate::prelude::{Account, Credentials};
 
 use crate::errors::Result;
 use sea_orm::{

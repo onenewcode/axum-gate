@@ -289,12 +289,12 @@ macro_rules! validate_permissions {
     ($($permission:expr),* $(,)?) => {
         #[cfg(test)]
         mod __axum_gate_permission_validation {
-            use super::*;
+            //use super::*;
 
             #[test]
             fn validate_permission_uniqueness() {
                 let permissions = &[$($permission),*];
-                $crate::validate_permission_uniqueness(permissions)
+                $crate::auth::validate_permission_uniqueness(permissions)
                     .expect("Permission validation failed: hash collision detected");
             }
 
@@ -302,7 +302,7 @@ macro_rules! validate_permissions {
             #[allow(dead_code)]
             const fn __validate_compile_time() {
                 $(
-                    let _id = $crate::const_sha256_u32($permission);
+                    let _id = $crate::advanced::const_sha256_u32($permission);
                 )*
             }
 

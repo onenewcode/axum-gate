@@ -1,9 +1,9 @@
 use axum_gate::auth::AccountInsertService;
 use axum_gate::http::cookie;
 use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
-use axum_gate::storage::{DatabaseScope, SurrealDbRepository};
+use axum_gate::prelude::{Account, Credentials, Group, Role};
+use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
 use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::{Account, Credentials, Group, Role};
 
 use std::sync::Arc;
 

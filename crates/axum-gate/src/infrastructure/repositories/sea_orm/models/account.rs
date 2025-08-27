@@ -1,7 +1,7 @@
 //! Passport model to be used with [sea-orm].
 
-use crate::Account;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
+use crate::prelude::Account;
 
 use sea_orm::ActiveValue;
 use sea_orm::entity::prelude::*;

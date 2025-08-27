@@ -1,12 +1,6 @@
-use crate::{
-    Account,
-    domain::traits::AccessHierarchy,
-    domain::values::Secret,
-    errors::{AccountOperation, ApplicationError, Error},
-    infrastructure::hashing::Argon2Hasher,
-    ports::repositories::AccountRepository,
-    ports::repositories::SecretRepository,
-};
+use crate::advanced::{AccessHierarchy, AccountRepository, Argon2Hasher, Secret, SecretRepository};
+use crate::errors::{AccountOperation, ApplicationError, Error};
+use crate::prelude::Account;
 
 use std::sync::Arc;
 

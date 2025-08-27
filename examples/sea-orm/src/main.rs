@@ -1,9 +1,9 @@
 use axum_gate::auth::AccountInsertService;
 use axum_gate::http::cookie;
 use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
-use axum_gate::storage::SeaOrmRepository;
+use axum_gate::prelude::{Account, Credentials, Group, Role};
+use axum_gate::storage::seaorm::SeaOrmRepository;
 use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::{Account, Credentials, Group, Role};
 
 use std::sync::Arc;
 
@@ -22,12 +22,12 @@ const DATABASE_URL: &str = "sqlite::memory:";
 async fn setup_database_schema(db: &DbConn) {
     let schema = Schema::new(DbBackend::Sqlite);
     let stmt: TableCreateStatement =
-        schema.create_table_from_entity(axum_gate::storage::models::credentials::Entity);
+        schema.create_table_from_entity(axum_gate::storage::seaorm::models::credentials::Entity);
     db.execute(db.get_database_backend().build(&stmt))
         .await
         .expect("Could not create credentials table");
     let stmt: TableCreateStatement =
-        schema.create_table_from_entity(axum_gate::storage::models::account::Entity);
+        schema.create_table_from_entity(axum_gate::storage::seaorm::models::account::Entity);
     db.execute(db.get_database_backend().build(&stmt))
         .await
         .expect("Could not create account table");

@@ -4,12 +4,10 @@ use super::TableNames;
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::Secret;
 use crate::domain::values::VerificationResult;
+use crate::errors::{DatabaseOperation, Error, InfrastructureError};
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::{
-    Account, Credentials,
-    errors::{DatabaseOperation, Error, InfrastructureError},
-};
+use crate::prelude::{Account, Credentials};
 
 use std::default::Default;
 
@@ -297,7 +295,7 @@ fn secret_repository() {
 #[test]
 fn account_repository() {
     tokio_test::block_on(async move {
-        use crate::{Account, Group, Role};
+        use crate::prelude::{Account, Group, Role};
         use surrealdb::engine::local::Mem;
 
         let db = Surreal::new::<Mem>(())

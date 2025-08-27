@@ -1,7 +1,7 @@
-use crate::Account;
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::jwt::JwtClaims;
 use crate::ports::Codec;
+use crate::prelude::Account;
 
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -102,7 +102,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Group, Role};
+    use crate::auth::Permissions;
+    use crate::prelude::{Group, Role};
     use std::sync::Arc;
 
     // Mock codec for testing

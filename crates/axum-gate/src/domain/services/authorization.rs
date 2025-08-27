@@ -94,7 +94,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::{Group, Role};
+    use crate::prelude::{Group, Role};
 
     fn create_test_account() -> Account<Role, Group> {
         use crate::domain::values::Permissions;

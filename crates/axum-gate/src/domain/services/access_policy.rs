@@ -203,7 +203,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Group, Role};
+    use crate::prelude::{Group, Role};
 
     #[test]
     fn deny_all_creates_empty_policy() {

@@ -78,10 +78,10 @@
 //!     println!("User has required permissions");
 //! }
 //! ```
-use crate::Account;
 use crate::application::auth::{LoginResult, LoginService, LogoutService};
 use crate::domain::entities::Credentials;
 use crate::http::cookie::CookieBuilder;
+use crate::prelude::Account;
 
 use crate::domain::traits::AccessHierarchy;
 use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};

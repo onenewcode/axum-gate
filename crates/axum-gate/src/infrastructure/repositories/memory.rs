@@ -62,7 +62,7 @@ use crate::errors::{Error, PortError, RepositoryType};
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::{Account, Credentials};
+use crate::prelude::{Account, Credentials};
 
 use std::collections::HashMap;
 use std::sync::Arc;

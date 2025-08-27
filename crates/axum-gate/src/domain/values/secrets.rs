@@ -10,12 +10,12 @@ use crate::errors::Result;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Represents a secret that is bound to an [Account](crate::Account) by its [account_id](crate::Account::account_id).
+/// Represents a secret that is bound to an [Account](crate::domain::entities::Account) by its [account_id](crate::domain::entities::Account::account_id).
 ///
 /// The `account_id` needs to be queried from an [AccountRepository](crate::ports::repositories::AccountRepository) to be able to create a correct secret.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Secret {
-    /// The [account id](crate::Account::account_id) that this secret belongs to.
+    /// The [account id](crate::domain::entities::Account::account_id) that this secret belongs to.
     pub account_id: Uuid,
     /// The actual secret.
     pub secret: HashedValue,
