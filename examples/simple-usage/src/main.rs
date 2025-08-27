@@ -4,7 +4,6 @@
 //! on the home page and logout buttons on protected pages.
 
 use axum_gate::{
-    advanced::Codec,
     auth::{AccountInsertService, Credentials, Group, Role, login, logout},
     http::{CookieJar, cookie},
     jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions},
