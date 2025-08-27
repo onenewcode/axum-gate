@@ -35,139 +35,124 @@ pub mod errors;
 mod infrastructure;
 mod ports;
 
-// Core authentication middleware - the main entry point
-pub use infrastructure::web::gate::{CookieGate, Gate};
+/// Common types and functions for quick imports.
+pub mod prelude {
+    pub use crate::auth::{AccessPolicy, Account, Credentials, Group, Role};
+    /// Authentication middleware.
+    pub use crate::infrastructure::web::gate::{CookieGate, Gate};
+}
 
 // Essential authentication types
 pub mod auth {
-    //! Core authentication types and utilities.
-    //!
-    //! This module contains the fundamental building blocks for authentication:
-    //! - User accounts and credentials
-    //! - Roles and groups
-    //! - Access policies
-    //! - Account management services
+    //! Authentication types, policies, and account management.
 
     pub use crate::domain::entities::{Account, Credentials, Group, Role};
     pub use crate::domain::services::access_policy::AccessPolicy;
     pub use crate::domain::values::{PermissionId, Permissions};
 
-    // Account management
+    /// Account creation and management.
     pub use crate::application::accounts::{AccountDeleteService, AccountInsertService};
 
-    // Ready-to-use handlers for login/logout
+    /// Login and logout route handlers.
     pub use crate::infrastructure::web::route_handlers::{login, logout};
 
-    // Permission validation utilities
+    /// Permission validation utilities.
     pub use crate::domain::services::permissions::validate_permission_uniqueness;
 }
 
-// JWT handling made simple
+/// JWT token handling.
 pub mod jwt {
-    //! JWT token handling and configuration.
-    //!
-    //! Everything you need to work with JWT tokens:
-    //! - Token creation and validation
-    //! - Claims management
-    //! - Encoding/decoding utilities
+    //! JWT creation, validation, and claims management.
 
     pub use crate::infrastructure::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
 
-    // Advanced JWT configuration for power users
+    /// Advanced JWT configuration.
     pub mod advanced {
-        //! Advanced JWT configuration and validation utilities.
+        //! Low-level JWT options and validation.
         pub use crate::infrastructure::jwt::{
             JsonWebTokenOptions, JwtValidationResult, JwtValidationService,
         };
     }
 }
 
-// HTTP utilities
+/// HTTP utilities.
 pub mod http {
-    //! HTTP-related utilities for web integration.
-    //!
-    //! Contains cookie handling, request/response utilities,
-    //! and other HTTP-specific functionality.
+    //! Cookie handling and HTTP types.
 
     pub use axum_extra::extract::cookie::CookieJar;
     pub use cookie::{self, SameSite};
 
-    // Re-export commonly used cookie duration type
+    /// Cookie duration type.
     pub use cookie::time::Duration;
 }
 
-// Storage implementations - organized by use case
+/// Storage implementations.
 pub mod storage {
-    //! Ready-to-use storage implementations.
+    //! Account and secret storage backends.
     //!
-    //! Choose what fits your setup:
-    //! - `memory` - Perfect for development and testing
-    //! - `surrealdb` - For SurrealDB (enable `storage-surrealdb` feature)
-    //! - `sea_orm` - For SeaORM (enable `storage-seaorm` feature)
+    //! - `memory` - In-memory storage for development
+    //! - `surrealdb` - SurrealDB backend (requires feature)
+    //! - `seaorm` - SeaORM backend (requires feature)
 
     pub use crate::infrastructure::repositories::memory::{
         MemoryAccountRepository, MemorySecretRepository,
     };
 
     #[cfg(feature = "storage-surrealdb")]
-    pub use crate::infrastructure::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
+    /// SurrealDB storage backend.
+    pub mod surrealdb {
+        pub use crate::infrastructure::repositories::surrealdb::{
+            DatabaseScope, SurrealDbRepository,
+        };
+    }
 
     #[cfg(feature = "storage-seaorm")]
-    pub use crate::infrastructure::repositories::sea_orm::{SeaOrmRepository, models};
+    /// SeaORM storage backend.
+    pub mod seaorm {
+        pub use crate::infrastructure::repositories::sea_orm::{SeaOrmRepository, models};
+    }
 
     #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
     pub use crate::infrastructure::repositories::TableNames;
 }
 
-// Advanced customization for power users
+/// Advanced APIs for custom implementations.
 pub mod advanced {
-    //! Advanced APIs for power users who need fine-grained control.
-    //!
-    //! Most developers won't need this module. The main API handles
-    //! common cases with sensible defaults.
+    //! Low-level traits, services, and utilities for power users.
 
-    // Core traits for custom implementations
+    /// Traits for custom storage and authentication.
     pub use crate::domain::traits::AccessHierarchy;
     pub use crate::ports::Codec;
     pub use crate::ports::auth::{CredentialsVerifier, HashingService};
     pub use crate::ports::repositories::{AccountRepository, SecretRepository};
 
-    // Low-level services
+    /// Authentication and authorization services.
     pub use crate::application::auth::{LoginResult, LoginService, LogoutService};
     pub use crate::domain::services::authorization::AuthorizationService;
     pub use crate::domain::services::permissions::validation::{
         ApplicationValidator, PermissionCollisionChecker, ValidationReport,
     };
 
-    // Infrastructure details
+    /// Hashing and cryptographic utilities.
     pub use crate::infrastructure::hashing::{Argon2Hasher, HashedValue};
 
-    // Low-level values and utilities
+    /// Domain values and utility functions.
     pub use crate::domain::values::{
         AccessScope, AsPermissionName, Secret, VerificationResult, const_sha256_u32,
     };
 }
 
-// Essential utilities that most users will need
+/// Common utilities.
 pub mod utils {
-    //! Common utilities and helper functions.
-    //!
-    //! Contains frequently used types and functions that don't
-    //! fit into specific modules but are commonly needed.
+    //! Helper types and external crate re-exports.
 
     pub use uuid::Uuid;
 
-    // Commonly used external crates that users often need
+    /// External crate re-exports.
     pub mod external {
-        //! Re-exports of commonly used external crate functionality.
-        //!
-        //! These are provided for convenience but you can also import
-        //! these crates directly to avoid potential version conflicts.
+        //! Convenient access to commonly used external types.
 
         pub use jsonwebtoken;
         pub use serde_json;
     }
 }
-
-// Convenience re-exports for the most common use case
-pub use auth::{AccessPolicy, Account, Credentials, Group, Role};
