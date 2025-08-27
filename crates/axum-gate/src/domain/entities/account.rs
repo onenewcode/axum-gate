@@ -126,6 +126,7 @@ where
     /// * `user_id` - Unique identifier for the user
     /// * `roles` - Roles to assign to this account
     /// * `groups` - Groups this account should belong to
+    #[cfg(feature = "storage-seaorm")]
     pub(crate) fn new_with_account_id(
         account_id: &Uuid,
         user_id: &str,
