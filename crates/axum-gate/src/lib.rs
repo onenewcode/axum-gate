@@ -274,7 +274,7 @@ pub mod advanced {
     //! Low-level traits, services, and utilities for power users.
 
     /// Traits for custom storage and authentication.
-    pub use crate::domain::traits::AccessHierarchy;
+    pub use crate::domain::traits::{AccessHierarchy, AsPermissionName};
     pub use crate::ports::Codec;
     pub use crate::ports::auth::{CredentialsVerifier, HashingService};
     pub use crate::ports::repositories::{AccountRepository, SecretRepository};
@@ -290,9 +290,7 @@ pub mod advanced {
     pub use crate::infrastructure::hashing::{Argon2Hasher, HashedValue};
 
     /// Domain values and utility functions.
-    pub use crate::domain::values::{
-        AccessScope, AsPermissionName, Secret, VerificationResult, const_sha256_u32,
-    };
+    pub use crate::domain::values::{AccessScope, Secret, VerificationResult, const_sha256_u32};
 }
 
 /// Common utilities.

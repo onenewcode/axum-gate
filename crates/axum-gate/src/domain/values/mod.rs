@@ -10,7 +10,7 @@ mod secrets;
 mod verification;
 
 pub use access_scope::AccessScope;
-pub use permission_id::{AsPermissionName, PermissionId, const_sha256_u32};
+pub use permission_id::{PermissionId, const_sha256_u32};
 pub use permissions::Permissions;
 pub use secrets::Secret;
 pub use verification::VerificationResult;

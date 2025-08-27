@@ -5,18 +5,10 @@
 //! distributed authorization by ensuring the same permission name always produces the
 //! same ID across all nodes.
 
+use crate::domain::traits::AsPermissionName;
+
 use const_crypto::sha2::Sha256;
 use serde::{Deserialize, Serialize};
-
-/// Trait for types that can be converted to permission names.
-///
-/// This trait allows permission enums to define their string representation
-/// for use with PermissionId. Typically implemented by nested permission enums
-/// that provide structured permission definitions.
-pub trait AsPermissionName {
-    /// Convert the permission to its string representation.
-    fn as_permission_name(&self) -> String;
-}
 
 /// A deterministic permission identifier computed from permission names.
 ///
