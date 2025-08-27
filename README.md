@@ -310,6 +310,7 @@ async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
 - [x] Comprehensive documentation
 
 ### v0.2 - Enhanced Security 🚧
+- [ ] Rate limiting middleware for authentication endpoints
 - [ ] Bearer token authentication layer
 - [ ] Rotating key sets for JWT validation
 - [ ] Session management improvements
@@ -344,7 +345,8 @@ async fn setup_seaorm_storage() -> Result<(), Box<dyn std::error::Error>> {
 - **OAuth2/OIDC provider** - Social login and enterprise identity providers
 
 ### Enhanced Security Features
-- **Rate limiting** - Built-in protection against brute force attacks
+- **Timing attack protection** - Constant-time operations prevent user enumeration attacks ✅
+- **Rate limiting** - Built-in protection against brute force attacks (planned for v0.2)
 - **Session management** - Advanced session control and monitoring
 - **Audit logging** - Comprehensive security event tracking
 

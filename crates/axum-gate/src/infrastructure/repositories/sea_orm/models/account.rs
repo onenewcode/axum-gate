@@ -33,7 +33,7 @@ impl<R, G> From<Account<R, G>> for ActiveModel
 where
     R: AccessHierarchy + Eq,
     Vec<R>: CommaSeparatedValue,
-    G: Eq,
+    G: Eq + Clone,
     Vec<G>: CommaSeparatedValue,
 {
     fn from(value: Account<R, G>) -> Self {

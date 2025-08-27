@@ -175,13 +175,11 @@ mod tests {
         #[derive(Debug)]
         enum RepositoryPermission {
             Read,
-            Write,
         }
 
         #[derive(Debug)]
         enum ApiPermission {
             Read,
-            Write,
         }
 
         impl AsPermissionName for AppPermission {

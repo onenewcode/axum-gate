@@ -77,7 +77,7 @@ where
 impl<R, G, S> AccountRepository<R, G> for SurrealDbRepository<S>
 where
     R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
-    G: Serialize + DeserializeOwned + Eq + 'static,
+    G: Serialize + DeserializeOwned + Eq + Clone + 'static,
     S: Connection,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
@@ -235,7 +235,7 @@ where
         let mut exists_response = self
             .db
             .query(exists_query)
-            .bind(("record_id", &record_id))
+            .bind(("record_id", record_id))
             .await
             .map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {
