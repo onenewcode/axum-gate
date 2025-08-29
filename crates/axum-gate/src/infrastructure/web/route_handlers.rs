@@ -34,7 +34,7 @@
 //!
 //!     login(
 //!         cookie_jar,
-//!         Json(credentials),
+//!         credentials,
 //!         registered_claims,
 //!         secret_verifier,
 //!         account_repo,
@@ -89,7 +89,6 @@ use crate::ports::repositories::AccountRepository;
 
 use std::sync::Arc;
 
-use axum::Json;
 use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
 use tracing::error;
@@ -103,7 +102,7 @@ use uuid::Uuid;
 ///
 /// # Arguments
 /// * `cookie_jar` - The incoming cookie jar to add the auth cookie to
-/// * `request_credentials` - JSON payload containing user credentials
+/// * `credentials` - User credentials for authentication
 /// * `registered_claims` - JWT registered claims (issuer, expiration, etc.)
 /// * `secret_verifier` - Repository for verifying user passwords
 /// * `account_repository` - Repository for loading user account data
@@ -122,7 +121,7 @@ use uuid::Uuid;
 /// - 500: Internal server error
 pub async fn login<CredVeri, AccRepo, C, R, G>(
     cookie_jar: CookieJar,
-    request_credentials: Json<Credentials<String>>,
+    credentials: Credentials<String>,
     registered_claims: RegisteredClaims,
     secret_verifier: Arc<CredVeri>,
     account_repository: Arc<AccRepo>,
@@ -140,7 +139,7 @@ where
 
     let result = login_service
         .authenticate(
-            request_credentials.0,
+            credentials,
             registered_claims,
             secret_verifier,
             account_repository,

@@ -105,10 +105,10 @@ async fn main() {
                 let account_repository = Arc::clone(&account_repository);
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
-                move |cookie_jar, request_credentials: Json<Credentials<String>>| {
+                move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
                     axum_gate::auth::login(
                         cookie_jar,
-                        request_credentials,
+                        credentials,
                         registered_claims,
                         secrets_repository,
                         account_repository,

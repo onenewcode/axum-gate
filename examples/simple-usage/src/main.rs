@@ -536,7 +536,7 @@ async fn login_handler(
 
     match login(
         cookie_jar,
-        axum::Json(credentials),
+        credentials,
         registered_claims,
         state.secret_repo,
         state.account_repo,

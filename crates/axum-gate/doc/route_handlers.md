@@ -29,10 +29,10 @@ let app = Router::<Gate>::new()
             let account_storage = Arc::clone(&account_storage);
             let jwt_codec = Arc::clone(&jwt_codec);
             let cookie_template = cookie_template.clone();
-            move |cookie_jar, request_credentials: Json<Credentials<String>>| {
+            move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
                 axum_gate::route_handlers::login(
                     cookie_jar,
-                    request_credentials,
+                    credentials,
                     registered_claims,
                     credentials_verifier,
                     account_storage,
