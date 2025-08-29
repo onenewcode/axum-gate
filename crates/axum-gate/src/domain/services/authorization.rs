@@ -76,9 +76,9 @@ where
     /// Checks if the account meets any of the required permissions.
     pub fn meets_permission_requirement(&self, account: &Account<R, G>) -> bool {
         // Check if any of the account's permissions match any of the required permissions
-        let account_permissions: std::collections::HashSet<u32> =
+        let account_permissions: std::collections::HashSet<u64> =
             account.permissions.iter().collect();
-        let required_permissions: std::collections::HashSet<u32> =
+        let required_permissions: std::collections::HashSet<u64> =
             self.policy.permission_requirements().iter().collect();
 
         !account_permissions.is_disjoint(&required_permissions)
@@ -101,9 +101,9 @@ mod tests {
         use uuid::Uuid;
 
         let mut permissions = Permissions::new();
-        // Insert raw permission IDs for testing
-        permissions.bitmap_mut().insert(1);
-        permissions.bitmap_mut().insert(5);
+        // Insert raw 64-bit permission IDs for testing
+        permissions.bitmap_mut().insert(1u64);
+        permissions.bitmap_mut().insert(5u64);
 
         Account {
             account_id: Uuid::new_v4(),
@@ -167,7 +167,8 @@ mod tests {
     #[test]
     fn authorized_by_permission_matching() {
         let account = create_test_account();
-        let policy = AccessPolicy::require_permission(1u32); // Account has permission 1
+        let policy =
+            AccessPolicy::require_permission(crate::domain::values::PermissionId::from_u64(1)); // Account has permission id 1 (64-bit)
         let service = AuthorizationService::new(policy);
 
         assert!(service.meets_permission_requirement(&account));
@@ -176,7 +177,8 @@ mod tests {
     #[test]
     fn authorized_by_permission_not_matching() {
         let account = create_test_account();
-        let policy = AccessPolicy::require_permission(10u32); // Account doesn't have permission 10
+        let policy =
+            AccessPolicy::require_permission(crate::domain::values::PermissionId::from_u64(10)); // Account doesn't have permission id 10
         let service = AuthorizationService::new(policy);
 
         assert!(!service.meets_permission_requirement(&account));

@@ -95,7 +95,7 @@ use tracing::{info, warn};
 /// ```
 pub struct PermissionCollisionChecker {
     permissions: Vec<String>,
-    collision_map: HashMap<u32, Vec<String>>,
+    collision_map: HashMap<u64, Vec<String>>,
 }
 
 impl PermissionCollisionChecker {
@@ -160,13 +160,13 @@ impl PermissionCollisionChecker {
     }
 
     fn check_hash_collisions(&self, report: &mut ValidationReport) -> Result<()> {
-        let mut id_to_permissions: HashMap<u32, Vec<String>> = HashMap::new();
+        let mut id_to_permissions: HashMap<u64, Vec<String>> = HashMap::new();
 
         // Group permissions by their hash ID
         for permission in &self.permissions {
-            let id = PermissionId::from(permission.as_str());
+            let id_raw = PermissionId::from(permission.as_str()).as_u64();
             id_to_permissions
-                .entry(id.as_u32())
+                .entry(id_raw)
                 .or_insert_with(Vec::new)
                 .push(permission.clone());
         }
@@ -187,7 +187,7 @@ impl PermissionCollisionChecker {
         self.collision_map.clear();
 
         for permission in &self.permissions {
-            let id = PermissionId::from(permission.as_str()).as_u32();
+            let id = PermissionId::from(permission.as_str()).as_u64();
             self.collision_map
                 .entry(id)
                 .or_insert_with(Vec::new)
@@ -209,7 +209,7 @@ impl PermissionCollisionChecker {
     /// Vector of permission strings that conflict with the given permission.
     /// The returned vector will not include the input permission itself.
     pub fn get_conflicting_permissions(&self, permission: &str) -> Vec<String> {
-        let id = PermissionId::from(permission).as_u32();
+        let id = PermissionId::from(permission).as_u64();
         self.collision_map
             .get(&id)
             .map(|perms| perms.iter().filter(|p| *p != permission).cloned().collect())
@@ -225,7 +225,7 @@ impl PermissionCollisionChecker {
     ///
     /// HashMap where keys are hash IDs and values are vectors of permission strings
     /// that hash to that ID.
-    pub fn get_permission_summary(&self) -> HashMap<u32, Vec<String>> {
+    pub fn get_permission_summary(&self) -> HashMap<u64, Vec<String>> {
         self.collision_map.clone()
     }
 
@@ -255,9 +255,9 @@ pub struct ValidationReport {
 /// Contains the colliding hash ID and all permission strings that hash to that ID.
 #[derive(Debug, Clone)]
 pub struct PermissionCollision {
-    /// The hash ID that has multiple permissions mapping to it.
-    pub id: u32,
-    /// List of permission strings that all hash to the same ID.
+    /// The hash ID that has multiple permissions mapping to it (64-bit).
+    pub id: u64,
+    /// List of permission strings that all hash to the same value.
     pub permissions: Vec<String>,
 }
 

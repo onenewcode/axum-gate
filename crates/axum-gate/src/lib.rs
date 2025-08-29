@@ -290,7 +290,7 @@ pub mod advanced {
     pub use crate::infrastructure::hashing::{Argon2Hasher, HashedValue};
 
     /// Domain values and utility functions.
-    pub use crate::domain::values::{AccessScope, Secret, VerificationResult, const_sha256_u32};
+    pub use crate::domain::values::{AccessScope, Secret, VerificationResult, const_sha256_u64};
 }
 
 /// Common utilities.

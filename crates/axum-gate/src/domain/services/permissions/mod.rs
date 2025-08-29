@@ -235,7 +235,10 @@ use std::collections::{HashMap, HashSet};
 /// // This would return an error if there were collisions (very unlikely with SHA-256)
 /// ```
 pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
-    let mut seen_ids: HashMap<u32, &str> = HashMap::new();
+    // With 64-bit identifiers the probability of collision is negligible; we still
+    // keep this to catch *duplicate names* (same normalized string) and provide
+    // early detection if an extremely unlikely hash collision ever occurred.
+    let mut seen_ids: HashMap<u64, &str> = HashMap::new();
     let mut seen_names = HashSet::new();
 
     for &permission in permissions {
@@ -247,15 +250,16 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
             )));
         }
 
-        // Check for hash collisions
+        // Check for hash collisions (expected to be practically impossible with 64-bit IDs)
         let id = PermissionId::from(permission);
-        if let Some(existing_permission) = seen_ids.get(&id.as_u32()) {
+        let raw = id.as_u64();
+        if let Some(existing_permission) = seen_ids.get(&raw) {
             return Err(Error::Domain(DomainError::permission_collision(
-                id.as_u32(),
+                (raw & 0xFFFF_FFFF) as u32, // retain DomainError shape; lower 32 bits as legacy field
                 vec![existing_permission.to_string(), permission.to_string()],
             )));
         }
-        seen_ids.insert(id.as_u32(), permission);
+        seen_ids.insert(raw, permission);
     }
 
     Ok(())
@@ -301,7 +305,7 @@ macro_rules! validate_permissions {
             #[allow(dead_code)]
             const fn __validate_compile_time() {
                 $(
-                    let _id = $crate::advanced::const_sha256_u32($permission);
+                    let _id = $crate::advanced::const_sha256_u64($permission);
                 )*
             }
 

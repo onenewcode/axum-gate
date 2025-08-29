@@ -1,21 +1,21 @@
 //! Permissions value object for managing user permissions.
 //!
 //! This module provides a clean abstraction over permission management,
-//! hiding the underlying RoaringBitmap implementation and providing
+//! hiding the underlying RoaringTreemap implementation and providing
 //! an intuitive API for working with permissions.
 
 use crate::domain::values::PermissionId;
 
 use std::fmt;
 
-use roaring::RoaringBitmap;
+use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 
 /// A collection of permissions that provides a clean API for permission management.
 ///
-/// This struct abstracts away the underlying RoaringBitmap implementation,
+/// This struct abstracts away the underlying RoaringTreemap implementation,
 /// providing a more intuitive and flexible interface for working with permissions.
-/// It maintains all the performance benefits of RoaringBitmap while offering
+/// It maintains all the performance benefits of RoaringTreemap while offering
 /// better developer experience and future flexibility.
 ///
 /// # Examples
@@ -51,7 +51,7 @@ use serde::{Deserialize, Serialize};
 /// ```
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Permissions {
-    bitmap: RoaringBitmap,
+    bitmap: RoaringTreemap,
 }
 
 impl Permissions {
@@ -67,7 +67,7 @@ impl Permissions {
     /// ```
     pub fn new() -> Self {
         Self {
-            bitmap: RoaringBitmap::new(),
+            bitmap: RoaringTreemap::new(),
         }
     }
 
@@ -122,7 +122,7 @@ impl Permissions {
         P: Into<PermissionId>,
     {
         let permission_id = permission.into();
-        self.bitmap.insert(permission_id.as_u32());
+        self.bitmap.insert(permission_id.as_u64());
         self
     }
 
@@ -146,7 +146,7 @@ impl Permissions {
         P: Into<PermissionId>,
     {
         let permission_id = permission.into();
-        self.bitmap.remove(permission_id.as_u32());
+        self.bitmap.remove(permission_id.as_u64());
         self
     }
 
@@ -168,7 +168,7 @@ impl Permissions {
         P: Into<PermissionId>,
     {
         let permission_id = permission.into();
-        self.bitmap.contains(permission_id.as_u32())
+        self.bitmap.contains(permission_id.as_u64())
     }
 
     /// Checks if all of the specified permissions are granted.
@@ -388,10 +388,10 @@ impl Permissions {
     /// use axum_gate::Permissions;
     ///
     /// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
-    /// let ids: Vec<u32> = permissions.iter().collect();
+    /// let ids: Vec<u64> = permissions.iter().collect();
     /// assert_eq!(ids.len(), 2);
     /// ```
-    pub fn iter(&self) -> impl Iterator<Item = u32> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = u64> + '_ {
         self.bitmap.iter()
     }
 
@@ -399,9 +399,9 @@ impl Permissions {
     ///
     /// This method is intended for internal use only and should not be used
     /// in production code. It provides direct access to the underlying
-    /// RoaringBitmap for testing purposes.
+    /// RoaringTreemap for testing purposes.
     #[doc(hidden)]
-    pub fn bitmap_mut(&mut self) -> &mut roaring::RoaringBitmap {
+    pub fn bitmap_mut(&mut self) -> &mut roaring::RoaringTreemap {
         &mut self.bitmap
     }
 }
@@ -418,20 +418,20 @@ impl fmt::Display for Permissions {
     }
 }
 
-impl From<roaring::RoaringBitmap> for Permissions {
-    fn from(bitmap: roaring::RoaringBitmap) -> Self {
+impl From<roaring::RoaringTreemap> for Permissions {
+    fn from(bitmap: roaring::RoaringTreemap) -> Self {
         Self { bitmap }
     }
 }
 
-impl From<Permissions> for roaring::RoaringBitmap {
+impl From<Permissions> for roaring::RoaringTreemap {
     fn from(permissions: Permissions) -> Self {
         permissions.bitmap
     }
 }
 
-impl AsRef<roaring::RoaringBitmap> for Permissions {
-    fn as_ref(&self) -> &roaring::RoaringBitmap {
+impl AsRef<roaring::RoaringTreemap> for Permissions {
+    fn as_ref(&self) -> &roaring::RoaringTreemap {
         &self.bitmap
     }
 }

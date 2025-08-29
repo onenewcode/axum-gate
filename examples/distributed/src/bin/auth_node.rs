@@ -41,7 +41,7 @@ async fn main() {
     debug!("Secrets repository initialized.");
 
     // Create admin with all permissions using new zero-sync system
-    let mut admin_permissions = roaring::RoaringBitmap::new();
+    let mut admin_permissions = roaring::RoaringTreemap::new();
     PermissionHelper::grant_admin_access(&mut admin_permissions);
 
     AccountInsertService::insert("admin@example.com", "admin_password")
@@ -57,7 +57,7 @@ async fn main() {
     debug!("Inserted Admin with full permissions.");
 
     // Create reporter with repository access
-    let mut reporter_permissions = roaring::RoaringBitmap::new();
+    let mut reporter_permissions = roaring::RoaringTreemap::new();
     PermissionHelper::grant_repository_access(&mut reporter_permissions);
 
     AccountInsertService::insert("reporter@example.com", "reporter_password")
@@ -73,7 +73,7 @@ async fn main() {
     debug!("Inserted Reporter with repository access.");
 
     // Create user with API read access only
-    let mut user_permissions = roaring::RoaringBitmap::new();
+    let mut user_permissions = roaring::RoaringTreemap::new();
     PermissionHelper::grant_permission(
         &mut user_permissions,
         &AppPermissions::Api(ApiPermission::Read),

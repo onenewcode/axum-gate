@@ -31,7 +31,7 @@ async fn main() {
     // Example 3: Multiple access criteria (OR logic)
     let flexible_policy = AccessPolicy::require_role(Role::Admin)
         .or_require_group(Group::new("engineering"))
-        .or_require_permission(42u32);
+        .or_require_permission("system:maintenance");
     let flexible_gate = Gate::cookie("my-issuer", Arc::clone(&codec), flexible_policy);
 
     // Example 4: Group-based access
@@ -39,8 +39,8 @@ async fn main() {
     let engineering_gate = Gate::cookie("my-issuer", Arc::clone(&codec), engineering_policy);
 
     // Example 5: Permission-based access
-    let read_files_policy = AccessPolicy::require_permission(1u32)  // "read:files"
-        .or_require_permission(2u32);  // "read:all"
+    let read_files_policy = AccessPolicy::require_permission("read:files")
+        .or_require_permission("read:all");
     let files_gate = Gate::cookie("my-issuer", Arc::clone(&codec), read_files_policy);
 
     // Example 6: Complex policy - Admin OR (Engineering group AND read permission)
@@ -74,9 +74,9 @@ async fn main() {
     println!("📚 Different routes showcase different access policies:");
     println!("  • /admin - Admin role only");
     println!("  • /moderation - Moderator role or supervisor (Admin)");
-    println!("  • /flexible - Admin role OR engineering group OR permission 42");
+    println!("  • /flexible - Admin role OR engineering group OR permission system:maintenance");
     println!("  • /engineering - Engineering group members only");
-    println!("  • /files - Users with read permissions (1 or 2)");
+    println!("  • /files - Users with file read permissions (read:files or read:all)");
     println!("  • /complex - Admin role OR engineering group");
     println!("  • /secure - Secure default with Admin access");
     println!("  • /public - No authentication required");
@@ -139,12 +139,12 @@ mod tests {
             AccessPolicy::require_group(Group::new("engineering"));
 
         let _read_permission: AccessPolicy<Role, Group> =
-            AccessPolicy::require_permission(1u32);
+            AccessPolicy::require_permission("read:files");
 
         // Complex policies are readable
         let _flexible: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin)
             .or_require_group(Group::new("engineering"))
-            .or_require_permission(42u32);
+            .or_require_permission("system:maintenance");
 
         // Authorization service methods are now clear about intent
         let auth_service = AuthorizationService::new(_admin_only.clone());

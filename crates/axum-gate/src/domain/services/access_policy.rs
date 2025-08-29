@@ -5,7 +5,7 @@
 //! specify what roles, groups, or permissions are required for access.
 
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::{AccessScope, Permissions};
+use crate::domain::values::{AccessScope, PermissionId, Permissions};
 
 /// Domain object representing access requirements for a protected resource.
 ///
@@ -95,13 +95,20 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccessPolicy, Group, Role};
+    /// use axum_gate::{AccessPolicy, Group, Role, PermissionId};
     ///
-    /// let policy: AccessPolicy<Role, Group> = AccessPolicy::require_permission(42u32);
+    /// // Using a permission name (hashed deterministically to 64-bit ID)
+    /// let policy: AccessPolicy<Role, Group> =
+    ///     AccessPolicy::require_permission(PermissionId::from("read:api"));
+    ///
+    /// // Or directly from &str via Into<PermissionId>
+    /// let policy2: AccessPolicy<Role, Group> =
+    ///     AccessPolicy::require_permission("write:api");
     /// ```
-    pub fn require_permission<P: Into<u32>>(permission: P) -> Self {
+    pub fn require_permission<P: Into<PermissionId>>(permission: P) -> Self {
         let mut permissions = Permissions::new();
-        permissions.bitmap_mut().insert(permission.into());
+        let id: PermissionId = permission.into();
+        permissions.bitmap_mut().insert(id.as_u64());
         Self {
             role_requirements: vec![],
             group_requirements: vec![],
@@ -137,19 +144,23 @@ where
     /// Adds an additional permission requirement to this policy.
     ///
     /// Access will be granted if the user has ANY of the configured permissions.
-    pub fn or_require_permission<P: Into<u32>>(mut self, permission: P) -> Self {
+    pub fn or_require_permission<P: Into<PermissionId>>(mut self, permission: P) -> Self {
+        let id: PermissionId = permission.into();
         self.permission_requirements
             .bitmap_mut()
-            .insert(permission.into());
+            .insert(id.as_u64());
         self
     }
 
     /// Adds multiple additional permission requirements to this policy.
     ///
     /// Access will be granted if the user has ANY of the configured permissions.
-    pub fn or_require_permissions<P: Into<u32>>(mut self, permissions: Vec<P>) -> Self {
+    pub fn or_require_permissions<P: Into<PermissionId>>(mut self, permissions: Vec<P>) -> Self {
         permissions.into_iter().for_each(|p| {
-            self.permission_requirements.bitmap_mut().insert(p.into());
+            let id: PermissionId = p.into();
+            self.permission_requirements
+                .bitmap_mut()
+                .insert(id.as_u64());
         });
         self
     }
@@ -202,6 +213,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::values::PermissionId;
     use crate::prelude::{Group, Role};
 
     #[test]
@@ -247,42 +259,53 @@ mod tests {
 
     #[test]
     fn require_permission_creates_permission_policy() {
-        let policy: AccessPolicy<Role, Group> = AccessPolicy::require_permission(42u32);
+        let permission_name = "read:api";
+        let expected_id = PermissionId::from(permission_name).as_u64();
+        let policy: AccessPolicy<Role, Group> = AccessPolicy::require_permission(permission_name);
         assert!(!policy.denies_all());
         assert!(policy.has_requirements());
         assert!(policy.role_requirements().is_empty());
         assert!(policy.group_requirements().is_empty());
-        assert!(policy.permission_requirements().iter().any(|id| id == 42));
+        assert!(
+            policy
+                .permission_requirements()
+                .iter()
+                .any(|id| id == expected_id)
+        );
     }
 
     #[test]
     fn builder_methods_add_requirements() {
+        let base_perms = vec!["read:api", "write:api", "admin:panel"];
         let policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin)
             .or_require_role_or_supervisor(Role::Moderator)
             .or_require_group(Group::new("engineering"))
-            .or_require_permission(42u32)
-            .or_require_permissions(vec![1u32, 2u32, 3u32]);
+            .or_require_permission(base_perms[0])
+            .or_require_permissions(vec![base_perms[1], base_perms[2]]);
 
         assert!(!policy.denies_all());
         assert!(policy.has_requirements());
         assert_eq!(policy.role_requirements().len(), 2);
         assert_eq!(policy.group_requirements().len(), 1);
-        let perm_ids: Vec<u32> = policy.permission_requirements().iter().collect();
-        assert!(perm_ids.contains(&42));
-        assert!(perm_ids.contains(&1));
-        assert!(perm_ids.contains(&2));
-        assert!(perm_ids.contains(&3));
+
+        let collected: Vec<u64> = policy.permission_requirements().iter().collect();
+        for name in &base_perms {
+            let id = PermissionId::from(*name).as_u64();
+            assert!(collected.contains(&id), "missing permission {}", name);
+        }
     }
 
     #[test]
     fn into_components_returns_all_requirements() {
+        let permission_name = "system:health";
+        let expected = PermissionId::from(permission_name).as_u64();
         let policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin)
             .or_require_group(Group::new("test"))
-            .or_require_permission(42u32);
+            .or_require_permission(permission_name);
 
         let (roles, groups, permissions) = policy.into_components();
         assert_eq!(roles.len(), 1);
         assert_eq!(groups.len(), 1);
-        assert!(permissions.iter().any(|id| id == 42));
+        assert!(permissions.iter().any(|id| id == expected));
     }
 }

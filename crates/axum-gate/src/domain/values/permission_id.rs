@@ -1,20 +1,30 @@
-//! Permission ID value object for deterministic permission identification.
+//! Permission ID value object for deterministic permission identification (64-bit).
 //!
-//! This module provides the `PermissionId` type, which creates deterministic identifiers
-//! from permission names using cryptographic hashing. This enables zero-synchronization
-//! distributed authorization by ensuring the same permission name always produces the
-//! same ID across all nodes.
+//! This module upgrades the previous 32-bit truncated hash approach to 64-bit identifiers
+//! (first 8 bytes of SHA-256) to make accidental or malicious collisions practically
+//! infeasible in realistic deployments. These 64-bit IDs integrate with `RoaringTreemap`
+//! (used by the `Permissions` container after migration) for efficient storage and fast
+//! membership checks, while preserving deterministic mapping from permission names.
+//!
+//! Design goals:
+//! - Deterministic: Same name => same 64-bit ID across nodes.
+//! - Low collision probability: 64-bit space drastically lowers risk vs 32-bit.
+//! - No synchronization: Hash derivation removes need for distributed coordination.
+//! - Forward compatible: If a stronger scheme is ever needed, a version discriminator
+//!   can be added to claims / serialized forms.
 
 use crate::domain::traits::AsPermissionName;
 
 use const_crypto::sha2::Sha256;
 use serde::{Deserialize, Serialize};
 
-/// A deterministic permission identifier computed from permission names.
+/// A deterministic 64-bit permission identifier computed from normalized permission names.
 ///
-/// `PermissionId` uses SHA-256 hashing to create consistent, collision-resistant identifiers
-/// from permission name strings. This design enables distributed systems to work with
-/// permissions without requiring synchronization between nodes.
+/// Normalization strategy (current):
+/// - Trim ASCII whitespace
+/// - Convert to lowercase
+///
+/// (If you later enforce a stricter character policy, update `normalize_permission`.)
 ///
 /// # Examples
 ///
@@ -25,10 +35,10 @@ use serde::{Deserialize, Serialize};
 /// let write_id = PermissionId::from("write:file");
 ///
 /// assert_ne!(read_id, write_id);
-/// assert_eq!(read_id, PermissionId::from("read:file")); // Deterministic
+/// assert_eq!(read_id, PermissionId::from("READ:FILE")); // Case-insensitive normalization
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct PermissionId(u32);
+pub struct PermissionId(u64);
 
 impl std::fmt::Display for PermissionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -37,35 +47,33 @@ impl std::fmt::Display for PermissionId {
 }
 
 impl PermissionId {
-    /// Returns the underlying u32 value for use in bitmaps.
-    pub fn as_u32(self) -> u32 {
+    /// Returns the underlying u64 value for use in bitmap/treemap structures.
+    pub fn as_u64(self) -> u64 {
         self.0
     }
 
-    /// Creates a PermissionId from a raw u32 value.
-    ///
-    /// This should primarily be used for deserialization or when working
-    /// with existing bitmap data.
-    pub fn from_u32(value: u32) -> Self {
+    /// Creates a PermissionId from a raw u64 value (primarily for deserialization).
+    pub fn from_u64(value: u64) -> Self {
         Self(value)
     }
 }
 
-impl From<u32> for PermissionId {
-    fn from(value: u32) -> Self {
-        Self::from_u32(value)
+impl From<u64> for PermissionId {
+    fn from(value: u64) -> Self {
+        Self::from_u64(value)
     }
 }
 
-impl From<PermissionId> for u32 {
-    fn from(id: PermissionId) -> u32 {
-        id.as_u32()
+impl From<PermissionId> for u64 {
+    fn from(id: PermissionId) -> u64 {
+        id.as_u64()
     }
 }
 
 impl From<&str> for PermissionId {
     fn from(name: &str) -> Self {
-        Self(const_sha256_u32(name))
+        let norm = normalize_permission(name);
+        Self(const_sha256_u64(&norm))
     }
 }
 
@@ -77,17 +85,25 @@ impl From<String> for PermissionId {
 
 impl<T: AsPermissionName> From<&T> for PermissionId {
     fn from(permission: &T) -> Self {
-        Self::from(permission.as_permission_name().as_str())
+        let norm = normalize_permission(&permission.as_permission_name());
+        Self(const_sha256_u64(&norm))
     }
 }
 
-/// Computes a deterministic u32 hash from a string using SHA-256.
+/// Normalize a permission name (current policy: trim + lowercase).
+fn normalize_permission(input: &str) -> String {
+    input.trim().to_lowercase()
+}
+
+/// Computes a deterministic u64 hash from a string using the first 8 bytes of SHA-256.
 ///
-/// This function is used internally by `PermissionId::from` to create
-/// consistent identifiers from permission names.
-pub const fn const_sha256_u32(input: &str) -> u32 {
+/// This is intentionally a `const fn` so it can be used in compile-time contexts
+/// similar to the former 32-bit variant.
+pub const fn const_sha256_u64(input: &str) -> u64 {
     let hash = Sha256::new().update(input.as_bytes()).finalize();
-    u32::from_be_bytes([hash[0], hash[1], hash[2], hash[3]])
+    u64::from_be_bytes([
+        hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
+    ])
 }
 
 #[cfg(test)]
@@ -102,11 +118,18 @@ mod tests {
     }
 
     #[test]
+    fn permission_id_case_normalization() {
+        let id_lower = PermissionId::from("read:file");
+        let id_upper = PermissionId::from("READ:FILE");
+        assert_eq!(id_lower, id_upper);
+    }
+
+    #[test]
     fn permission_id_conversions() {
         let id = PermissionId::from("test:permission");
-        let u32_val = id.as_u32();
-        let from_u32 = PermissionId::from_u32(u32_val);
-        assert_eq!(id, from_u32);
+        let raw = id.as_u64();
+        let from_u64 = PermissionId::from_u64(raw);
+        assert_eq!(id, from_u64);
     }
 
     #[test]
@@ -125,19 +148,19 @@ mod tests {
     #[test]
     fn permission_id_from_permission_trait() {
         #[derive(Debug)]
-        enum TestPermission {
+        enum testPermission {
             Read,
             Write,
         }
 
-        impl AsPermissionName for TestPermission {
+        impl AsPermissionName for testPermission {
             fn as_permission_name(&self) -> String {
-                format!("test:{:?}", self).to_lowercase()
+                format!("Test:{:?}", self)
             }
         }
 
-        let read_perm = TestPermission::Read;
-        let write_perm = TestPermission::Write;
+        let read_perm = testPermission::Read;
+        let write_perm = testPermission::Write;
 
         let read_id = PermissionId::from(&read_perm);
         let write_id = PermissionId::from(&write_perm);
@@ -145,6 +168,8 @@ mod tests {
 
         assert_ne!(read_id, write_id);
         assert_eq!(read_id, read_id_from_trait);
+
+        // Case normalization (Test:Read vs test:read)
         assert_eq!(read_id, PermissionId::from("test:read"));
         assert_eq!(write_id, PermissionId::from("test:write"));
     }
@@ -178,9 +203,9 @@ mod tests {
             fn as_permission_name(&self) -> String {
                 match self {
                     AppPermission::Repository(perm) => {
-                        format!("repository:{:?}", perm).to_lowercase()
+                        format!("repository:{:?}", perm)
                     }
-                    AppPermission::Api(perm) => format!("api:{:?}", perm).to_lowercase(),
+                    AppPermission::Api(perm) => format!("api:{:?}", perm),
                 }
             }
         }
@@ -208,7 +233,7 @@ mod tests {
 
         impl AsPermissionName for TestPermission {
             fn as_permission_name(&self) -> String {
-                format!("test:{:?}", self).to_lowercase()
+                format!("test:{:?}", self)
             }
         }
 
@@ -217,19 +242,15 @@ mod tests {
 
         let mut permissions = Permissions::new();
 
-        // Test granting permissions using the new From trait
-        permissions.grant(&read_perm); // Uses From<&T> for PermissionId
+        permissions.grant(&read_perm);
         permissions.grant(&write_perm);
 
-        // Test checking permissions using the new From trait
-        assert!(permissions.has(&read_perm)); // Uses From<&T> for PermissionId
+        assert!(permissions.has(&read_perm));
         assert!(permissions.has(&write_perm));
 
-        // Verify it works with string equivalents too
         assert!(permissions.has("test:read"));
         assert!(permissions.has("test:write"));
 
-        // Test with collections
         assert!(permissions.has_all([&read_perm, &write_perm]));
         assert!(permissions.has_any([&read_perm]));
     }

@@ -6,7 +6,7 @@
 use axum_gate::advanced::AsPermissionName;
 use axum_gate::auth::{PermissionId, Permissions};
 use axum_gate::validate_permissions;
-use roaring::RoaringBitmap;
+use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
@@ -144,7 +144,7 @@ pub struct PermissionHelper;
 
 impl PermissionHelper {
     /// Grant repository access (read + write).
-    pub fn grant_repository_access(user_permissions: &mut RoaringBitmap) {
+    pub fn grant_repository_access(user_permissions: &mut RoaringTreemap) {
         let mut perms = Permissions::from(user_permissions.clone());
         perms.grant(AppPermissions::Repository(RepositoryPermission::Read).as_str());
         perms.grant(AppPermissions::Repository(RepositoryPermission::Write).as_str());
@@ -152,7 +152,7 @@ impl PermissionHelper {
     }
 
     /// Grant full repository access (read + write + delete).
-    pub fn grant_full_repository_access(user_permissions: &mut RoaringBitmap) {
+    pub fn grant_full_repository_access(user_permissions: &mut RoaringTreemap) {
         let mut perms = Permissions::from(user_permissions.clone());
         for permission in AppPermissions::all_repository() {
             perms.grant(permission.as_str());
@@ -161,7 +161,7 @@ impl PermissionHelper {
     }
 
     /// Grant API access (read + write).
-    pub fn grant_api_access(user_permissions: &mut RoaringBitmap) {
+    pub fn grant_api_access(user_permissions: &mut RoaringTreemap) {
         let mut perms = Permissions::from(user_permissions.clone());
         for permission in AppPermissions::all_api() {
             perms.grant(permission.as_str());
@@ -170,7 +170,7 @@ impl PermissionHelper {
     }
 
     /// Grant admin access (all permissions).
-    pub fn grant_admin_access(user_permissions: &mut RoaringBitmap) {
+    pub fn grant_admin_access(user_permissions: &mut RoaringTreemap) {
         let mut perms = Permissions::from(user_permissions.clone());
         for permission in AppPermissions::all() {
             perms.grant(permission.as_str());
@@ -179,7 +179,7 @@ impl PermissionHelper {
     }
 
     /// Grant specific permission using the new AsPermissionName trait.
-    pub fn grant_permission(user_permissions: &mut RoaringBitmap, permission: &AppPermissions) {
+    pub fn grant_permission(user_permissions: &mut RoaringTreemap, permission: &AppPermissions) {
         let mut perms = Permissions::from(user_permissions.clone());
         // Use the consistent From trait approach
         perms.grant(PermissionId::from(permission));
@@ -187,55 +187,55 @@ impl PermissionHelper {
     }
 
     /// Check if user has specific permission using the new AsPermissionName trait.
-    pub fn has_permission(user_permissions: &RoaringBitmap, permission: &AppPermissions) -> bool {
+    pub fn has_permission(user_permissions: &RoaringTreemap, permission: &AppPermissions) -> bool {
         let perms = Permissions::from(user_permissions.clone());
         // Use the consistent From trait approach
         perms.has(PermissionId::from(permission))
     }
 
     /// Check if user can access repository data.
-    pub fn can_access_repository(user_permissions: &RoaringBitmap) -> bool {
+    pub fn can_access_repository(user_permissions: &RoaringTreemap) -> bool {
         let perms = Permissions::from(user_permissions.clone());
         perms.has(AppPermissions::Repository(RepositoryPermission::Read).as_str())
     }
 
     /// Check if user can modify repository data.
-    pub fn can_modify_repository(user_permissions: &RoaringBitmap) -> bool {
+    pub fn can_modify_repository(user_permissions: &RoaringTreemap) -> bool {
         let perms = Permissions::from(user_permissions.clone());
         perms.has(AppPermissions::Repository(RepositoryPermission::Write).as_str())
     }
 
     /// Check if user can delete repository data.
-    pub fn can_delete_repository(user_permissions: &RoaringBitmap) -> bool {
+    pub fn can_delete_repository(user_permissions: &RoaringTreemap) -> bool {
         let perms = Permissions::from(user_permissions.clone());
         perms.has(AppPermissions::Repository(RepositoryPermission::Delete).as_str())
     }
 
     /// Check if user can access API.
-    pub fn can_access_api(user_permissions: &RoaringBitmap) -> bool {
+    pub fn can_access_api(user_permissions: &RoaringTreemap) -> bool {
         Self::has_permission(user_permissions, &AppPermissions::Api(ApiPermission::Read))
     }
 
     /// Check if user can write to API.
-    pub fn can_write_api(user_permissions: &RoaringBitmap) -> bool {
+    pub fn can_write_api(user_permissions: &RoaringTreemap) -> bool {
         Self::has_permission(user_permissions, &AppPermissions::Api(ApiPermission::Write))
     }
 
     /// Check if user is admin.
-    pub fn is_admin(user_permissions: &RoaringBitmap) -> bool {
+    pub fn is_admin(user_permissions: &RoaringTreemap) -> bool {
         let perms = Permissions::from(user_permissions.clone());
         perms.has(AppPermissions::System(SystemPermission::Admin).as_str())
     }
 
     /// Check if user has all permissions in a category.
-    pub fn has_all_repository_permissions(user_permissions: &RoaringBitmap) -> bool {
+    pub fn has_all_repository_permissions(user_permissions: &RoaringTreemap) -> bool {
         AppPermissions::all_repository()
             .iter()
             .all(|perm| Self::has_permission(user_permissions, perm))
     }
 
     /// Check if user has all API permissions.
-    pub fn has_all_api_permissions(user_permissions: &RoaringBitmap) -> bool {
+    pub fn has_all_api_permissions(user_permissions: &RoaringTreemap) -> bool {
         let perms = Permissions::from(user_permissions.clone());
         AppPermissions::all_api()
             .iter()
@@ -276,7 +276,7 @@ pub fn demonstrate_zero_sync() {
 
     // Create user permissions
     println!("3. User Permission Management with Nested Enums:");
-    let mut user_permissions = RoaringBitmap::new();
+    let mut user_permissions = RoaringTreemap::new();
 
     // Grant some permissions
     PermissionHelper::grant_repository_access(&mut user_permissions);
@@ -407,7 +407,7 @@ mod tests {
 
     #[test]
     fn helper_functions_work() {
-        let mut permissions = RoaringBitmap::new();
+        let mut permissions = RoaringTreemap::new();
 
         assert!(!PermissionHelper::can_access_repository(&permissions));
 
@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn nested_permission_checking_works() {
-        let mut permissions = RoaringBitmap::new();
+        let mut permissions = RoaringTreemap::new();
 
         // Grant only read repository permission
         PermissionHelper::grant_permission(
@@ -493,12 +493,12 @@ pub fn main() {
     let consistent_id2 = PermissionId::from(&api_write);
 
     println!("Repository Read Permission:");
-    println!("  String:     {} ({})", old_id1, old_id1.as_u32());
-    println!("  Enum:       {} ({})", new_id1, new_id1.as_u32());
+    println!("  String:     {} ({})", old_id1, old_id1.as_u64());
+    println!("  Enum:       {} ({})", new_id1, new_id1.as_u64());
     println!(
         "  Consistent: {} ({})",
         consistent_id1,
-        consistent_id1.as_u32()
+        consistent_id1.as_u64()
     );
     println!(
         "  All equal: {}",
@@ -506,12 +506,12 @@ pub fn main() {
     );
 
     println!("\nAPI Write Permission:");
-    println!("  String:     {} ({})", old_id2, old_id2.as_u32());
-    println!("  Enum:       {} ({})", new_id2, new_id2.as_u32());
+    println!("  String:     {} ({})", old_id2, old_id2.as_u64());
+    println!("  Enum:       {} ({})", new_id2, new_id2.as_u64());
     println!(
         "  Consistent: {} ({})",
         consistent_id2,
-        consistent_id2.as_u32()
+        consistent_id2.as_u64()
     );
     println!(
         "  All equal: {}",
@@ -539,7 +539,7 @@ pub fn main() {
     );
 
     // Show bitmap operations
-    let mut permissions = RoaringBitmap::new();
+    let mut permissions = RoaringTreemap::new();
     let start = std::time::Instant::now();
     for i in 0..100_000 {
         let perm_name = format!("permission:{}", i);
