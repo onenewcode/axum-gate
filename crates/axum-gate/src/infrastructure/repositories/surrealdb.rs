@@ -229,7 +229,7 @@ where
             RecordId::from_table_key(&self.scope_settings.table_names.credentials, credentials.id);
 
         // Step 1: Check if user exists by querying the secret
-        let exists_query = "SELECT secret FROM only $record_id".to_string();
+        let exists_query = "SELECT VALUE secret FROM only $record_id".to_string();
         let mut exists_response = self
             .db
             .query(exists_query)
