@@ -18,8 +18,8 @@ pub enum DomainError {
     PermissionCollision {
         /// Number of permissions that collide
         collision_count: usize,
-        /// The hash ID that has collisions
-        hash_id: u32,
+        /// The 64-bit hash ID that has collisions
+        hash_id: u64,
         /// List of permission names that collide
         permissions: Vec<String>,
     },
@@ -28,15 +28,15 @@ pub enum DomainError {
 /// Permission collision information for domain errors
 #[derive(Debug, Clone)]
 pub struct PermissionCollision {
-    /// The hash ID that has collisions
-    pub id: u32,
+    /// The 64-bit hash ID that has collisions
+    pub id: u64,
     /// List of permission names that collide
     pub permissions: Vec<String>,
 }
 
 impl DomainError {
     /// Create a permission collision error with collision details
-    pub fn permission_collision(hash_id: u32, permissions: Vec<String>) -> Self {
+    pub fn permission_collision(hash_id: u64, permissions: Vec<String>) -> Self {
         DomainError::PermissionCollision {
             collision_count: permissions.len(),
             hash_id,
@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn permission_collision_constructor() {
         let permissions = vec!["read:file".to_string(), "write:file".to_string()];
-        let error = DomainError::permission_collision(123, permissions.clone());
+        let error = DomainError::permission_collision(123u64, permissions.clone());
 
         match error {
             DomainError::PermissionCollision {
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn error_display() {
-        let error = DomainError::permission_collision(123, vec!["test".to_string()]);
+        let error = DomainError::permission_collision(123u64, vec!["test".to_string()]);
         let display = format!("{}", error);
         assert!(display.contains("Permission collision"));
     }

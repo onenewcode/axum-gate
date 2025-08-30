@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn domain_error_permission_collision() {
         let permissions = vec!["read:file".to_string(), "write:file".to_string()];
-        let error = DomainError::permission_collision(123, permissions.clone());
+        let error = DomainError::permission_collision(123u64, permissions.clone());
 
         match error {
             DomainError::PermissionCollision {
@@ -195,7 +195,7 @@ mod tests {
                 permissions: perms,
             } => {
                 assert_eq!(collision_count, 2);
-                assert_eq!(hash_id, 123);
+                assert_eq!(hash_id, 123u64);
                 assert_eq!(perms, permissions);
             }
         }

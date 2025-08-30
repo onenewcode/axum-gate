@@ -255,7 +255,7 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
         let raw = id.as_u64();
         if let Some(existing_permission) = seen_ids.get(&raw) {
             return Err(Error::Domain(DomainError::permission_collision(
-                (raw & 0xFFFF_FFFF) as u32, // retain DomainError shape; lower 32 bits as legacy field
+                raw,
                 vec![existing_permission.to_string(), permission.to_string()],
             )));
         }
