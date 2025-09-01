@@ -1,28 +1,4 @@
 #![allow(clippy::module_name_repetitions)]
-//! Builder for the authentication cookie used by `Gate`.
-//!
-//! Defaults:
-//! - Release: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
-//! - Debug:   Secure=false (localhost), SameSite=Lax, still HttpOnly & session
-//!
-//! Common overrides:
-//! - name("auth-token")
-//! - persistent(Duration::hours(24)) / max_age(...)
-//! - same_site(SameSite::Lax) for OAuth-style redirects
-//! - insecure_dev_only() for local HTTP only
-//!
-//! Example:
-//! ```rust
-//! use axum_gate::http::{Duration, SameSite};
-//! use axum_gate::prelude::CookieTemplateBuilder;
-//! let cookie_builder = CookieTemplateBuilder::recommended()
-//!     .name("auth-token")
-//!     .persistent(Duration::hours(12))
-//!     .same_site(SameSite::Strict)
-//!     .build();
-//! ```
-//!
-//! All settings start secure; you must opt out explicitly.
 
 use std::borrow::Cow;
 
@@ -32,9 +8,31 @@ use cookie::{CookieBuilder, SameSite};
 /// Default cookie name used by the gate when none is specified.
 pub const DEFAULT_COOKIE_NAME: &str = "axum-gate";
 
-/// High‑level secure template for authentication cookies.
+/// Builder for the authentication cookie used by `Gate`.
 ///
-/// Convert into the underlying `CookieBuilder` via [`CookieTemplateBuilder::build`].
+/// Defaults:
+/// - Release: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
+/// - Debug:   Secure=false (localhost), SameSite=Lax, HttpOnly=true, session cookie
+///
+/// Common overrides:
+/// - name("auth-token")
+/// - persistent(Duration::hours(24)) / max_age(...)
+/// - same_site(SameSite::Lax) for redirect/OAuth flows
+/// - insecure_dev_only() (debug only – panics in release)
+///
+/// Example:
+/// ```rust
+/// use axum_gate::http::{Duration, SameSite};
+/// use axum_gate::prelude::CookieTemplateBuilder;
+/// let cookie_builder = CookieTemplateBuilder::recommended()
+///     .name("auth-token")
+///     .persistent(Duration::hours(12))
+///     .same_site(SameSite::Strict)
+///     .build();
+/// ```
+///
+/// All settings start secure; you must opt out explicitly.
+/// Convert into the underlying `cookie::CookieBuilder` via [`CookieTemplateBuilder::build`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CookieTemplateBuilder {
     name: Cow<'static, str>,
