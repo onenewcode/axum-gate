@@ -202,7 +202,7 @@ where
         };
         debug!("Stored account in account repository.");
         let id = &account.account_id;
-        let secret = Secret::new(id, &self.secret, Argon2Hasher)?;
+        let secret = Secret::new(id, &self.secret, Argon2Hasher::default())?;
         if !secret_repository.store_secret(secret).await? {
             Err(Error::Application(ApplicationError::AccountService {
                 operation: AccountOperation::Create,

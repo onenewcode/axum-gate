@@ -12,6 +12,9 @@ keywords = ["auth", "distributed", "JWT", "axum", "login"]
 categories = ["authentication", "web-programming"]
 
 [features]
+# Enables the DevFast Argon2 preset in release builds if explicitly opted-in.
+# In debug builds the preset is available automatically via cfg(debug_assertions).
+insecure-fast-hash = []
 storage-surrealdb = ["surrealdb"]
 storage-seaorm = ["sea-orm/uuid"]
 

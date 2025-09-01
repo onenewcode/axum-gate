@@ -203,7 +203,12 @@ mod tests {
         let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
 
         // Store corresponding secret
-        let secret = Secret::new(&stored_account.account_id, password, Argon2Hasher).unwrap();
+        let secret = Secret::new(
+            &stored_account.account_id,
+            password,
+            Argon2Hasher::default(),
+        )
+        .unwrap();
         use crate::ports::repositories::SecretRepository;
         secret_repo.store_secret(secret).await.unwrap();
 

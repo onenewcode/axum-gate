@@ -63,14 +63,18 @@ fn secret_verification() {
     let id = Uuid::now_v7();
     let correct_password = "admin_password";
     let wrong_password = "admin_wrong_password";
-    let secret = Secret::new(&id, correct_password, Argon2Hasher).unwrap();
+    let secret = Secret::new(&id, correct_password, Argon2Hasher::default()).unwrap();
 
     assert_eq!(
         VerificationResult::Unauthorized,
-        secret.verify(wrong_password, Argon2Hasher).unwrap()
+        secret
+            .verify(wrong_password, Argon2Hasher::default())
+            .unwrap()
     );
     assert_eq!(
         VerificationResult::Ok,
-        secret.verify(correct_password, Argon2Hasher).unwrap()
+        secret
+            .verify(correct_password, Argon2Hasher::default())
+            .unwrap()
     );
 }

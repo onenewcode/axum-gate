@@ -251,7 +251,7 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
         };
 
         // ALWAYS perform Argon2 verification (constant time regardless of user existence)
-        let hasher = Argon2Hasher;
+        let hasher = Argon2Hasher::default();
         let hash_verification_result =
             hasher.verify_value(&credentials.secret, &stored_secret_str)?;
 

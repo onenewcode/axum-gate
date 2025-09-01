@@ -323,7 +323,7 @@ fn secret_repository() {
         let creds_repository = SurrealDbRepository::new(db, DatabaseScope::default());
         let id = Uuid::now_v7();
 
-        let creds = Secret::new(&id, "admin_password", Argon2Hasher).unwrap();
+        let creds = Secret::new(&id, "admin_password", Argon2Hasher::default()).unwrap();
 
         creds_repository.store_secret(creds).await.unwrap();
 
