@@ -9,13 +9,15 @@
 //! ```rust
 //! use axum::{routing::get, Router};
 //! use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+//! use axum_gate::infrastructure::web::cookie_template::CookieTemplateBuilder;
 //! use std::sync::Arc;
 //!
 //! # async fn protected_handler() -> &'static str { "Protected!" }
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let cookie_template = cookie::CookieBuilder::new("auth-token", "")
-//!     .secure(true)
-//!     .http_only(true);
+//! let cookie_template = CookieTemplateBuilder::recommended()
+//!     .name("auth-token")
+//!     .persistent(cookie::time::Duration::hours(24))
+//!     .build();
 //!
 //! let app = Router::<()>::new()
 //!     .route("/admin", get(protected_handler))
@@ -70,6 +72,7 @@ use self::cookie_service::CookieGateService;
 use crate::domain::services::access_policy::AccessPolicy;
 use crate::domain::traits::AccessHierarchy;
 use crate::http::cookie::CookieBuilder;
+use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
 use crate::ports::Codec;
 
 use std::sync::Arc;
@@ -120,7 +123,7 @@ impl Gate {
             issuer: issuer.to_string(),
             policy,
             codec,
-            cookie_template: CookieBuilder::new("axum-gate", ""),
+            cookie_template: CookieTemplateBuilder::recommended().build(),
         }
     }
 
@@ -142,9 +145,10 @@ impl Gate {
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
     ///     .with_cookie_template(
-    ///         cookie::CookieBuilder::new("auth-token", "")
-    ///             .secure(true)
-    ///             .http_only(true)
+    ///         CookieTemplateBuilder::recommended()
+    ///             .name("auth-token")
+    ///             .persistent(cookie::time::Duration::hours(24))
+    ///             .build()
     ///     );
     /// ```
     pub fn cookie_deny_all<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
@@ -214,11 +218,11 @@ where
     /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let cookie_template = cookie::CookieBuilder::new("auth-token", "")
-    ///     .secure(true)      // HTTPS only
-    ///     .http_only(true)   // Prevent XSS
-    ///     .same_site(cookie::SameSite::Strict)  // CSRF protection
-    ///     .max_age(cookie::time::Duration::hours(24)); // 24 hour expiry
+    /// let cookie_template = CookieTemplateBuilder::recommended()
+    ///     .name("auth-token")
+    ///     .persistent(cookie::time::Duration::hours(24)) // 24 hour expiry
+    ///     .build();
+    /// // SameSite::Strict, Secure & HttpOnly are defaults; you must opt-out explicitly.
     ///
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
@@ -226,6 +230,31 @@ where
     /// ```
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
         self.cookie_template = template;
+        self
+    }
+
+    /// Convenience: configure the secure cookie template via a closure using the high-level `CookieTemplateBuilder`.
+    /// Starts from [`CookieTemplateBuilder::recommended()`] each time.
+    /// Invalid configurations (e.g. SameSite=None without Secure) will panic to surface misconfiguration early.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+    /// # use axum_gate::infrastructure::web::cookie_template::CookieTemplateBuilder;
+    /// # use std::sync::Arc;
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+    ///     .configure_cookie_template(|tpl| tpl
+    ///         .name("auth-token")
+    ///         .persistent(cookie::time::Duration::hours(12))
+    ///     );
+    /// ```
+    pub fn configure_cookie_template<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(CookieTemplateBuilder) -> CookieTemplateBuilder,
+    {
+        let template = f(CookieTemplateBuilder::recommended());
+        self.cookie_template = template.validate_and_build();
         self
     }
 }

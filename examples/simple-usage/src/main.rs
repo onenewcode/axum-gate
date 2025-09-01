@@ -7,7 +7,7 @@ use axum_gate::{
     auth::{AccountInsertService, Credentials, Group, Role, login, logout},
     http::{CookieJar, cookie},
     jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions},
-    prelude::{AccessPolicy, Account, Gate},
+    prelude::{AccessPolicy, Account, CookieTemplateBuilder, Gate},
     storage::{MemoryAccountRepository, MemorySecretRepository},
     utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
 };
@@ -64,7 +64,7 @@ async fn main() {
             get(admin_handler).layer(
                 Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
-                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
         // Staff area - multiple roles allowed
@@ -75,7 +75,7 @@ async fn main() {
                     .with_policy(
                         AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
                     )
-                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
         // Engineering team area - group-based access
@@ -84,7 +84,7 @@ async fn main() {
             get(engineering_handler).layer(
                 Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_group(Group::new("engineering")))
-                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
         // Any logged-in user
@@ -98,7 +98,7 @@ async fn main() {
                             .or_require_role(Role::Moderator)
                             .or_require_role(Role::Admin),
                     )
-                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
         // Home page - unprotected, shows login form
@@ -114,7 +114,7 @@ async fn main() {
                             .or_require_role(Role::Moderator)
                             .or_require_role(Role::Admin),
                     )
-                    .with_cookie_template(cookie::CookieBuilder::new("my-app", "")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
         // Authentication endpoints
@@ -529,10 +529,11 @@ async fn login_handler(
         (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
     );
 
-    let cookie_template = cookie::CookieBuilder::new("my-app", "")
-        .http_only(true)
-        .secure(false) // Set to true in production with HTTPS
-        .max_age(cookie::time::Duration::hours(24));
+    let cookie_template = axum_gate::prelude::CookieTemplateBuilder::recommended()
+        .name("my-app")
+        .secure(false) // Dev only; enable HTTPS + Secure(true) in production
+        .persistent(cookie::time::Duration::hours(24))
+        .build();
 
     match login(
         cookie_jar,
@@ -604,7 +605,9 @@ async fn login_handler(
 }
 
 async fn logout_handler(cookie_jar: CookieJar) -> (CookieJar, Redirect) {
-    let cookie_template = cookie::CookieBuilder::new("my-app", "");
+    let cookie_template = axum_gate::prelude::CookieTemplateBuilder::recommended()
+        .name("my-app")
+        .build();
     let updated_jar = logout(cookie_jar, cookie_template).await;
     (updated_jar, Redirect::to("/"))
 }

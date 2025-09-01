@@ -228,7 +228,8 @@ mod ports;
 /// Common types and functions for quick imports.
 pub mod prelude {
     pub use crate::auth::{AccessPolicy, Account, Credentials, Group, Role};
-    /// Authentication middleware.
+    pub use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
+    /// Authentication middleware and builders.
     pub use crate::infrastructure::web::gate::{CookieGate, Gate};
 }
 

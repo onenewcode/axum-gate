@@ -91,7 +91,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User with API read access.");
 
-    let cookie_template = cookie::CookieBuilder::new("axum-gate", "").secure(true);
+    let cookie_template = axum_gate::prelude::CookieTemplateBuilder::recommended().build();
 
     let app = Router::new()
         .route(
