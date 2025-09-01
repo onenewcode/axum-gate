@@ -1,85 +1,28 @@
 #![allow(clippy::module_name_repetitions)]
-//! Opinionated secure cookie template builder used by `Gate`.
+//! Builder for the authentication cookie used by `Gate`.
 //!
-//! This builder provides a high–level, ergonomic API for defining the
-//! authentication cookie issued and validated by the gate / login handlers.
+//! Defaults:
+//! - Release: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
+//! - Debug:   Secure=false (localhost), SameSite=Lax, still HttpOnly & session
 //!
-//! # Goals
-//! * Secure by default (strictest sensible defaults)
-//! * Explicit opt‑out for weaker settings
-//! * Clear, discoverable configuration methods
-//! * Simple conversion into the underlying `cookie::CookieBuilder`
+//! Common overrides:
+//! - name("auth-token")
+//! - persistent(Duration::hours(24)) / max_age(...)
+//! - same_site(SameSite::Lax) for OAuth-style redirects
+//! - insecure_dev_only() for local HTTP only
 //!
-//! # Defaults
-//! The `Default` implementation (and [`CookieTemplateBuilder::recommended`]) produce a *session* cookie
-//! (no persistent `Max-Age`) whose exact security posture depends on build mode:
-//!
-//! Release (production):
-//! * name: `axum-gate`
-//! * value: empty string (value is set when issuing a token)
-//! * path: `/`
-//! * domain: unset
-//! * `Secure`: true
-//! * `HttpOnly`: true
-//! * `SameSite`: `Strict`
-//! * `Max-Age`: unset (session cookie – reduces risk if browser left open)
-//!
-//! Debug (development ergonomics):
-//! * name: `axum-gate`
-//! * value: empty string
-//! * path: `/`
-//! * domain: unset
-//! * `Secure`: false (allows http:// localhost during development)
-//! * `HttpOnly`: true
-//! * `SameSite`: `Lax` (still CSRF-resistant for normal POSTs while easing some local redirect flows)
-//! * `Max-Age`: unset
-//!
-//! You must explicitly opt-in to weaker settings in production builds; the release
-//! defaults remain maximally strict.
-//!
-//! These defaults enforce maximal security and CSRF / XSS resistance.
-//! You must *deliberately* loosen anything (e.g. switch to `Lax`, disable
-//! `Secure` for local HTTP dev, or set a persistent lifetime).
-//!
-//! # Usage
-//!
+//! Example:
 //! ```rust
-//! use axum_gate::http::{cookie, SameSite, Duration};
-//! use axum_gate::infrastructure::web::cookie_template::CookieTemplateBuilder;
-//!
-//! // Start from the secure defaults and only relax what you *really* need.
-//! let template = CookieTemplateBuilder::recommended()
-//!     .name("auth-token")                 // custom name
-//!     .persistent(Duration::hours(24))    // explicitly make it persistent
-//!     .same_site(SameSite::Lax);          // relax CSRF policy (e.g. for OAuth flows)
-//!
-//! // Convert to the underlying CookieBuilder when configuring the Gate:
-//! let cookie_builder = template.build();
-//! // gate.with_cookie_template(cookie_builder);
+//! use axum_gate::http::{Duration, SameSite};
+//! use axum_gate::prelude::CookieTemplateBuilder;
+//! let cookie_builder = CookieTemplateBuilder::recommended()
+//!     .name("auth-token")
+//!     .persistent(Duration::hours(12))
+//!     .same_site(SameSite::Strict)
+//!     .build();
 //! ```
 //!
-//! For local (non‑HTTPS) development you may disable `Secure` BUT do so explicitly:
-//!
-//! ```rust
-//! # use axum_gate::infrastructure::web::cookie_template::CookieTemplateBuilder;
-//! let insecure_dev_template = CookieTemplateBuilder::recommended()
-//!     .insecure_dev_only(); // panic in release if used
-//! ```
-//!
-//! # Extensibility
-//!
-//! If additional attributes are needed later (e.g. `SameSite=None` + `__Host-`
-//! prefix validations, partitioned cookies once stabilized, etc.) add further
-//! builder methods without breaking ergonomics.
-//!
-//! # Rationale
-//! A bespoke builder:
-//! * documents the security stance explicitly
-//! * reduces repetition of secure flags at every call site
-//! * keeps the public `Gate` API concise
-//!
-//! The crate has not been published yet, so we are free to introduce this helper
-//! without backwards compatibility concerns.
+//! All settings start secure; you must opt out explicitly.
 
 use std::borrow::Cow;
 
