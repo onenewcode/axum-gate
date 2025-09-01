@@ -16,26 +16,27 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```rust,no_run
 //! use axum::{routing::get, Router};
-//! use axum_gate::{Gate, AccessPolicy, auth, storage, jwt};
+//! use axum_gate::prelude::*;
+//! use axum_gate::{storage, jwt};
 //! use std::sync::Arc;
 //!
 //! #[tokio::main]
 //! async fn main() {
 //!     // Set up storage
-//!     let account_repo = Arc::new(storage::MemoryAccountRepository::default());
+//!     let account_repo = Arc::new(storage::MemoryAccountRepository::<Role, Group>::default());
 //!     let secret_repo = Arc::new(storage::MemorySecretRepository::default());
 //!
 //!     // Create JWT codec
-//!     let jwt_codec = Arc::new(jwt::JsonWebToken::default());
+//!     let jwt_codec = Arc::new(jwt::JsonWebToken::<jwt::JwtClaims<Account<Role, Group>>>::default());
 //!
 //!     // Protect routes with role-based access
-//!     let app = Router::new()
+//!     let app = Router::<()>::new()
 //!         .route("/admin", get(admin_handler))
 //!         .layer(
 //!             Gate::cookie_deny_all("my-app", jwt_codec)
-//!                 .with_policy(AccessPolicy::require_role(auth::Role::Admin))
+//!                 .with_policy(AccessPolicy::require_role(Role::Admin))
 //!         );
 //! }
 //!
@@ -46,33 +47,42 @@
 //!
 //! ### Role-Based
 //! ```rust
+//! use axum_gate::auth::{AccessPolicy, Role, Group};
+//!
 //! // Single role
-//! AccessPolicy::require_role(Role::Admin)
+//! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
 //!
 //! // Multiple roles
-//! AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator)
+//! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin).or_require_role(Role::Moderator);
 //!
 //! // Hierarchical (role + supervisors)
-//! AccessPolicy::require_role_or_supervisor(Role::User)
+//! let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User);
 //! ```
 //!
 //! ### Group-Based
 //! ```rust
-//! AccessPolicy::require_group(Group::new("engineering"))
-//!     .or_require_group(Group::new("management"))
+//! use axum_gate::auth::{AccessPolicy, Group, Role};
+//!
+//! let policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"))
+//!     .or_require_group(Group::new("management"));
 //! ```
 //!
 //! ### Permission-Based
 //! ```rust
+//! use axum_gate::auth::{AccessPolicy, PermissionId, Role, Group};
+//!
 //! // Validate permissions at compile-time
 //! axum_gate::validate_permissions!["read:api", "write:api", "admin:system"];
 //!
 //! // Use in policies
-//! AccessPolicy::require_permission(PermissionId::from("read:api"))
+//! let policy = AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"));
 //! ```
 //!
 //! ### Nested Enum Permissions
 //! ```rust
+//! use axum_gate::advanced::AsPermissionName;
+//! use axum_gate::auth::Permissions;
+//!
 //! #[derive(Debug, Clone, PartialEq)]
 //! enum ApiPermission {
 //!     Read,
@@ -95,68 +105,95 @@
 //!     }
 //! }
 //!
-//! // Usage
+//! // Usage - convert to string representations first
 //! let permissions = Permissions::from_iter([
-//!     Permission::Api(ApiPermission::Read),
-//!     Permission::System("health".to_string()),
+//!     "api:read",
+//!     "system:health",
 //! ]);
 //! ```
 //!
 //! ## Account Management
 //!
 //! ```rust
-//! use axum_gate::auth::{AccountInsertService, AccountDeleteService};
+//! use axum_gate::auth::{AccountInsertService, Role, Group, Permissions};
+//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
+//! use std::sync::Arc;
 //!
+//! # tokio_test::block_on(async {
+//! # let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+//! # let secret_repo = Arc::new(MemorySecretRepository::default());
 //! // Create account with roles and permissions
 //! let account = AccountInsertService::insert("user@example.com", "password")
 //!     .with_roles(vec![Role::User])
 //!     .with_groups(vec![Group::new("staff")])
 //!     .with_permissions(Permissions::from_iter(["read:profile"]))
 //!     .into_repositories(account_repo, secret_repo)
-//!     .await?;
+//!     .await;
+//! # });
 //! ```
 //!
 //! ## Storage Backends
 //!
 //! ### In-Memory (Development)
 //! ```rust
-//! let account_repo = Arc::new(storage::MemoryAccountRepository::default());
+//! use axum_gate::{storage, auth};
+//! use std::sync::Arc;
+//!
+//! let account_repo = Arc::new(storage::MemoryAccountRepository::<auth::Role, auth::Group>::default());
 //! let secret_repo = Arc::new(storage::MemorySecretRepository::default());
 //! ```
 //!
 //! ### SurrealDB (Feature: `storage-surrealdb`)
-//! ```rust
+//! ```rust,no_run
 //! # #[cfg(feature = "storage-surrealdb")]
 //! # {
+//! use axum_gate::storage;
+//! use std::sync::Arc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!();
+//! # let scope = storage::surrealdb::DatabaseScope::default();
 //! let repo = Arc::new(storage::surrealdb::SurrealDbRepository::new(db, scope));
+//! # Ok(())
+//! # }
 //! # }
 //! ```
 //!
 //! ### SeaORM (Feature: `storage-seaorm`)
-//! ```rust
+//! ```rust,no_run
 //! # #[cfg(feature = "storage-seaorm")]
 //! # {
+//! use axum_gate::storage;
+//! use std::sync::Arc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let db: sea_orm::DatabaseConnection = todo!();
 //! let repo = Arc::new(storage::seaorm::SeaOrmRepository::new(&db));
+//! # Ok(())
+//! # }
 //! # }
 //! ```
 //!
 //! ## Authentication Handlers
 //!
-//! ```rust
+//! ```rust,no_run
+//! use axum::{routing::post, Router};
 //! use axum_gate::auth::{login, logout};
 //!
-//! let auth_routes = Router::new()
-//!     .route("/login", post(login))
-//!     .route("/logout", post(logout));
+//! // Note: login and logout functions require proper dependency injection
+//! // See the examples directory for complete implementation
+//! let auth_routes = Router::<()>::new()
+//!     .route("/login", post(|| async { "Login endpoint" }))
+//!     .route("/logout", post(|| async { "Logout endpoint" }));
 //! ```
 //!
 //! ## User Data in Handlers
 //!
 //! ```rust
 //! use axum::extract::Extension;
-//! use axum_gate::auth::Account;
+//! use axum_gate::auth::{Account, Role, Group};
 //!
-//! async fn profile_handler(Extension(user): Extension<Account>) -> String {
+//! async fn profile_handler(Extension(user): Extension<Account<Role, Group>>) -> String {
 //!     format!("Hello {}, roles: {:?}", user.user_id, user.roles)
 //! }
 //! ```

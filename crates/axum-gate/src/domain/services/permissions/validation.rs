@@ -468,7 +468,7 @@ impl ValidationReport {
 /// ## Comparison with PermissionCollisionChecker
 ///
 /// ```
-/// use axum_gate::{ApplicationValidator, PermissionCollisionChecker};
+/// use axum_gate::advanced::{ApplicationValidator, PermissionCollisionChecker};
 ///
 /// let permissions = vec!["user:read".to_string(), "user:write".to_string()];
 ///

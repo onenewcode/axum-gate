@@ -14,7 +14,7 @@ use uuid::Uuid;
 /// # Creating Accounts
 ///
 /// ```rust
-/// use axum_gate::{Account, Role, Group, Permissions};
+/// use axum_gate::auth::{Account, Role, Group, Permissions};
 ///
 /// // Create a basic account
 /// let account = Account::new("user123", &[Role::User], &[Group::new("staff")]);
@@ -29,7 +29,7 @@ use uuid::Uuid;
 /// # Working with Permissions
 ///
 /// ```rust
-/// # use axum_gate::{Account, Role, Group, PermissionId};
+/// # use axum_gate::auth::{Account, Role, Group, PermissionId};
 /// # let mut account = Account::<Role, Group>::new("user", &[], &[]);
 /// // Grant permissions
 /// account.grant_permission("read:api");
@@ -96,7 +96,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Account, Role, Group};
+    /// use axum_gate::auth::{Account, Role, Group};
     ///
     /// let account = Account::new(
     ///     "user@example.com",
@@ -150,7 +150,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Account, Role, Group, Permissions};
+    /// use axum_gate::auth::{Account, Role, Group, Permissions};
     ///
     /// // Create permissions
     /// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
@@ -169,7 +169,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Account, Role, Group, PermissionId};
+    /// use axum_gate::auth::{Account, Role, Group, PermissionId};
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("read:profile");
@@ -186,7 +186,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Account, Role, Group, PermissionId};
+    /// use axum_gate::auth::{Account, Role, Group, PermissionId};
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("write:profile");

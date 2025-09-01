@@ -7,14 +7,17 @@
 //! # Using Default Roles
 //!
 //! ```rust
-//! use axum_gate::{Role, AccessHierarchy};
+//! use axum_gate::auth::Role;
+//! use axum_gate::advanced::AccessHierarchy;
 //!
 //! // Roles have a built-in hierarchy: Admin > Moderator > Reporter > User
 //! assert_eq!(Role::Admin.subordinate(), Some(Role::Moderator));
 //! assert_eq!(Role::User.supervisor(), Some(Role::Reporter));
 //!
 //! // Use with access policies
-//! use axum_gate::{Gate, AccessPolicy, Group, JsonWebToken, JwtClaims, Account};
+//! use axum_gate::auth::{AccessPolicy, Group, Account};
+//! use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! use axum_gate::prelude::Gate;
 //! use std::sync::Arc;
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -88,7 +91,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Example Usage
 /// ```rust
-/// use axum_gate::{Role, AccessPolicy, Group};
+/// use axum_gate::auth::{Role, AccessPolicy, Group};
 ///
 /// // Grant access to Moderators and all supervisor roles (Admin)
 /// let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);
@@ -128,7 +131,8 @@ impl AccessHierarchy for Role {
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Role, AccessHierarchy};
+    /// use axum_gate::auth::Role;
+    /// use axum_gate::advanced::AccessHierarchy;
     ///
     /// assert_eq!(Role::Admin.subordinate(), Some(Role::Moderator));
     /// assert_eq!(Role::User.subordinate(), None); // Lowest role
@@ -146,7 +150,8 @@ impl AccessHierarchy for Role {
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{Role, AccessHierarchy};
+    /// use axum_gate::auth::Role;
+    /// use axum_gate::advanced::AccessHierarchy;
     ///
     /// assert_eq!(Role::User.supervisor(), Some(Role::Reporter));
     /// assert_eq!(Role::Admin.supervisor(), None); // Highest role

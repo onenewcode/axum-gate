@@ -9,8 +9,8 @@
 //! ## 1. Validating Permissions at Compile Time
 //!
 //! ```rust
-//! # use axum_gate::{PermissionId, validate_permissions};
-//! validate_permissions![
+//! # use axum_gate::auth::PermissionId;
+//! axum_gate::validate_permissions![
 //!     "read:resource1",
 //!     "write:resource1",
 //!     "read:resource2",
@@ -21,7 +21,7 @@
 //! ## 2. Working with Account Permissions (recommended)
 //!
 //! ```rust
-//! # use axum_gate::{PermissionId, Account};
+//! # use axum_gate::auth::{PermissionId, Account};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyRole { User, Admin }
 //! # impl std::fmt::Display for MyRole {
@@ -69,9 +69,9 @@
 //!
 //! ## 3. Using Permissions with Gates (recommended)
 //!
-//! ```rust
-//! # use axum_gate::{Account, Gate, Group, PermissionId, AccessPolicy};
-//! # use axum_gate::{JsonWebToken, JwtClaims};
+//! # use axum_gate::auth::{Account, Group, PermissionId, AccessPolicy};
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::Gate;
 //! # use std::sync::Arc;
 //! # use axum::{routing::get, Router};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

@@ -14,9 +14,9 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::{Account, Role, Group, Secret, Argon2Hasher};
-//! use axum_gate::{AccountRepository, SecretRepository};
-//! use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use axum_gate::auth::{Account, Role, Group};
+//! use axum_gate::advanced::{Secret, Argon2Hasher, AccountRepository, SecretRepository};
+//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {
@@ -41,8 +41,9 @@
 //! # Creating from Existing Data
 //!
 //! ```rust
-//! use axum_gate::{Account, Role, Group, Secret};
-//! use axum_gate::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use axum_gate::auth::{Account, Role, Group};
+//! use axum_gate::advanced::Secret;
+//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
 //!
 //! // Create repositories with pre-populated data
 //! let accounts = vec![
@@ -83,8 +84,9 @@ use uuid::Uuid;
 ///
 /// # Example
 /// ```rust
-/// use axum_gate::{Account, Role, Group, AccountRepository};
-/// use axum_gate::memory::MemoryAccountRepository;
+/// use axum_gate::auth::{Account, Role, Group};
+/// use axum_gate::advanced::AccountRepository;
+/// use axum_gate::storage::MemoryAccountRepository;
 /// use std::sync::Arc;
 ///
 /// # tokio_test::block_on(async {
@@ -176,9 +178,9 @@ where
 ///
 /// # Example Usage
 /// ```rust
-/// use axum_gate::{Secret, Credentials, VerificationResult, Argon2Hasher};
-/// use axum_gate::{SecretRepository, CredentialsVerifier};
-/// use axum_gate::memory::MemorySecretRepository;
+/// use axum_gate::auth::Credentials;
+/// use axum_gate::advanced::{Secret, VerificationResult, Argon2Hasher, SecretRepository, CredentialsVerifier};
+/// use axum_gate::storage::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// # tokio_test::block_on(async {
@@ -203,8 +205,8 @@ where
 ///
 /// # Creating from Existing Data
 /// ```rust
-/// use axum_gate::{Secret, Argon2Hasher};
-/// use axum_gate::memory::MemorySecretRepository;
+/// use axum_gate::advanced::{Secret, Argon2Hasher};
+/// use axum_gate::storage::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// let secrets = vec![

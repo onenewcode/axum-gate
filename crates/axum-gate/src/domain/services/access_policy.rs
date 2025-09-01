@@ -44,7 +44,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccessPolicy, Role, Group};
+    /// use axum_gate::auth::{AccessPolicy, Role, Group};
     ///
     /// let policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin);
     /// ```
@@ -62,7 +62,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccessPolicy, Role, Group};
+    /// use axum_gate::auth::{AccessPolicy, Role, Group};
     ///
     /// // Allows Moderator role and Admin role (if Admin supervises Moderator)
     /// let policy: AccessPolicy<Role, Group> = AccessPolicy::require_role_or_supervisor(Role::Moderator);
@@ -79,7 +79,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccessPolicy, Group, Role};
+    /// use axum_gate::auth::{AccessPolicy, Group, Role};
     ///
     /// let policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"));
     /// ```
@@ -95,7 +95,7 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::{AccessPolicy, Group, Role, PermissionId};
+    /// use axum_gate::auth::{AccessPolicy, Group, Role, PermissionId};
     ///
     /// // Using a permission name (hashed deterministically to 64-bit ID)
     /// let policy: AccessPolicy<Role, Group> =

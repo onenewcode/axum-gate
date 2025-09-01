@@ -7,7 +7,7 @@
 //! # Creating and Using Groups
 //!
 //! ```rust
-//! use axum_gate::{Group, AccessPolicy, Role};
+//! use axum_gate::auth::{Group, AccessPolicy, Role};
 //!
 //! // Create groups
 //! let engineering = Group::new("engineering");
@@ -22,7 +22,9 @@
 //! # Group-Based Access Control
 //!
 //! ```rust
-//! use axum_gate::{Account, Role, Group, Gate, AccessPolicy, JsonWebToken, JwtClaims};
+//! use axum_gate::auth::{Account, Role, Group, AccessPolicy};
+//! use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! use axum_gate::prelude::Gate;
 //! use std::sync::Arc;
 //!
 //! // Create an account with group membership

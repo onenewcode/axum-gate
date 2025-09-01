@@ -10,11 +10,10 @@
 //!
 //! ```rust
 //! use axum::{routing::post, Router, Json};
-//! use axum_gate::{
-//!     route_handlers::login, Credentials, RegisteredClaims, CookieJar,
-//!     memory::{MemorySecretRepository, MemoryAccountRepository},
-//!     JsonWebToken, JwtClaims, Account, Role, Group
-//! };
+//! use axum_gate::auth::{login, Credentials, Account, Role, Group};
+//! use axum_gate::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
+//! use axum_gate::http::CookieJar;
+//! use axum_gate::storage::{MemorySecretRepository, MemoryAccountRepository};
 //! use std::sync::Arc;
 //!
 //! async fn login_endpoint(
@@ -49,7 +48,8 @@
 //! The `logout` handler removes the authentication cookie:
 //!
 //! ```rust
-//! use axum_gate::{route_handlers::logout, CookieJar};
+//! use axum_gate::auth::logout;
+//! use axum_gate::http::CookieJar;
 //!
 //! async fn logout_endpoint(cookie_jar: CookieJar) -> CookieJar {
 //!     let cookie_template = cookie::CookieBuilder::new("auth-token", "");
@@ -57,27 +57,10 @@
 //! }
 //! ```
 //!
-//! # Permission Management Functions
+//! # Permission Management
 //!
-//! This module also provides utility functions for managing user permissions
-//! using the zero-synchronization permission system:
-//!
-//! ```rust
-//! use axum_gate::route_handlers::{grant_user_permissions, check_user_permissions};
-//! use axum_gate::Permissions;
-//!
-//! let mut user_permissions = Permissions::new();
-//! let permissions_to_grant = vec!["read:file".to_string(), "write:file".to_string()];
-//!
-//! // Grant permissions
-//! grant_user_permissions(&mut user_permissions, &permissions_to_grant);
-//!
-//! // Check permissions
-//! let required_permissions = vec!["read:file".to_string()];
-//! if check_user_permissions(&user_permissions, &required_permissions) {
-//!     println!("User has required permissions");
-//! }
-//! ```
+//! User permissions are managed through the `Permissions` struct and associated methods.
+//! See the `auth` module for details on permission management.
 use crate::application::auth::{LoginResult, LoginService, LogoutService};
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
@@ -176,7 +159,7 @@ where
 ///
 /// # Example
 /// ```rust
-/// use axum_gate::{route_handlers::logout, CookieJar};
+/// use axum_gate::{auth::logout, http::CookieJar};
 ///
 /// async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 ///     let cookie_template = cookie::CookieBuilder::new("auth-token", "");

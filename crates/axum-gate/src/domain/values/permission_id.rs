@@ -148,19 +148,19 @@ mod tests {
     #[test]
     fn permission_id_from_permission_trait() {
         #[derive(Debug)]
-        enum testPermission {
+        enum TestPermission {
             Read,
             Write,
         }
 
-        impl AsPermissionName for testPermission {
+        impl AsPermissionName for TestPermission {
             fn as_permission_name(&self) -> String {
                 format!("Test:{:?}", self)
             }
         }
 
-        let read_perm = testPermission::Read;
-        let write_perm = testPermission::Write;
+        let read_perm = TestPermission::Read;
+        let write_perm = TestPermission::Write;
 
         let read_id = PermissionId::from(&read_perm);
         let write_id = PermissionId::from(&write_perm);
