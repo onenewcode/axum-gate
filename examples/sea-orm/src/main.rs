@@ -1,5 +1,4 @@
 use axum_gate::auth::AccountInsertService;
-use axum_gate::http::cookie;
 use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
 use axum_gate::prelude::{Account, Credentials, Group, Role};
 use axum_gate::storage::seaorm::SeaOrmRepository;

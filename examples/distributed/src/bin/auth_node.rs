@@ -1,7 +1,6 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
 use axum_gate::auth::AccountInsertService;
-use axum_gate::http::cookie;
 use axum_gate::jwt::{JsonWebToken, RegisteredClaims, advanced::JsonWebTokenOptions};
 use axum_gate::prelude::{Credentials, Group, Role};
 use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};

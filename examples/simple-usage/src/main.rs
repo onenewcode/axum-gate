@@ -7,7 +7,7 @@ use axum_gate::{
     auth::{AccountInsertService, Credentials, Group, Role, login, logout},
     http::{CookieJar, cookie},
     jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions},
-    prelude::{AccessPolicy, Account, CookieTemplateBuilder, Gate},
+    prelude::{AccessPolicy, Account, Gate},
     storage::{MemoryAccountRepository, MemorySecretRepository},
     utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
 };
