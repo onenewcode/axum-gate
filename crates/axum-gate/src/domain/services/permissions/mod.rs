@@ -179,7 +179,6 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
 ///
 /// ```rust
 /// # use axum_gate::validate_permissions;
-/// // validate_permissions! macro invocation below
 ///
 /// validate_permissions![
 ///     "read:users",
