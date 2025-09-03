@@ -267,9 +267,10 @@ impl SecretRepository for MemorySecretRepository {
         Ok(true)
     }
 
-    async fn delete_secret(&self, id: &Uuid) -> Result<bool> {
+    async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>> {
+        // Atomically remove and return the secret (compensating actions can reinsert it)
         let mut write = self.store.write().await;
-        Ok(write.remove(id).is_some())
+        Ok(write.remove(id))
     }
 
     async fn update_secret(&self, secret: Secret) -> Result<()> {

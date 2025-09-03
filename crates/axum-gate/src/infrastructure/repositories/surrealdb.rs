@@ -177,18 +177,18 @@ where
         Ok(db_credentials.is_some())
     }
 
-    async fn delete_secret(&self, id: &Uuid) -> Result<bool> {
+    async fn delete_secret(&self, id: &Uuid) -> Result<Option<Secret>> {
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(&self.scope_settings.table_names.credentials, *id);
         let result: Option<Secret> = self.db.delete(record_id).await.map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
-                message: format!("Failed to delete secret: {}", e),
+                message: format!("Failed to delete and return secret: {}", e),
                 table: Some(self.scope_settings.table_names.credentials.clone()),
                 record_id: Some(id.to_string()),
             })
         })?;
-        Ok(result.is_some())
+        Ok(result)
     }
 
     async fn update_secret(&self, secret: Secret) -> Result<()> {

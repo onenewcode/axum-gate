@@ -172,8 +172,8 @@ impl SecretRepository for SeaOrmRepository {
         Ok(true)
     }
 
-    /// The credentials `account_id` needs to be queried from the account repository.
-    async fn delete_secret(&self, account_id: &Uuid) -> Result<bool> {
+    /// Removes and returns the secret for the given account id.
+    async fn delete_secret(&self, account_id: &Uuid) -> Result<Option<Secret>> {
         let Some(model) = seaorm_credentials::Entity::find()
             .filter(seaorm_credentials::Column::AccountId.eq(*account_id))
             .one(&self.db)
@@ -187,7 +187,7 @@ impl SecretRepository for SeaOrmRepository {
                 })
             })?
         else {
-            return Ok(false);
+            return Ok(None);
         };
 
         seaorm_credentials::Entity::delete_by_id(model.id)
@@ -198,10 +198,14 @@ impl SecretRepository for SeaOrmRepository {
                     operation: DatabaseOperation::Delete,
                     message: format!("Failed to delete secret: {}", e),
                     table: Some("credentials".to_string()),
-                    record_id: Some(model.account_id.to_string()),
+                    record_id: Some(account_id.to_string()),
                 })
             })?;
-        Ok(true)
+
+        Ok(Some(Secret {
+            account_id: model.account_id,
+            secret: model.secret,
+        }))
     }
 
     async fn update_secret(&self, secret: Secret) -> Result<()> {
