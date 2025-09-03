@@ -55,13 +55,13 @@
 //! let secrets = vec![/* your secrets */];
 //! let secret_repo = MemorySecretRepository::from(secrets);
 //! ```
-
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::{Secret, VerificationResult};
 use crate::errors::{Error, PortError, RepositoryType, Result};
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
+use crate::ports::auth::HashingService;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 
 use std::collections::HashMap;
@@ -218,12 +218,22 @@ where
 #[derive(Clone)]
 pub struct MemorySecretRepository {
     store: Arc<RwLock<HashMap<Uuid, Secret>>>,
+    /// Precomputed dummy hash produced with the same Argon2 preset that `Secret::new`
+    /// used (via `Argon2Hasher::default()`) in this build configuration. This keeps
+    /// timing of nonexistent-account verifications aligned with existing-account
+    /// verifications to mitigate user enumeration via timing side channels.
+    dummy_hash: String,
 }
 
 impl Default for MemorySecretRepository {
     fn default() -> Self {
+        let hasher = Argon2Hasher::default();
+        let dummy_hash = hasher
+            .hash_value("dummy_password")
+            .expect("Failed to generate dummy hash");
         Self {
             store: Arc::new(RwLock::new(HashMap::new())),
+            dummy_hash,
         }
     }
 }
@@ -235,7 +245,10 @@ impl From<Vec<Secret>> for MemorySecretRepository {
             store.insert(v.account_id, v);
         });
         let store = Arc::new(RwLock::new(store));
-        Self { store }
+        let dummy_hash = Argon2Hasher::default()
+            .hash_value("dummy_password")
+            .expect("Failed to generate dummy hash");
+        Self { store, dummy_hash }
     }
 }
 
@@ -290,15 +303,10 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
 
         let read = self.store.read().await;
 
-        // Get stored secret or use dummy hash to ensure constant-time operation
+        // Get stored secret or use precomputed dummy hash to ensure constant-time operation
         let (stored_secret_str, user_exists_choice) = match read.get(&credentials.id) {
             Some(stored_secret) => (stored_secret.secret.as_str(), Choice::from(1u8)),
-            None => {
-                // Use a realistic dummy Argon2 hash to maintain constant timing
-                // This hash was generated with the same parameters as real hashes
-                let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQxMjM0NTY3ODkwYWJjZGVmZ2hpams$+U4VpzOTOuH3Lz3dN2CX2z6VZhUZP1c1xN1y2Z3Z4aA";
-                (dummy_hash, Choice::from(0u8))
-            }
+            None => (self.dummy_hash.as_str(), Choice::from(0u8)),
         };
 
         // ALWAYS perform Argon2 verification (constant time regardless of user existence)

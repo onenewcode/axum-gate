@@ -1,4 +1,11 @@
 //! Support for SQL database repository through [sea-orm](sea_orm).
+//!
+//! This repository includes constant-time credential verification to
+//! mitigate user enumeration via timing differences. A dummy Argon2
+//! hash (built with the active build-mode preset) is precomputed at
+//! construction and used whenever a secret for a given account id
+//! does not exist, ensuring the Argon2 verification path is always
+//! executed.
 
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
@@ -8,7 +15,7 @@ use crate::infrastructure::hashing::Argon2Hasher;
 use crate::infrastructure::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,
 };
-use crate::ports::auth::CredentialsVerifier;
+use crate::ports::auth::{CredentialsVerifier, HashingService};
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 
 use sea_orm::{
@@ -23,12 +30,22 @@ pub mod models;
 /// Repository implementation for [sea-orm](sea_orm).
 pub struct SeaOrmRepository {
     db: DatabaseConnection,
+    /// Precomputed dummy Argon2 hash used for nonexistent accounts to keep
+    /// verification timing consistent.
+    dummy_hash: String,
 }
 
 impl SeaOrmRepository {
     /// Creates a new repository that uses the given database connection as backend.
     pub fn new(db: &DatabaseConnection) -> Self {
-        Self { db: db.clone() }
+        let hasher = Argon2Hasher::default();
+        let dummy_hash = hasher
+            .hash_value("dummy_password")
+            .expect("Failed to generate dummy Argon2 hash");
+        Self {
+            db: db.clone(),
+            dummy_hash,
+        }
     }
 }
 
@@ -228,7 +245,6 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
         &self,
         credentials: Credentials<Uuid>,
     ) -> Result<VerificationResult> {
-        use crate::ports::auth::HashingService;
         use subtle::Choice;
 
         let model_result = seaorm_credentials::Entity::find()
@@ -244,32 +260,24 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
                 })
             })?;
 
-        // Determine user existence and prepare hash for verification using constant-time operations
+        // Select stored or dummy hash (always perform Argon2 verify)
         let (stored_secret_str, user_exists_choice) = match model_result {
             Some(model) => (model.secret, Choice::from(1u8)),
-            None => {
-                // Use a realistic dummy Argon2 hash for constant-time operation
-                let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$c29tZXNhbHQxMjM0NTY3ODkwYWJjZGVmZ2hpams$+U4VpzOTOuH3Lz3dN2CX2z6VZhUZP1c1xN1y2Z3Z4aA".to_string();
-                (dummy_hash, Choice::from(0u8))
-            }
+            None => (self.dummy_hash.clone(), Choice::from(0u8)),
         };
 
-        // ALWAYS perform Argon2 verification (constant time regardless of user existence)
+        // Perform Argon2 verification locally (constant work)
         let hasher = Argon2Hasher::default();
         let hash_verification_result =
             hasher.verify_value(&credentials.secret, &stored_secret_str)?;
 
-        // Convert hash verification result to Choice for constant-time operations
         let hash_matches_choice = Choice::from(match hash_verification_result {
             VerificationResult::Ok => 1u8,
             VerificationResult::Unauthorized => 0u8,
         });
 
-        // Combine results using constant-time AND operation
-        // Success only if: user exists AND password hash matches
         let final_success_choice = user_exists_choice & hash_matches_choice;
 
-        // Convert back to VerificationResult
         let final_result = if bool::from(final_success_choice) {
             VerificationResult::Ok
         } else {
