@@ -32,7 +32,8 @@
 //! #         }
 //! #     }
 //! # }
-//! # impl axum_gate::AccessHierarchy for MyRole {
+//! # use axum_gate::advanced::AccessHierarchy;
+//! # impl AccessHierarchy for MyRole {
 //! #     fn supervisor(&self) -> Option<Self> {
 //! #         match self {
 //! #             Self::Admin => None,
@@ -84,7 +85,7 @@
 //! #         }
 //! #     }
 //! # }
-//! # impl axum_gate::AccessHierarchy for MyRole {
+//! # impl AccessHierarchy for MyRole {
 //! #     fn supervisor(&self) -> Option<Self> {
 //! #         match self {
 //! #             Self::Admin => None,
@@ -114,103 +115,6 @@
 //!     "Access granted!"
 //! }
 //! ```
-//!
-//! ## 4. Checking Permissions in Route Handlers
-//!
-//! ```rust
-//! # use axum_gate::Permissions;
-//! # let mut user_permissions = Permissions::new();
-//! # user_permissions.grant("read:resource1");
-//! if user_permissions.has("read:resource1") {
-//!     // Grant access
-//! }
-//! ```
-//!
-//! # Validation Approaches
-//!
-//! While the core permission system handles authorization at runtime, it's crucial to validate
-//! that your permission strings don't have hash collisions before deployment. This module provides
-//! comprehensive validation tools to ensure your permission system works reliably in production.
-//!
-//! This module provides two complementary validators for different use cases:
-//!
-//! ## [`ApplicationValidator`] - High-level Builder Pattern
-//!
-//! Best for **application startup validation** where you need to collect permissions
-//! from multiple sources and validate them once:
-//!
-//! ```rust
-//! use axum_gate::ApplicationValidator;
-//!
-//! # fn example() -> anyhow::Result<()> {
-//! let report = ApplicationValidator::new()
-//!     .add_permissions(load_config_permissions())
-//!     .add_permissions(load_database_permissions())
-//!     .add_permission("system:health")
-//!     .validate()?;  // Automatically logs results
-//!
-//! if !report.is_valid() {
-//!     return Err(anyhow::anyhow!("Startup validation failed"));
-//! }
-//! # Ok(())
-//! # }
-//! # fn load_config_permissions() -> Vec<String> { vec![] }
-//! # fn load_database_permissions() -> Vec<String> { vec![] }
-//! ```
-//!
-//! **Characteristics:**
-//! - Builder pattern for incremental permission addition
-//! - Single-use (consumed during validation)
-//! - Automatic logging of results
-//! - Simple pass/fail workflow
-//!
-//! ## [`PermissionCollisionChecker`] - Low-level Direct Control
-//!
-//! Best for **runtime validation and analysis** where you need detailed inspection
-//! and debugging capabilities:
-//!
-//! ```rust
-//! use axum_gate::PermissionCollisionChecker;
-//!
-//! # fn example() -> anyhow::Result<()> {
-//! let mut checker = PermissionCollisionChecker::new(dynamic_permissions());
-//! let report = checker.validate()?;
-//!
-//! if !report.is_valid() {
-//!     // Detailed analysis capabilities
-//!     for collision in &report.collisions {
-//!         println!("Hash collision: {:?}", collision.permissions);
-//!     }
-//!
-//!     // Check specific permission conflicts
-//!     let conflicts = checker.get_conflicting_permissions("user:read");
-//!     println!("Conflicts with user:read: {:?}", conflicts);
-//! }
-//!
-//! // Reusable for further analysis
-//! let summary = checker.get_permission_summary();
-//! # Ok(())
-//! # }
-//! # fn dynamic_permissions() -> Vec<String> { vec![] }
-//! ```
-//!
-//! **Characteristics:**
-//! - Direct instantiation with complete permission set
-//! - Stateful and reusable after validation
-//! - Detailed introspection methods
-//! - Manual control over logging and error handling
-//!
-//! # Choosing the Right Validator
-//!
-//! | Use Case | Recommended Validator |
-//! |----------|----------------------|
-//! | Application startup validation | [`ApplicationValidator`] |
-//! | Configuration loading | [`ApplicationValidator`] |
-//! | Simple pass/fail validation | [`ApplicationValidator`] |
-//! | Runtime permission updates | [`PermissionCollisionChecker`] |
-//! | Debugging collision issues | [`PermissionCollisionChecker`] |
-//! | Performance-critical validation | [`PermissionCollisionChecker`] |
-//! | Custom validation workflows | [`PermissionCollisionChecker`] |
 
 pub mod validation;
 
@@ -227,7 +131,7 @@ use std::collections::{HashMap, HashSet};
 /// # Examples
 ///
 /// ```
-/// use axum_gate::validate_permission_uniqueness;
+/// use axum_gate::auth::validate_permission_uniqueness;
 ///
 /// // This should pass
 /// validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();
@@ -274,7 +178,8 @@ pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::validate_permissions;
+/// # use axum_gate::validate_permissions;
+/// // validate_permissions! macro invocation below
 ///
 /// validate_permissions![
 ///     "read:users",

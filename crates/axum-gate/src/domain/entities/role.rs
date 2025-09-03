@@ -31,7 +31,7 @@
 //! For applications with specific role requirements:
 //!
 //! ```rust
-//! use axum_gate::AccessHierarchy;
+//! use axum_gate::advanced::AccessHierarchy;
 //! use serde::{Deserialize, Serialize};
 //!
 //! #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

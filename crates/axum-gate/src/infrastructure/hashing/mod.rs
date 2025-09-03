@@ -10,24 +10,12 @@
 //!
 //! # Example
 //! ```rust
-//! use axum_gate::advanced::{Argon2Hasher, Argon2Preset, Argon2Config, HashingService};
+//! use axum_gate::advanced::{Argon2Hasher, HashingService};
 //!
-//! // Build-mode default
+//! // Default (build‑mode appropriate) hasher
 //! let hasher = Argon2Hasher::default();
-//!
-//! // Explicit preset
-//! let interactive = Argon2Hasher::from_preset(Argon2Preset::Interactive);
-//!
-//! // Custom config
-//! let custom = Argon2Hasher::from_config(
-//!     Argon2Config::default()
-//!         .with_memory_kib(96 * 1024)
-//!         .with_time_cost(4)
-//!         .with_parallelism(1)
-//! );
-//!
-//! let hash = custom.hash_value("secret").unwrap();
-//! assert!(matches!(custom.verify_value("secret", &hash), Ok(crate::domain::values::VerificationResult::Ok)));
+//! let hash = hasher.hash_value("secret").unwrap();
+//! assert!(hasher.verify_value("secret", &hash).is_ok());
 //! ```
 //!
 //! ⚠ The `DevFast` preset MUST NOT be used in production; it exists only to keep debug builds

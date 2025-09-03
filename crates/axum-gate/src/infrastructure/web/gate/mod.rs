@@ -8,8 +8,10 @@
 //!
 //! ```rust
 //! use axum::{routing::get, Router};
-//! use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
-//! use axum_gate::infrastructure::web::cookie_template::CookieTemplateBuilder;
+//! use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+//! use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! use axum_gate::prelude::Gate;
+//! use axum_gate::prelude::CookieTemplateBuilder;
 //! use std::sync::Arc;
 //!
 //! # async fn protected_handler() -> &'static str { "Protected!" }
@@ -32,7 +34,9 @@
 //!
 //! ## Role-Based Access
 //! ```rust
-//! # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+//! # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::Gate;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! # let cookie_template = cookie::CookieBuilder::new("auth", "");
@@ -50,7 +54,9 @@
 //!
 //! ## Hierarchical Access
 //! ```rust
-//! # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+//! # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::Gate;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
@@ -60,7 +66,9 @@
 //!
 //! ## Permission-Based Access
 //! ```rust
-//! # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account, PermissionId};
+//! # use axum_gate::auth::{AccessPolicy, Role, Group, Account, PermissionId};
+//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::Gate;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
@@ -102,7 +110,9 @@ impl Gate {
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -138,18 +148,14 @@ impl Gate {
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     ///
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-    ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
-    ///     .with_cookie_template(
-    ///         CookieTemplateBuilder::recommended()
-    ///             .name("auth-token")
-    ///             .persistent(cookie::time::Duration::hours(24))
-    ///             .build()
-    ///     );
+    ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
     /// ```
     pub fn cookie_deny_all<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
     where
@@ -192,7 +198,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
@@ -215,18 +223,13 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let cookie_template = CookieTemplateBuilder::recommended()
-    ///     .name("auth-token")
-    ///     .persistent(cookie::time::Duration::hours(24)) // 24 hour expiry
-    ///     .build();
-    /// // SameSite::Strict, Secure & HttpOnly are defaults; you must opt-out explicitly.
-    ///
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
-    ///     .with_cookie_template(cookie_template);
+    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all());
     /// ```
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
         self.cookie_template = template;
@@ -239,15 +242,17 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::{Gate, AccessPolicy, Role, Group, JsonWebToken, JwtClaims, Account};
-    /// # use axum_gate::infrastructure::web::cookie_template::CookieTemplateBuilder;
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-    ///     .configure_cookie_template(|tpl| tpl
-    ///         .name("auth-token")
-    ///         .persistent(cookie::time::Duration::hours(12))
-    ///     );
+    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
+    ///     .configure_cookie_template(|tpl| {
+    ///         tpl.name("auth-token")
+    ///            .persistent(cookie::time::Duration::hours(12))
+    ///     });
     /// ```
     pub fn configure_cookie_template<F>(mut self, f: F) -> Self
     where

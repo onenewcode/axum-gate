@@ -29,7 +29,7 @@
 //! let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
 //!
 //! // Create corresponding secret
-//! let secret = Secret::new(&stored_account.account_id, "password", Argon2Hasher).unwrap();
+//! let secret = Secret::new(&stored_account.account_id, "password", Argon2Hasher::default()).unwrap();
 //! secret_repo.store_secret(secret).await.unwrap();
 //!
 //! // Query the account
@@ -188,7 +188,7 @@ where
 /// let account_id = Uuid::now_v7();
 ///
 /// // Store a secret (password hash)
-/// let secret = Secret::new(&account_id, "user_password", Argon2Hasher).unwrap();
+/// let secret = Secret::new(&account_id, "user_password", Argon2Hasher::default()).unwrap();
 /// repo.store_secret(secret).await.unwrap();
 ///
 /// // Verify credentials
@@ -210,8 +210,8 @@ where
 /// use uuid::Uuid;
 ///
 /// let secrets = vec![
-///     Secret::new(&Uuid::now_v7(), "admin_pass", Argon2Hasher).unwrap(),
-///     Secret::new(&Uuid::now_v7(), "user_pass", Argon2Hasher).unwrap(),
+///     Secret::new(&Uuid::now_v7(), "admin_pass", Argon2Hasher::default()).unwrap(),
+///     Secret::new(&Uuid::now_v7(), "user_pass", Argon2Hasher::default()).unwrap(),
 /// ];
 /// let repo = MemorySecretRepository::from(secrets);
 /// ```

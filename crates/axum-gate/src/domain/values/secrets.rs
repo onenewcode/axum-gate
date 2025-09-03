@@ -1,4 +1,5 @@
 //! Secrets hashing and verification models.
+//! (Doc updated: examples should always construct Argon2Hasher via `Argon2Hasher::default()`; tests already do so.)
 use crate::domain::values::verification::VerificationResult;
 use crate::errors::{Error, HashingOperation, PortError, Result};
 use crate::infrastructure::hashing::HashedValue;
