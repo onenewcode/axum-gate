@@ -1,4 +1,5 @@
-//! Claims and JWT models.
+//! JWT infrastructure components.
+//!
 use crate::errors::{Error, InfrastructureError, JwtOperation, Result};
 use crate::ports::Codec;
 use crate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
@@ -140,7 +141,89 @@ impl JsonWebTokenOptions {
     }
 }
 
-/// Encrypts using the given keys as JWT using [jsonwebtoken].
+/// Encrypts and validates JWTs using the configured keys and the `jsonwebtoken` crate.
+///
+/// # Key Management (IMPORTANT)
+///
+/// The default `JsonWebToken` (and its underlying `JsonWebTokenOptions::default()`) generates
+/// a fresh, random 60-character symmetric signing key every time a new instance is created.
+/// This is convenient for tests or ephemeral development sessions, but it also means that
+/// previously issued tokens become invalid whenever you create a NEW `JsonWebToken` via
+/// `JsonWebToken::default()` (or `JsonWebTokenOptions::default()`), because each call
+/// generates a fresh random key. If you construct exactly one instance at startup and
+/// reuse it for the whole process lifetime, tokens remain valid for that lifetime;
+/// but creating additional instances later (including, but not limited to, during a
+/// process restart or horizontal scaling) invalidates tokens produced by earlier instances.
+///
+/// If you need session continuity beyond a single in-memory instance (e.g. across process
+/// restarts, deployments, horizontal scaling, or any re-instantiation), you MUST provide
+/// a stable (persistent) key. Do this by constructing a `JsonWebToken` with explicit
+/// `JsonWebTokenOptions` using a key loaded from an environment variable, file, KMS,
+/// or another secret management system.
+///
+/// ## Providing a Persistent Symmetric Key
+/// ```rust
+/// use std::sync::Arc;
+/// use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+/// use axum_gate::jwt::advanced::JsonWebTokenOptions;
+/// use axum_gate::auth::{Account, Role, Group};
+/// use jsonwebtoken::{EncodingKey, DecodingKey};
+///
+/// // Load a stable secret (e.g. from environment or secret manager)
+/// let secret = std::env::var("JWT_SECRET")
+///     .expect("JWT_SECRET must be set to persist authentication across restarts");
+///
+/// // Construct symmetric encoding/decoding keys
+/// let enc_key = EncodingKey::from_secret(secret.as_bytes());
+/// let dec_key = DecodingKey::from_secret(secret.as_bytes());
+///
+/// // Build options manually (do NOT call `JsonWebTokenOptions::default()` here)
+/// let options = JsonWebTokenOptions {
+///     enc_key,
+///     dec_key,
+///     header: None,       // Use default header
+///     validation: None,   // Use default validation
+/// };
+///
+/// // Create a codec that will survive restarts as long as JWT_SECRET stays the same
+/// let jwt_codec = Arc::new(
+///     JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options)
+/// );
+/// ```
+///
+/// ## Asymmetric Keys (e.g. RS256)
+/// For algorithms like RS256 you would load a private key for `EncodingKey::from_rsa_pem`
+/// and a public key for `DecodingKey::from_rsa_pem`, then supply them via `JsonWebTokenOptions`.
+/// ```rust
+/// # use std::sync::Arc;
+/// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+/// # use axum_gate::jwt::advanced::JsonWebTokenOptions;
+/// # use axum_gate::auth::{Account, Role, Group};
+/// # use jsonwebtoken::{EncodingKey, DecodingKey};
+/// let private_pem = std::fs::read("private.pem").expect("private key");
+/// let public_pem  = std::fs::read("public.pem").expect("public key");
+/// let options = JsonWebTokenOptions {
+///     enc_key: EncodingKey::from_rsa_pem(&private_pem).expect("invalid private key"),
+///     dec_key: DecodingKey::from_rsa_pem(&public_pem).expect("invalid public key"),
+///     header: None,
+///     validation: None,
+/// };
+/// let jwt_codec = Arc::new(
+///     JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options)
+/// );
+/// ```
+///
+/// ## When It Is Safe to Use the Default
+/// - Unit / integration tests
+/// - Short-lived local development where logout on restart is acceptable
+/// - Disposable preview environments
+///
+/// ## When You Should NOT Use the Default
+/// - Production services
+/// - Any environment where user sessions must persist across restarts
+/// - Multi-instance / horizontally scaled deployments
+///
+/// In those cases always supply a deterministic key source.
 #[derive(Clone)]
 pub struct JsonWebToken<P> {
     /// Key for encoding.

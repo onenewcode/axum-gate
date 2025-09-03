@@ -70,6 +70,7 @@
 //!
 //! ## 3. Using Permissions with Gates (recommended)
 //!
+//! ```
 //! # use axum_gate::auth::{Account, Group, PermissionId, AccessPolicy};
 //! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
 //! # use axum_gate::prelude::Gate;

@@ -206,6 +206,11 @@
 //! - Validate permissions at application startup
 //! - Use strong, random JWT signing keys
 //!
+//! ## JWT Key Management
+//!
+//! WARNING: The default `JsonWebToken` regenerates a random signing key per instance (invalidating previously issued tokens). For any production, multi-instance, or restart-persistent environment, supply a persistent key via `JsonWebTokenOptions`; see [`JsonWebToken`](crate::jwt::JsonWebToken) docs for details and examples.
+//!
+//!
 //! ## Timing Attack Protection
 //!
 //! This crate includes built-in protection against timing attacks in authentication:

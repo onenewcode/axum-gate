@@ -27,7 +27,7 @@ where
     /// Creates a deletion service for the given account.
     ///
     /// This constructor is side-effect free; it does not touch any repositories.
-    /// Invoke [`from_repositories`] to perform the actual deletion with
+    /// Invoke [`from_repositories`](Self::from_repositories) to perform the actual deletion with
     /// compensating secret restoration if the account removal fails.
     pub fn delete(account: Account<R, G>) -> Self {
         Self { account }
