@@ -70,10 +70,11 @@
 //!
 //! ## 3. Using Permissions with Gates (recommended)
 //!
-//! ```
+//! ```rust
 //! # use axum_gate::auth::{Account, Group, PermissionId, AccessPolicy};
 //! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! # use axum_gate::prelude::Gate;
+//! # use axum_gate::prelude::{Gate, CookieTemplateBuilder};
+//! # use axum_gate::advanced::AccessHierarchy;
 //! # use std::sync::Arc;
 //! # use axum::{routing::get, Router};
 //! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -103,7 +104,8 @@
 //! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyGroup { Staff, Premium }
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<MyRole, MyGroup>>>::default());
-//! # let cookie_template = axum_gate::cookie::CookieBuilder::new("axum-gate", "").secure(true);
+//! // Build a secure authentication cookie template (uses recommended defaults).
+//! # let cookie_template = CookieTemplateBuilder::recommended().build();
 //! let app = Router::<()>::new()
 //!     .route("/protected", get(protected_handler))
 //!     .layer(

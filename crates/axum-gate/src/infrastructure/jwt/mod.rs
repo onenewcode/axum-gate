@@ -169,9 +169,8 @@ impl JsonWebTokenOptions {
 /// use axum_gate::auth::{Account, Role, Group};
 /// use jsonwebtoken::{EncodingKey, DecodingKey};
 ///
-/// // Load a stable secret (e.g. from environment or secret manager)
-/// let secret = std::env::var("JWT_SECRET")
-///     .expect("JWT_SECRET must be set to persist authentication across restarts");
+/// // For the example we define a stable secret. In real code, load from env or secret manager.
+/// let secret = "test-secret".to_string();
 ///
 /// // Construct symmetric encoding/decoding keys
 /// let enc_key = EncodingKey::from_secret(secret.as_bytes());
@@ -191,27 +190,8 @@ impl JsonWebTokenOptions {
 /// );
 /// ```
 ///
-/// ## Asymmetric Keys (e.g. RS256)
-/// For algorithms like RS256 you would load a private key for `EncodingKey::from_rsa_pem`
-/// and a public key for `DecodingKey::from_rsa_pem`, then supply them via `JsonWebTokenOptions`.
-/// ```rust
-/// # use std::sync::Arc;
-/// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-/// # use axum_gate::jwt::advanced::JsonWebTokenOptions;
-/// # use axum_gate::auth::{Account, Role, Group};
-/// # use jsonwebtoken::{EncodingKey, DecodingKey};
-/// let private_pem = std::fs::read("private.pem").expect("private key");
-/// let public_pem  = std::fs::read("public.pem").expect("public key");
-/// let options = JsonWebTokenOptions {
-///     enc_key: EncodingKey::from_rsa_pem(&private_pem).expect("invalid private key"),
-///     dec_key: DecodingKey::from_rsa_pem(&public_pem).expect("invalid public key"),
-///     header: None,
-///     validation: None,
-/// };
-/// let jwt_codec = Arc::new(
-///     JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options)
-/// );
-/// ```
+
+///
 ///
 /// ## When It Is Safe to Use the Default
 /// - Unit / integration tests
