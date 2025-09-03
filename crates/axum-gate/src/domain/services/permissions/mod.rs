@@ -109,7 +109,7 @@
 //! let app = Router::<()>::new()
 //!     .route("/protected", get(protected_handler))
 //!     .layer(
-//!         Gate::cookie_deny_all("issuer", jwt_codec)
+//!         Gate::cookie("issuer", jwt_codec)
 //!             .with_cookie_template(cookie_template)
 //!             .with_policy(AccessPolicy::<MyRole, MyGroup>::require_permission(PermissionId::from("read:resource1")))
 //!     );

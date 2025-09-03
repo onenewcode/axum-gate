@@ -22,34 +22,34 @@ async fn main() {
 
     // Example 1: Simple role-based access
     let admin_only_policy = AccessPolicy::require_role(Role::Admin);
-    let admin_gate = Gate::cookie("my-issuer", Arc::clone(&codec), admin_only_policy);
+    let admin_gate = Gate::cookie("my-issuer", Arc::clone(&codec)).with_policy(admin_only_policy);
 
     // Example 2: Role hierarchy - allow Moderator and all supervisors (Admin)
     let moderator_or_supervisor_policy = AccessPolicy::require_role_or_supervisor(Role::Moderator);
-    let moderator_gate = Gate::cookie("my-issuer", Arc::clone(&codec), moderator_or_supervisor_policy);
+    let moderator_gate = Gate::cookie("my-issuer", Arc::clone(&codec)).with_policy(moderator_or_supervisor_policy);
 
     // Example 3: Multiple access criteria (OR logic)
     let flexible_policy = AccessPolicy::require_role(Role::Admin)
         .or_require_group(Group::new("engineering"))
         .or_require_permission("system:maintenance");
-    let flexible_gate = Gate::cookie("my-issuer", Arc::clone(&codec), flexible_policy);
+    let flexible_gate = Gate::cookie("my-issuer", Arc::clone(&codec)).with_policy(flexible_policy);
 
     // Example 4: Group-based access
     let engineering_policy = AccessPolicy::require_group(Group::new("engineering"));
-    let engineering_gate = Gate::cookie("my-issuer", Arc::clone(&codec), engineering_policy);
+    let engineering_gate = Gate::cookie("my-issuer", Arc::clone(&codec)).with_policy(engineering_policy);
 
     // Example 5: Permission-based access
     let read_files_policy = AccessPolicy::require_permission("read:files")
         .or_require_permission("read:all");
-    let files_gate = Gate::cookie("my-issuer", Arc::clone(&codec), read_files_policy);
+    let files_gate = Gate::cookie("my-issuer", Arc::clone(&codec)).with_policy(read_files_policy);
 
     // Example 6: Complex policy - Admin OR (Engineering group AND read permission)
     let complex_policy = AccessPolicy::require_role(Role::Admin)
         .or_require_group(Group::new("engineering"));
-    let complex_gate = Gate::cookie("my-issuer", Arc::clone(&codec), complex_policy);
+    let complex_gate = Gate::cookie("my-issuer", Arc::clone(&codec)).with_policy(complex_policy);
 
     // Example 7: Using the deny_all default for secure development
-    let secure_gate = Gate::cookie_deny_all("my-issuer", Arc::clone(&codec))
+    let secure_gate = Gate::cookie("my-issuer", Arc::clone(&codec))
         .with_policy(AccessPolicy::require_role(Role::Admin));
 
     // Build the router with different protection levels
@@ -168,11 +168,11 @@ mod tests {
         let codec = Arc::new(JsonWebTokenOptions::new("key", "issuer"));
 
         // Secure default - denies all access
-        let _secure_gate = Gate::cookie_deny_all("issuer", codec.clone())
+        let _secure_gate = Gate::cookie("issuer", codec.clone())
             .with_policy(AccessPolicy::require_role(Role::Admin));
 
         // Explicit policy required
         let policy = AccessPolicy::require_role(Role::User);
-        let _explicit_gate = Gate::cookie("issuer", codec, policy);
+        let _explicit_gate = Gate::cookie("issuer", codec).with_policy(policy);
     }
 }

@@ -35,7 +35,7 @@
 //!     let app = Router::<()>::new()
 //!         .route("/admin", get(admin_handler))
 //!         .layer(
-//!             Gate::cookie_deny_all("my-app", jwt_codec)
+//!             Gate::cookie("my-app", jwt_codec)
 //!                 .with_policy(AccessPolicy::require_role(Role::Admin))
 //!         );
 //! }

@@ -21,7 +21,7 @@
 //! use std::sync::Arc;
 //!
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//! let gate = Gate::cookie("my-app", jwt_codec)
 //!     .with_policy(AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User));
 //! // This allows User, Reporter, Moderator, and Admin roles
 //! ```

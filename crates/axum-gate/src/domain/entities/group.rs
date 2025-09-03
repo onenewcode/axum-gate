@@ -36,7 +36,7 @@
 //!
 //! // Create access policy for specific groups
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//! let gate = Gate::cookie("my-app", jwt_codec)
 //!     .with_policy(
 //!         AccessPolicy::<Role, Group>::require_group(Group::new("engineering"))
 //!             .or_require_group(Group::new("qa-team"))

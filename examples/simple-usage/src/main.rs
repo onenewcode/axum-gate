@@ -62,7 +62,7 @@ async fn main() {
         .route(
             "/admin",
             get(admin_handler).layer(
-                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
                     .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
@@ -71,7 +71,7 @@ async fn main() {
         .route(
             "/staff",
             get(staff_handler).layer(
-                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(
                         AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
                     )
@@ -82,7 +82,7 @@ async fn main() {
         .route(
             "/engineering",
             get(engineering_handler).layer(
-                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_group(Group::new("engineering")))
                     .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
@@ -91,7 +91,7 @@ async fn main() {
         .route(
             "/profile",
             get(profile_handler).layer(
-                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(
                         AccessPolicy::require_role(Role::User)
                             .or_require_role(Role::Reporter)
@@ -107,7 +107,7 @@ async fn main() {
         .route(
             "/dashboard",
             get(dashboard_handler).layer(
-                Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+                Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(
                         AccessPolicy::require_role(Role::User)
                             .or_require_role(Role::Reporter)

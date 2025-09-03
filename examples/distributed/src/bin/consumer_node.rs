@@ -108,28 +108,28 @@ async fn main() {
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(
-            Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
+            Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .with_policy(AccessPolicy::require_role_or_supervisor(Role::Admin)),
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
-                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .with_policy(AccessPolicy::require_group(Group::new("admin"))),
             ),
         )
         .route("/reporter", get(reporter))
         .layer(
-            Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
+            Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
                 .with_policy(AccessPolicy::require_role_or_supervisor(Role::Reporter)),
         )
         .route(
             "/user",
             get(user).layer(
-                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .with_policy(AccessPolicy::require_role(Role::User)),
             ),
@@ -137,7 +137,7 @@ async fn main() {
         .route(
             "/permissions",
             get(permissions).layer(
-                Gate::cookie_deny_all(ISSUER, Arc::clone(&jwt_codec))
+                Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
                     .with_policy(AccessPolicy::require_permission(PermissionId::from(
                         AppPermissions::Api(ApiPermission::Read).as_str(),

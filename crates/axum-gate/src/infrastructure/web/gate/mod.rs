@@ -24,7 +24,7 @@
 //! let app = Router::<()>::new()
 //!     .route("/admin", get(protected_handler))
 //!     .layer(
-//!         Gate::cookie_deny_all("my-app", jwt_codec)
+//!         Gate::cookie("my-app", jwt_codec)
 //!             .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
 //!             .with_cookie_template(cookie_template)
 //!     );
@@ -41,11 +41,11 @@
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! # let cookie_template = cookie::CookieBuilder::new("auth", "");
 //! // Allow only Admin role
-//! let gate = Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+//! let gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
 //!
 //! // Allow Admin or Moderator roles
-//! let gate = Gate::cookie_deny_all("my-app", Arc::clone(&jwt_codec))
+//! let gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(
 //!         AccessPolicy::<Role, Group>::require_role(Role::Admin)
 //!             .or_require_role(Role::Moderator)
@@ -60,7 +60,7 @@
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
-//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//! let gate = Gate::cookie("my-app", jwt_codec)
 //!     .with_policy(AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User));
 //! ```
 //!
@@ -71,7 +71,7 @@
 //! # use axum_gate::prelude::Gate;
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+//! let gate = Gate::cookie("my-app", jwt_codec)
 //!     .with_policy(
 //!         AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"))
 //!     );
@@ -98,15 +98,14 @@ mod cookie_service;
 pub struct Gate;
 
 impl Gate {
-    /// Creates a new cookie-based gate with the specified access policy.
+    /// Creates a new cookie-based gate that denies all access by default.
     ///
-    /// This is the low-level constructor that requires you to provide a complete
-    /// access policy. Most users should prefer `cookie_deny_all()` with `with_policy()`.
+    /// Attach an access policy using `with_policy()` to grant access. This secure-by-default
+    /// approach ensures no routes are exposed until you explicitly configure a policy.
     ///
     /// # Arguments
     /// * `issuer` - The JWT issuer identifier for your application
     /// * `codec` - JWT codec for encoding/decoding tokens
-    /// * `policy` - Access policy defining who can access protected routes
     ///
     /// # Example
     /// ```rust
@@ -117,13 +116,10 @@ impl Gate {
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
     ///
-    /// let gate = Gate::cookie("my-app", jwt_codec, policy);
+    /// let gate = Gate::cookie("my-app", jwt_codec)
+    ///     .with_policy(policy);
     /// ```
-    pub fn cookie<C, R, G>(
-        issuer: &str,
-        codec: Arc<C>,
-        policy: AccessPolicy<R, G>,
-    ) -> CookieGate<C, R, G>
+    pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
     where
         C: Codec,
         R: AccessHierarchy + Eq + std::fmt::Display,
@@ -131,46 +127,17 @@ impl Gate {
     {
         CookieGate {
             issuer: issuer.to_string(),
-            policy,
+            policy: AccessPolicy::deny_all(),
             codec,
             cookie_template: CookieTemplateBuilder::recommended().build(),
         }
-    }
-
-    /// Creates a new cookie-based gate that denies all access by default.
-    ///
-    /// This is the recommended way to create gates. It follows a secure-by-default
-    /// approach where no access is granted until you explicitly configure an access policy.
-    ///
-    /// # Arguments
-    /// * `issuer` - The JWT issuer identifier for your application
-    /// * `codec` - JWT codec for encoding/decoding tokens
-    ///
-    /// # Example
-    /// ```rust
-    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::Gate;
-    /// # use std::sync::Arc;
-    /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    ///
-    /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
-    ///     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
-    /// ```
-    pub fn cookie_deny_all<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
-    where
-        C: Codec,
-        R: AccessHierarchy + Eq + std::fmt::Display,
-        G: Eq,
-    {
-        Self::cookie(issuer, codec, AccessPolicy::deny_all())
     }
 }
 
 /// A configured gate ready to be used as an axum layer.
 ///
-/// This struct is created by `Gate::cookie()` or `Gate::cookie_deny_all()` and can be
-/// customized with `with_policy()` and `with_cookie_template()` before being applied
+/// This struct is created by `Gate::cookie()` and can be customized
+/// with `with_policy()` and `with_cookie_template()` before being applied
 /// as a layer to your routes.
 #[derive(Clone)]
 pub struct CookieGate<C, R, G>
@@ -203,7 +170,7 @@ where
     /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+    /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(
     ///         AccessPolicy::require_role(Role::Admin)
     ///             .or_require_role(Role::Moderator)
@@ -228,7 +195,7 @@ where
     /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+    /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all());
     /// ```
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
@@ -247,7 +214,7 @@ where
     /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let gate = Gate::cookie_deny_all("my-app", jwt_codec)
+    /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
     ///     .configure_cookie_template(|tpl| {
     ///         tpl.name("auth-token")
