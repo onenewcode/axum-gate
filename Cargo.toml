@@ -4,6 +4,7 @@ members = [
     "examples/custom-roles",
     "examples/distributed",
     "examples/permission-validation",
+    "examples/rate-limiting",
     "examples/sea-orm",
     "examples/simple-usage",
     "examples/surrealdb",
