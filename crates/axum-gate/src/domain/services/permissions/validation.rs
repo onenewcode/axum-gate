@@ -427,8 +427,8 @@ impl ValidationReport {
 /// use axum_gate::advanced::ApplicationValidator;
 ///
 /// # fn load_config_permissions() -> Vec<String> { vec!["user:read".to_string()] }
-/// # async fn load_db_permissions() -> anyhow::Result<Vec<String>> { Ok(vec!["admin:write".to_string()]) }
-/// # async fn example() -> anyhow::Result<()> {
+/// # async fn load_db_permissions() -> Result<Vec<String>, Box<dyn std::error::Error>> { Ok(vec!["admin:write".to_string()]) }
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // Collect permissions from multiple sources during startup
 /// let config_permissions = load_config_permissions();
 /// let db_permissions = load_db_permissions().await?;
@@ -442,7 +442,7 @@ impl ValidationReport {
 /// if report.is_valid() {
 ///     println!("✓ All permissions validated - server can start");
 /// } else {
-///     return Err(anyhow::anyhow!("Permission validation failed: {}", report.summary()));
+///     return Err(format!("Permission validation failed: {}", report.summary()).into());
 /// }
 /// # Ok(())
 /// # }
@@ -462,7 +462,7 @@ impl ValidationReport {
 /// if !report.is_valid() {
 ///     panic!("Invalid permissions detected during startup");
 /// }
-/// # Ok::<(), anyhow::Error>(())
+/// # Ok::<(), axum_gate::errors::Error>(())
 /// ```
 ///
 /// ## Comparison with PermissionCollisionChecker
@@ -487,7 +487,7 @@ impl ValidationReport {
 ///     let conflicts = checker.get_conflicting_permissions("user:read");
 ///     println!("Conflicts found: {:?}", conflicts);
 /// }
-/// # Ok::<(), anyhow::Error>(())
+/// # Ok::<(), axum_gate::errors::Error>(())
 /// ```
 pub struct ApplicationValidator {
     permissions: Vec<String>,
@@ -548,7 +548,7 @@ impl ApplicationValidator {
     /// # Returns
     ///
     /// * `Ok(ValidationReport)` - Complete validation report
-    /// * `Err(anyhow::Error)` - Validation process failed
+    /// * `Err(axum_gate::errors::Error)` - Validation process failed
     pub fn validate(self) -> Result<ValidationReport> {
         let mut checker = PermissionCollisionChecker::new(self.permissions);
         let report = checker.validate().map_err(|e| {
