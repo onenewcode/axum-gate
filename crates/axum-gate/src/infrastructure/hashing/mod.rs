@@ -129,17 +129,68 @@ impl Argon2Hasher {
         &self.config
     }
 
-    /// Security‑first high security hasher.
+    /// Maximum security hasher for production environments.
+    ///
+    /// **Parameters:**
+    /// - Memory: 64 MiB (65,536 KiB)
+    /// - Time cost: 3 iterations
+    /// - Parallelism: 1 thread
+    ///
+    /// **Use cases:**
+    /// - Production servers with sufficient memory
+    /// - High-value accounts requiring maximum security
+    /// - Applications where authentication latency is acceptable (~100-200ms)
+    ///
+    /// **Security:** Provides excellent protection against brute-force attacks
+    /// and rainbow tables, suitable for protecting sensitive user credentials.
+    ///
+    /// **Performance:** Slowest option, designed for security over speed.
     pub fn high_security() -> Self {
         Self::from_preset(Argon2Preset::HighSecurity)
     }
 
-    /// Lower‑latency interactive hasher.
+    /// Balanced hasher for interactive applications.
+    ///
+    /// **Parameters:**
+    /// - Memory: 32 MiB (32,768 KiB)
+    /// - Time cost: 2 iterations
+    /// - Parallelism: 1 thread
+    ///
+    /// **Use cases:**
+    /// - Web applications with user-facing login forms
+    /// - Mobile applications where response time matters
+    /// - Services with moderate security requirements
+    /// - Memory-constrained production environments
+    ///
+    /// **Security:** Good security level, still resistant to most attacks
+    /// while providing reasonable authentication response times.
+    ///
+    /// **Performance:** Moderate speed (~50-100ms), good balance of security and usability.
     pub fn interactive() -> Self {
         Self::from_preset(Argon2Preset::Interactive)
     }
 
-    /// Fast / insecure hasher (tests / debug only).
+    /// Fast hasher for development and testing only.
+    ///
+    /// **⚠️ WARNING: DO NOT USE IN PRODUCTION**
+    ///
+    /// **Parameters:**
+    /// - Memory: 4 MiB (4,096 KiB)
+    /// - Time cost: 1 iteration
+    /// - Parallelism: 1 thread
+    ///
+    /// **Use cases:**
+    /// - Local development to speed up test cycles
+    /// - Unit tests that need fast password hashing
+    /// - CI/CD pipelines to reduce build times
+    /// - Debug builds (automatically used by `default()`)
+    ///
+    /// **Security:** ⚠️ Insufficient for production use - vulnerable to brute-force attacks
+    ///
+    /// **Performance:** Very fast (~5-20ms), prioritizes development speed over security.
+    ///
+    /// This preset is only available in debug builds or when the `insecure-fast-hash`
+    /// feature is explicitly enabled.
     #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
     pub fn dev_fast() -> Self {
         Self::from_preset(Argon2Preset::DevFast)
