@@ -12,7 +12,7 @@ use subtle::Choice;
 use tracing::{debug, error};
 use uuid::Uuid;
 
-/// Result of a login attempt
+/// Result of a login attempt.
 #[derive(Debug)]
 pub enum LoginResult {
     /// Login successful with JWT token

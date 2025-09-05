@@ -67,7 +67,7 @@ use tracing::{info, warn};
 ///         println!("Conflicts with user:read: {:?}", conflicts);
 ///     }
 /// }
-/// # Ok::<(), anyhow::Error>(())
+/// # Ok::<(), axum_gate::errors::Error>(())
 /// ```
 ///
 /// ## Runtime permission updates
@@ -75,7 +75,7 @@ use tracing::{info, warn};
 /// ```
 /// use axum_gate::advanced::PermissionCollisionChecker;
 ///
-/// fn update_permissions(new_permissions: Vec<String>) -> anyhow::Result<()> {
+/// fn update_permissions(new_permissions: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut checker = PermissionCollisionChecker::new(new_permissions);
 ///     let report = checker.validate()?;
 ///
@@ -84,7 +84,7 @@ use tracing::{info, warn};
 ///         for collision in &report.collisions {
 ///             println!("Hash ID {} has conflicts: {:?}", collision.id, collision.permissions);
 ///         }
-///         return Err(anyhow::anyhow!("Permission validation failed"));
+///         return Err("Permission validation failed".into());
 ///     }
 ///
 ///     // Validation passed - can still inspect the checker
@@ -121,7 +121,7 @@ impl PermissionCollisionChecker {
     /// # Returns
     ///
     /// * `Ok(ValidationReport)` - Detailed report of validation results
-    /// * `Err(anyhow::Error)` - If validation process itself fails
+    /// * `Err(axum_gate::errors::Error)` - If validation process itself fails
     ///
     /// # Examples
     ///

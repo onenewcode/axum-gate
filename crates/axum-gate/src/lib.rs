@@ -336,8 +336,7 @@ pub mod advanced {
     pub use crate::ports::repositories::{AccountRepository, SecretRepository};
 
     // Authentication and authorization services.
-    pub use crate::application::auth::{LoginResult, LoginService, LogoutService};
-    pub use crate::domain::services::authorization::AuthorizationService;
+    pub use crate::application::auth::LoginResult;
     pub use crate::domain::services::permissions::validation::{
         ApplicationValidator, PermissionCollisionChecker, ValidationReport,
     };
