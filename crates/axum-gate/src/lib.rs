@@ -176,16 +176,11 @@
 //!
 //! ## Authentication Handlers
 //!
-//! ```rust,no_run
-//! use axum::{routing::post, Router};
-//! use axum_gate::auth::{login, logout};
-//!
-//! // Note: login and logout functions require proper dependency injection
-//! // See the examples directory for complete implementation
-//! let auth_routes = Router::<()>::new()
-//!     .route("/login", post(|| async { "Login endpoint" }))
-//!     .route("/logout", post(|| async { "Logout endpoint" }));
-//! ```
+//! The crate provides pre-built [`login`](auth::login) and [`logout`](auth::logout) handlers
+//! for common authentication workflows. These handlers integrate with your storage backends
+//! and JWT configuration to provide secure authentication endpoints. For complete implementation
+//! examples with dependency injection and routing setup, see the `examples` folder in the
+//! repository.
 //!
 //! ## User Data in Handlers
 //!
