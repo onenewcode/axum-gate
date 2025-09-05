@@ -187,19 +187,42 @@
 //! ```rust
 //! use axum::extract::Extension;
 //! use axum_gate::auth::{Account, Role, Group};
+//! use axum_gate::jwt::RegisteredClaims;
 //!
-//! async fn profile_handler(Extension(user): Extension<Account<Role, Group>>) -> String {
-//!     format!("Hello {}, roles: {:?}", user.user_id, user.roles)
+//! async fn profile_handler(
+//!     Extension(user): Extension<Account<Role, Group>>,
+//!     Extension(claims): Extension<RegisteredClaims>,
+//! ) -> String {
+//!     format!(
+//!         "Hello {}, roles: {:?}, issued at: {}, expires: {}",
+//!         user.user_id, user.roles, claims.issued_at_time, claims.expiration_time
+//!     )
 //! }
 //! ```
 //!
 //! ## Security Best Practices
 //!
-//! - Use HTTPS with `secure(true)` cookies in production
-//! - Enable `http_only(true)` to prevent XSS attacks
-//! - Set appropriate JWT expiration times
-//! - Validate permissions at application startup
-//! - Use strong, random JWT signing keys
+//! ### Cookie Security
+//! - **Use secure defaults**: Start with `CookieTemplateBuilder::recommended()` which provides secure defaults (HTTPS-only, HttpOnly, SameSite=Strict in production; relaxed settings in debug builds for localhost development)
+//! - **HTTPS enforcement**: Always use `secure(true)` cookies in production environments
+//! - **XSS protection**: Enable `http_only(true)` to prevent client-side script access to auth cookies
+//! - **CSRF mitigation**: Use `SameSite::Strict` for sensitive operations, `SameSite::Lax` for cross-site navigation needs
+//! - **Cookie naming**: Use descriptive, non-sensitive cookie names (consider `__Host-` prefix for enhanced security)
+//!
+//! ### JWT Security
+//! - **Appropriate expiration**: Set reasonable JWT expiration times based on your security requirements
+//! - **Persistent signing keys**: Use stable, high-entropy JWT signing keys (≥32 bytes) in production - avoid the random default
+//! - **Key rotation**: Implement periodic key rotation strategies for enhanced security
+//!
+//! ### Permission System
+//! - **Compile-time validation**: Use `validate_permissions!` macro to detect permission collisions at build time
+//! - **Runtime validation**: Implement `PermissionCollisionChecker` for dynamic permission sets from config/database
+//! - **Principle of least privilege**: Grant minimal necessary permissions and use specific role/group combinations
+//!
+//! ### General Security
+//! - **Rate limiting**: Implement rate limiting on authentication endpoints to prevent brute force attacks (see `examples/rate-limiting` for implementation)
+//! - **Input validation**: Validate and limit input sizes (usernames, passwords) to prevent resource exhaustion
+//! - **Monitoring**: Log authentication events and monitor for suspicious patterns
 //!
 //! ## JWT Key Management
 //!
@@ -229,61 +252,56 @@ mod ports;
 pub mod prelude {
     pub use crate::auth::{AccessPolicy, Account, Credentials, Group, Role};
     pub use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
-    /// Authentication middleware and builders.
+    // Authentication middleware and builders.
     pub use crate::infrastructure::web::gate::{CookieGate, Gate};
 }
 
-// Essential authentication types
+/// Authentication types, policies, and account management.
 pub mod auth {
-    //! Authentication types, policies, and account management.
 
     pub use crate::domain::entities::{Account, Credentials, Group, Role};
     pub use crate::domain::services::access_policy::AccessPolicy;
     pub use crate::domain::values::{PermissionId, Permissions};
 
-    /// Account creation and management.
+    // Account creation and management.
     pub use crate::application::accounts::{AccountDeleteService, AccountInsertService};
 
-    /// Login and logout route handlers.
+    // Login and logout route handlers.
     pub use crate::infrastructure::web::route_handlers::{login, logout};
 
-    /// Permission validation utilities.
+    // Permission validation utilities.
     pub use crate::domain::services::permissions::validate_permission_uniqueness;
 }
 
-/// JWT token handling.
+/// JWT creation, validation, and claims management.
 pub mod jwt {
-    //! JWT creation, validation, and claims management.
 
     pub use crate::infrastructure::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
 
-    /// Advanced JWT configuration.
+    /// Low-level JWT options and validation.
     pub mod advanced {
-        //! Low-level JWT options and validation.
         pub use crate::infrastructure::jwt::{
             JsonWebTokenOptions, JwtValidationResult, JwtValidationService,
         };
     }
 }
 
-/// HTTP utilities.
+/// Cookie handling and HTTP types.
 pub mod http {
-    //! Cookie handling and HTTP types.
 
     pub use axum_extra::extract::cookie::CookieJar;
     pub use cookie::{self, SameSite};
 
-    /// Cookie duration type.
+    // Cookie duration type.
     pub use cookie::time::Duration;
 }
 
-/// Storage implementations.
+/// Account and secret storage backends.
+///
+/// - `memory` - In-memory storage for development
+/// - `surrealdb` - SurrealDB backend (requires feature)
+/// - `seaorm` - SeaORM backend (requires feature)
 pub mod storage {
-    //! Account and secret storage backends.
-    //!
-    //! - `memory` - In-memory storage for development
-    //! - `surrealdb` - SurrealDB backend (requires feature)
-    //! - `seaorm` - SeaORM backend (requires feature)
 
     pub use crate::infrastructure::repositories::memory::{
         MemoryAccountRepository, MemorySecretRepository,
@@ -308,39 +326,35 @@ pub mod storage {
 }
 
 /// Advanced APIs for custom implementations.
+/// Low-level traits, services, and utilities for power users.
 pub mod advanced {
-    //! Low-level traits, services, and utilities for power users.
 
-    /// Traits for custom storage and authentication.
+    // Traits for custom storage and authentication.
     pub use crate::domain::traits::{AccessHierarchy, AsPermissionName};
     pub use crate::ports::Codec;
     pub use crate::ports::auth::{CredentialsVerifier, HashingService};
     pub use crate::ports::repositories::{AccountRepository, SecretRepository};
 
-    /// Authentication and authorization services.
+    // Authentication and authorization services.
     pub use crate::application::auth::{LoginResult, LoginService, LogoutService};
     pub use crate::domain::services::authorization::AuthorizationService;
     pub use crate::domain::services::permissions::validation::{
         ApplicationValidator, PermissionCollisionChecker, ValidationReport,
     };
 
-    /// Hashing and cryptographic utilities.
+    // Hashing and cryptographic utilities.
     pub use crate::infrastructure::hashing::{Argon2Hasher, HashedValue};
 
-    /// Domain values and utility functions.
     pub use crate::domain::values::{AccessScope, Secret, VerificationResult, const_sha256_u64};
 }
 
-/// Common utilities.
+/// Common utilities, helper types and external crate re-exports.
 pub mod utils {
-    //! Helper types and external crate re-exports.
 
     pub use uuid::Uuid;
 
-    /// External crate re-exports.
+    /// External crate re-exports, convenient access to commonly used external types.
     pub mod external {
-        //! Convenient access to commonly used external types.
-
         pub use jsonwebtoken;
         pub use serde_json;
     }
