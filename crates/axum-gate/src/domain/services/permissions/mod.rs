@@ -121,57 +121,6 @@
 
 pub mod validation;
 
-use crate::domain::values::PermissionId;
-use crate::errors::{DomainError, Error, Result};
-
-use std::collections::{HashMap, HashSet};
-
-/// Validates that a set of permission names don't have hash collisions.
-///
-/// This function should be used in tests or during development to ensure
-/// your permission names don't accidentally hash to the same value.
-///
-/// # Examples
-///
-/// ```
-/// use axum_gate::auth::validate_permission_uniqueness;
-///
-/// // This should pass
-/// validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();
-///
-/// // This would return an error if there were collisions (very unlikely with SHA-256)
-/// ```
-pub fn validate_permission_uniqueness(permissions: &[&str]) -> Result<()> {
-    // With 64-bit identifiers the probability of collision is negligible; we still
-    // keep this to catch *duplicate names* (same normalized string) and provide
-    // early detection if an extremely unlikely hash collision ever occurred.
-    let mut seen_ids: HashMap<u64, &str> = HashMap::new();
-    let mut seen_names = HashSet::new();
-
-    for &permission in permissions {
-        // Check for duplicate names
-        if !seen_names.insert(permission) {
-            return Err(Error::Domain(DomainError::permission_collision(
-                0,
-                vec![permission.to_string()],
-            )));
-        }
-
-        // Check for hash collisions (expected to be practically impossible with 64-bit IDs)
-        let id = PermissionId::from(permission);
-        let raw = id.as_u64();
-        if let Some(existing_permission) = seen_ids.get(&raw) {
-            return Err(Error::Domain(DomainError::permission_collision(
-                raw,
-                vec![existing_permission.to_string(), permission.to_string()],
-            )));
-        }
-        seen_ids.insert(raw, permission);
-    }
-
-    Ok(())
-}
-
 /// Macro for compile-time permission validation.
 ///
 /// This macro validates that the provided permission strings don't have hash collisions
@@ -203,9 +152,14 @@ macro_rules! validate_permissions {
 
             #[test]
             fn validate_permission_uniqueness() {
-                let permissions = &[$($permission),*];
-                $crate::auth::validate_permission_uniqueness(permissions)
-                    .expect("Permission validation failed: hash collision detected");
+                let permissions: Vec<String> = vec![$($permission.to_string()),*];
+                let mut checker = $crate::advanced::PermissionCollisionChecker::new(permissions);
+                let report = checker.validate()
+                    .expect("Permission validation failed: validation process error");
+
+                if !report.is_valid() {
+                    panic!("Permission validation failed: {}", report.summary());
+                }
             }
 
             // Also validate at compile time by computing all hashes
@@ -225,7 +179,6 @@ macro_rules! validate_permissions {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn permissions_basic() {
@@ -260,17 +213,6 @@ mod tests {
 
         assert!(permissions.has_any(["read:file", "delete:file"]));
         assert!(!permissions.has_any(["delete:file", "admin:system"]));
-    }
-
-    #[test]
-    fn validate_permission_uniqueness_success() {
-        validate_permission_uniqueness(&["read:file", "write:file", "delete:file"]).unwrap();
-    }
-
-    #[test]
-    fn validate_permission_uniqueness_duplicate_name() {
-        let result = validate_permission_uniqueness(&["read:file", "read:file"]);
-        assert!(result.is_err());
     }
 
     // Test the macro

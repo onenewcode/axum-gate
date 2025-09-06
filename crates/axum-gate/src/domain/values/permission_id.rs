@@ -1,18 +1,3 @@
-//! Permission ID value object for deterministic permission identification (64-bit).
-//!
-//! This module upgrades the previous 32-bit truncated hash approach to 64-bit identifiers
-//! (first 8 bytes of SHA-256) to make accidental or malicious collisions practically
-//! infeasible in realistic deployments. These 64-bit IDs integrate with `RoaringTreemap`
-//! (used by the `Permissions` container after migration) for efficient storage and fast
-//! membership checks, while preserving deterministic mapping from permission names.
-//!
-//! Design goals:
-//! - Deterministic: Same name => same 64-bit ID across nodes.
-//! - Low collision probability: 64-bit space drastically lowers risk vs 32-bit.
-//! - No synchronization: Hash derivation removes need for distributed coordination.
-//! - Forward compatible: If a stronger scheme is ever needed, a version discriminator
-//!   can be added to claims / serialized forms.
-
 use crate::domain::traits::AsPermissionName;
 
 use const_crypto::sha2::Sha256;
@@ -20,11 +5,9 @@ use serde::{Deserialize, Serialize};
 
 /// A deterministic 64-bit permission identifier computed from normalized permission names.
 ///
-/// Normalization strategy (current):
+/// Normalization strategy:
 /// - Trim ASCII whitespace
 /// - Convert to lowercase
-///
-/// (If you later enforce a stricter character policy, update `normalize_permission`.)
 ///
 /// # Examples
 ///

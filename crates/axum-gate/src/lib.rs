@@ -268,9 +268,6 @@ pub mod auth {
 
     // Login and logout route handlers.
     pub use crate::infrastructure::web::route_handlers::{login, logout};
-
-    // Permission validation utilities.
-    pub use crate::domain::services::permissions::validate_permission_uniqueness;
 }
 
 /// JWT creation, validation, and claims management.
