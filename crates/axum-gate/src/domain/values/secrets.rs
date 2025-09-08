@@ -1,8 +1,9 @@
 //! Secrets hashing and verification models.
 use crate::domain::values::verification::VerificationResult;
-use crate::errors::{Error, HashingOperation, PortError, Result};
+use crate::errors::{Error, PortError, Result};
 use crate::infrastructure::hashing::HashedValue;
 use crate::ports::auth::HashingService;
+use crate::ports::errors::HashingOperation;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

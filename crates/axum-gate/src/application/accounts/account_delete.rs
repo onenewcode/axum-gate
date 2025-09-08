@@ -1,6 +1,7 @@
+use crate::application::errors::AccountOperation;
 use crate::domain::entities::Account;
 use crate::domain::traits::AccessHierarchy;
-use crate::errors::{AccountOperation, ApplicationError, Error};
+use crate::errors::{ApplicationError, Error};
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 
 use std::sync::Arc;

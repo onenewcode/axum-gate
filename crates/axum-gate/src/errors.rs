@@ -1,123 +1,51 @@
-//! Comprehensive error handling for the axum-gate hexagonal architecture.
+//! Unified error types exposed by this crate.
 //!
-//! This module provides layer-specific error types that respect architectural boundaries:
-//! - Domain layer: Pure business logic errors
-//! - Application layer: Use case orchestration errors
-//! - Infrastructure layer: External system integration errors
-//! - Port layer: Interface contract violations
+//! This module contains error types you mostly need when using this crate:
+//! - `Error`: root enum wrapping all layer-specific errors
+//! - `Result<T>`: convenience alias
+//! - Layer enums: `DomainError`, `ApplicationError`, `InfrastructureError`, `PortError`
 //!
-//! # Examples
+//! # When to Use Each Variant
+//! - `Domain` – Pure business rule / invariant violations (no external side effects)
+//! - `Application` – Orchestration or use-case flow failures (combining domain + ports)
+//! - `Infrastructure` – Failures talking to external systems (DB, JWT, network, etc.)
+//! - `Port` – Adapter / interface contract violations (repositories, codecs, hashing)
 //!
-//! ## Creating Domain Errors
-//!
+//! # Basic Example
 //! ```rust
-//! use axum_gate::errors::{DomainError, Error, PermissionCollision};
+//! use axum_gate::errors::{Error, DomainError, Result};
 //!
-//! // Permission collision error
-//! let collision = PermissionCollision {
-//!     id: 12345,
-//!     permissions: vec!["read:file".to_string(), "read:document".to_string()],
-//! };
-//! let domain_error = Error::Domain(DomainError::PermissionCollision {
-//!     collision_count: 2,
-//!     hash_id: 12345,
-//!     permissions: vec!["read:file".to_string(), "read:document".to_string()],
-//! });
+//! fn do_domain_check(flag: bool) -> Result<()> {
+//!     if !flag {
+//!         return Err(Error::Domain(
+//!             DomainError::permission_collision(42, vec!["read:alpha".into(), "read:beta".into()])
+//!         ));
+//!     }
+//!     Ok(())
+//! }
 //! ```
 //!
-//! ## Creating Application Errors
-//!
+//! # Matching
 //! ```rust
-//! use axum_gate::errors::{ApplicationError, AccountOperation, AuthenticationError, Error};
+//! use axum_gate::errors::{Error, DomainError, ApplicationError};
 //!
-//! // Account service error
-//! let service_error = Error::Application(ApplicationError::AccountService {
-//!     operation: AccountOperation::Create,
-//!     message: "Failed to create account".to_string(),
-//!     account_id: Some("user123".to_string()),
-//! });
-//!
-//! // Authentication error
-//! let auth_error = Error::Application(ApplicationError::Authentication {
-//!     auth_error: AuthenticationError::InvalidCredentials,
-//!     context: Some("Login attempt from IP 192.168.1.1".to_string()),
-//! });
-//! ```
-//!
-//! ## Creating Infrastructure Errors
-//!
-//! ```rust
-//! use axum_gate::errors::{InfrastructureError, DatabaseOperation, JwtOperation, Error};
-//!
-//! // Database error
-//! let db_error = Error::Infrastructure(InfrastructureError::Database {
-//!     operation: DatabaseOperation::Query,
-//!     message: "Connection timeout".to_string(),
-//!     table: Some("accounts".to_string()),
-//!     record_id: Some("user123".to_string()),
-//! });
-//!
-//! // JWT error
-//! let jwt_error = Error::Infrastructure(InfrastructureError::Jwt {
-//!     operation: JwtOperation::Decode,
-//!     message: "Invalid signature".to_string(),
-//!     token_preview: Some("eyJhbGciOiJIUzI1NiIs...".to_string()),
-//! });
-//! ```
-//!
-//! ## Creating Port Errors
-//!
-//! ```rust
-//! use axum_gate::errors::{PortError, RepositoryType, HashingOperation, Error};
-//!
-//! // Repository error
-//! let repo_error = Error::Port(PortError::Repository {
-//!     repository: RepositoryType::Account,
-//!     message: "Store operation failed".to_string(),
-//!     operation: Some("insert".to_string()),
-//! });
-//!
-//! // Hashing error
-//! let hash_error = Error::Port(PortError::Hashing {
-//!     operation: HashingOperation::Verify,
-//!     message: "Password verification failed".to_string(),
-//!     algorithm: Some("Argon2".to_string()),
-//! });
-//! ```
-//!
-//! ## Error Pattern Matching
-//!
-//! ```rust
-//! use axum_gate::errors::{Error, DomainError, ApplicationError, InfrastructureError, PortError};
-//!
-//! fn handle_error(error: Error) {
-//!     match error {
-//!         Error::Domain(DomainError::PermissionCollision { collision_count, .. }) => {
-//!             println!("Permission collision detected: {} conflicts", collision_count);
-//!         },
-//!         Error::Application(ApplicationError::Authentication { auth_error, .. }) => {
-//!             println!("Authentication failed: {}", auth_error);
-//!         },
-//!         Error::Infrastructure(InfrastructureError::Database { operation, message, .. }) => {
-//!             println!("Database {} failed: {}", operation, message);
-//!         },
-//!         Error::Port(PortError::Repository { repository, message, .. }) => {
-//!             println!("Repository {} error: {}", repository, message);
-//!         },
-//!         _ => {
-//!             println!("Other error: {}", error);
-//!         },
+//! fn classify(err: &Error) -> &'static str {
+//!     match err {
+//!         Error::Domain(DomainError::PermissionCollision { .. }) => "domain/collision",
+//!         Error::Application(ApplicationError::Authentication { .. }) => "auth",
+//!         Error::Infrastructure(_) => "infrastructure",
+//!         Error::Port(_) => "port",
 //!     }
 //! }
 //! ```
 
 use thiserror::Error;
 
-// Re-export error types from individual modules
-pub use crate::application::errors::{AccountOperation, ApplicationError, AuthenticationError};
-pub use crate::domain::errors::{DomainError, PermissionCollision};
-pub use crate::infrastructure::errors::{DatabaseOperation, InfrastructureError, JwtOperation};
-pub use crate::ports::errors::{CodecOperation, HashingOperation, PortError, RepositoryType};
+// Re-export only the primary error enums and auth-specific leaf errors needed by users.
+pub use crate::application::errors::{ApplicationError, AuthenticationError};
+pub use crate::domain::errors::DomainError;
+pub use crate::infrastructure::errors::InfrastructureError;
+pub use crate::ports::errors::PortError;
 
 /// Result type alias using our comprehensive Error type.
 ///
@@ -171,7 +99,7 @@ pub enum Error {
 impl From<surrealdb::Error> for Error {
     fn from(err: surrealdb::Error) -> Self {
         Error::Infrastructure(InfrastructureError::Database {
-            operation: DatabaseOperation::Query,
+            operation: crate::infrastructure::errors::DatabaseOperation::Query,
             message: format!("SurrealDB error: {}", err),
             table: None,
             record_id: None,
@@ -182,6 +110,10 @@ impl From<surrealdb::Error> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Import operation enums from their defining modules now that they are no longer re-exported.
+    use crate::application::errors::AccountOperation;
+    use crate::infrastructure::errors::{DatabaseOperation, JwtOperation};
+    use crate::ports::errors::{CodecOperation, HashingOperation, RepositoryType};
 
     #[test]
     fn domain_error_permission_collision() {

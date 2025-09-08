@@ -58,10 +58,11 @@
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
 use crate::domain::values::{Secret, VerificationResult};
-use crate::errors::{Error, PortError, RepositoryType, Result};
+use crate::errors::{Error, PortError, Result};
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::auth::HashingService;
+use crate::ports::errors::RepositoryType;
 use crate::ports::repositories::{AccountRepository, SecretRepository};
 
 use std::collections::HashMap;

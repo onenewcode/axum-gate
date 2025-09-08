@@ -25,15 +25,6 @@ pub enum DomainError {
     },
 }
 
-/// Permission collision information for domain errors
-#[derive(Debug, Clone)]
-pub struct PermissionCollision {
-    /// The 64-bit hash ID that has collisions
-    pub id: u64,
-    /// List of permission names that collide
-    pub permissions: Vec<String>,
-}
-
 impl DomainError {
     /// Create a permission collision error with collision details
     pub fn permission_collision(hash_id: u64, permissions: Vec<String>) -> Self {

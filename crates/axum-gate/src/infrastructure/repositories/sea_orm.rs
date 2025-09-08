@@ -10,7 +10,8 @@
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use crate::domain::values::{Secret, VerificationResult};
-use crate::errors::{DatabaseOperation, Error, InfrastructureError, Result};
+use crate::errors::{Error, InfrastructureError, Result};
+use crate::infrastructure::errors::DatabaseOperation;
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::infrastructure::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,

@@ -1,6 +1,7 @@
 //! JWT infrastructure components.
 //!
-use crate::errors::{Error, InfrastructureError, JwtOperation, Result};
+use crate::errors::{Error, InfrastructureError, Result};
+use crate::infrastructure::errors::JwtOperation;
 use crate::ports::Codec;
 use crate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 

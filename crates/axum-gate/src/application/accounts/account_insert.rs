@@ -1,7 +1,8 @@
 use crate::advanced::{AccessHierarchy, AccountRepository, Argon2Hasher, Secret, SecretRepository};
+use crate::application::errors::AccountOperation;
 use crate::domain::entities::Account;
 use crate::domain::values::Permissions;
-use crate::errors::{AccountOperation, ApplicationError, Error, Result};
+use crate::errors::{ApplicationError, Error, Result};
 
 use std::sync::Arc;
 
