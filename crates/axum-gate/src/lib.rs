@@ -28,8 +28,16 @@
 //!     let account_repo = Arc::new(storage::MemoryAccountRepository::<Role, Group>::default());
 //!     let secret_repo = Arc::new(storage::MemorySecretRepository::default());
 //!
-//!     // Create JWT codec
-//!     let jwt_codec = Arc::new(jwt::JsonWebToken::<jwt::JwtClaims<Account<Role, Group>>>::default());
+//!     // Create JWT codec with persistent key for production
+//!     use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey};
+//!     let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-key".to_string());
+//!     let options = jwt::JsonWebTokenOptions {
+//!         enc_key: EncodingKey::from_secret(secret.as_bytes()),
+//!         dec_key: DecodingKey::from_secret(secret.as_bytes()),
+//!         header: None,
+//!         validation: None,
+//!     };
+//!     let jwt_codec = Arc::new(jwt::JsonWebToken::<jwt::JwtClaims<Account<Role, Group>>>::new_with_options(options));
 //!
 //!     // Protect routes with role-based access
 //!     let app = Router::<()>::new()
@@ -273,14 +281,9 @@ pub mod auth {
 /// JWT creation, validation, and claims management.
 pub mod jwt {
 
-    pub use crate::infrastructure::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-
-    /// Low-level JWT options and validation.
-    pub mod advanced {
-        pub use crate::infrastructure::jwt::{
-            JsonWebTokenOptions, JwtValidationResult, JwtValidationService,
-        };
-    }
+    pub use crate::infrastructure::jwt::{
+        JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims,
+    };
 }
 
 /// Cookie handling and HTTP types.
@@ -340,6 +343,9 @@ pub mod advanced {
 
     // Hashing and cryptographic utilities.
     pub use crate::infrastructure::hashing::{Argon2Hasher, HashedValue};
+
+    // Low-level JWT validation (internal use).
+    pub use crate::infrastructure::jwt::{JwtValidationResult, JwtValidationService};
 
     pub use crate::domain::values::{AccessScope, Secret, VerificationResult, const_sha256_u64};
 }

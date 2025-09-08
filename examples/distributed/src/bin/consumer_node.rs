@@ -1,7 +1,7 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
 use axum_gate::auth::PermissionId;
-use axum_gate::jwt::{JsonWebToken, JwtClaims, advanced::JsonWebTokenOptions};
+use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
 use axum_gate::prelude::{AccessPolicy, Account, Gate, Group, Role};
 use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 

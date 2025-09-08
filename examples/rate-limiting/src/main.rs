@@ -20,7 +20,7 @@ use axum::{
 use axum_gate::{
     auth::{Group, Role},
     http::CookieJar,
-    jwt::{JsonWebToken, JwtClaims, advanced::JsonWebTokenOptions},
+    jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
     prelude::{AccessPolicy, Account, Gate},
     utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
 };

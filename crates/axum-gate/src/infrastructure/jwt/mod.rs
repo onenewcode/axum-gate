@@ -166,7 +166,7 @@ impl JsonWebTokenOptions {
 /// ```rust
 /// use std::sync::Arc;
 /// use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-/// use axum_gate::jwt::advanced::JsonWebTokenOptions;
+/// use axum_gate::jwt::JsonWebTokenOptions;
 /// use axum_gate::auth::{Account, Role, Group};
 /// use jsonwebtoken::{EncodingKey, DecodingKey};
 ///

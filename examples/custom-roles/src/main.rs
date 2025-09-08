@@ -1,6 +1,6 @@
 use axum_gate::advanced::AccessHierarchy;
 use axum_gate::auth::AccountInsertService;
-use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, advanced::JsonWebTokenOptions};
+use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
 use axum_gate::prelude::{AccessPolicy, Account, Credentials, Gate};
 use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
 use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
