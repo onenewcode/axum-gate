@@ -114,10 +114,10 @@
 use thiserror::Error;
 
 // Re-export error types from individual modules
-pub use crate::application::error::{AccountOperation, ApplicationError, AuthenticationError};
-pub use crate::domain::error::{DomainError, PermissionCollision};
-pub use crate::infrastructure::error::{DatabaseOperation, InfrastructureError, JwtOperation};
-pub use crate::ports::error::{CodecOperation, HashingOperation, PortError, RepositoryType};
+pub use crate::application::errors::{AccountOperation, ApplicationError, AuthenticationError};
+pub use crate::domain::errors::{DomainError, PermissionCollision};
+pub use crate::infrastructure::errors::{DatabaseOperation, InfrastructureError, JwtOperation};
+pub use crate::ports::errors::{CodecOperation, HashingOperation, PortError, RepositoryType};
 
 /// Result type alias using our comprehensive Error type.
 ///
