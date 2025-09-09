@@ -1,23 +1,27 @@
-//! Credentials model to be used with [sea-orm](sea_orm).
-
+//! Credentials persistence model (SeaORM).
+//!
+//! Internal table storing the Argon2 hashed secret for an account.
+//! Most users interact through `SeaOrmRepository`; import this only
+//! for custom migrations or direct queries.
+//! See also: [`SeaOrmRepository`](crate::storage::seaorm::SeaOrmRepository) for usage and constant‑time verification logic.
 use crate::domain::values::Secret;
 
 use sea_orm::{ActiveValue, entity::prelude::*};
 
-/// Credentials model for the use with [sea-orm].
+/// Credentials persistence entity (stores Argon2 hash).
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "axum-gate-credentials")]
 pub struct Model {
-    /// Primary key for storing in a database table.
+    /// Internal surrogate primary key.
     #[sea_orm(primary_key)]
     pub id: i32,
-    /// The unique identifier, eg username.
+    /// Owning account UUID.
     pub account_id: Uuid,
-    /// The actual secret.
+    /// Argon2 hashed secret (never plaintext).
     pub secret: String,
 }
 
-/// Relation definition for [Credentials](Model).
+/// No declared relations.
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 

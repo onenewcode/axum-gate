@@ -1,4 +1,4 @@
-//! Support for SQL database repository through [sea-orm](sea_orm).
+//! SeaORM repository integration providing account & credential persistence with constant‑time verification.
 //!
 //! This repository includes constant-time credential verification to
 //! mitigate user enumeration via timing differences. A dummy Argon2
@@ -26,9 +26,54 @@ use sea_orm::{
 use serde::{Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 
+/// SeaORM persistence entities (database models) used by `SeaOrmRepository`.
+///
+/// These are thin schemas mapping relational rows to structures convertible
+/// to and from the domain layer (`Account`, `Secret`).
 pub mod models;
 
-/// Repository implementation for [sea-orm](sea_orm).
+/// Repository implementation for [SeaORM](sea_orm).
+///
+/// # Responsibilities
+/// * Translate between domain `Account` / `Secret` and SeaORM models
+/// * Provide CRUD operations required by higher‑level services
+/// * Perform constant‑time credential verification
+///
+/// # Timing Side‑Channel Mitigation
+/// A precomputed dummy Argon2 hash (same parameters as production hashes)
+/// is always verified when an account's secret is missing. Existence and
+/// hash‑match results are combined using bitwise operations on `subtle::Choice`
+/// to avoid branching that could leak information.
+///
+/// # Concurrency
+/// `SeaOrmRepository` is cheaply cloneable (internally holds a `DatabaseConnection`).
+/// Clones share the same underlying pool and are `Send + Sync`.
+///
+/// # Error Semantics
+/// Each DB interaction maps the concrete SeaORM / driver error into an
+/// `InfrastructureError::Database` variant enriched with: operation, table,
+/// and record identifier (when available).
+///
+/// # Usage
+/// ```ignore
+/// use axum_gate::storage::seaorm::SeaOrmRepository;
+/// use sea_orm::Database;
+/// # #[tokio::main] async fn main() -> anyhow::Result<()> {
+/// let db = Database::connect("sqlite::memory:").await?;
+/// let repo = SeaOrmRepository::new(&db);
+/// # Ok(()) }
+/// ```
+///
+/// # Extensibility
+/// * To add new persisted aggregates: create a new model module, implement
+///   conversions, and extend the repository or introduce a new trait.
+/// * For multi‑tenant separation consider separate schemas / databases at
+///   the connection level; this struct does not enforce tenant isolation.
+///
+/// # Security Considerations
+/// * Still pair with rate limiting & structured logging
+/// * Keep Argon2 parameters strong and consistent
+/// * Secrets are assumed already hashed (insertion path uses hashed values)
 pub struct SeaOrmRepository {
     db: DatabaseConnection,
     /// Precomputed dummy Argon2 hash used for nonexistent accounts to keep

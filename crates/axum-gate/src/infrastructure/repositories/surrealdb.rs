@@ -1,11 +1,4 @@
-//! Repository implementations that use surrealdb as backend.
-//!
-//! This module provides repository implementations backed by SurrealDB.
-//! It includes constant‑time credential verification logic that mitigates
-//! timing side channels (user enumeration) by always performing an Argon2
-//! verification – even when the user/secret does not exist – using a
-//! precomputed dummy hash whose parameters match the build's active
-//! Argon2 configuration (via `Argon2Hasher::default()`).
+//! SurrealDB-backed repositories for accounts and secrets with constant-time credential verification.
 
 use super::TableNames;
 use crate::domain::entities::{Account, Credentials};
@@ -24,7 +17,10 @@ use serde::de::DeserializeOwned;
 use surrealdb::{Connection, RecordId, RecordIdKey, Surreal};
 use uuid::Uuid;
 
-/// Configurations to use with the [surrealdb] database.
+/// Scope configuration (namespace, database, table names) used by `SurrealDbRepository`.
+///
+/// Most users can rely on `DatabaseScope::default()`. Override fields only if you
+/// need custom namespace / database names or different table naming.
 #[derive(Clone, Debug)]
 pub struct DatabaseScope {
     /// The table names of the database.
@@ -45,13 +41,10 @@ impl Default for DatabaseScope {
     }
 }
 
-/// A repository that uses [surrealdb] as backend.
+/// SurrealDB-backed repository offering CRUD for accounts & secrets plus constant-time
+/// credential verification (uses a precomputed dummy Argon2 hash when a secret is absent).
 ///
-/// Constant‑time credential verification notes:
-/// - A dummy Argon2 hash is precomputed once (construction) using the same
-///   Argon2 preset as normal secrets (build‑mode dependent).
-/// - Nonexistent user credential checks verify against this dummy hash so the
-///   timing is aligned with real user verification.
+/// Use `SurrealDbRepository::new(db, DatabaseScope::default())` for standard setups.
 #[derive(Clone)]
 pub struct SurrealDbRepository<S>
 where

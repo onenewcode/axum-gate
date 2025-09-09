@@ -1,4 +1,9 @@
-//! Passport model to be used with [sea-orm](sea_orm).
+//! Account persistence model (SeaORM).
+//!
+//! Internal database representation of a domain `Account<R, G>` storing user id,
+//! groups and roles as comma separated strings. Most users only need the repository
+//! API; this model is exposed for migrations or direct queries.
+//! See also: [`credentials`](crate::storage::seaorm::models::credentials) for secret storage.
 
 use crate::domain::entities::Account;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
@@ -6,24 +11,24 @@ use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
 use sea_orm::ActiveValue;
 use sea_orm::entity::prelude::*;
 
-/// Basic passport model for the use with [sea-orm].
+/// SeaORM entity for an account.
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "axum-gate-accounts")]
 pub struct Model {
-    /// Primary key for storing in a database table.
+    /// Surrogate primary key (auto‑increment). Not exposed at domain level.
     #[sea_orm(primary_key)]
     pub id: i32,
-    /// The unique account id.
+    /// Stable business identifier for the account (UUID v7 recommended).
     pub account_id: Uuid,
-    /// The user id, eg an email address or a username.
+    /// External user identifier (e.g. email or username). Should be unique + indexed.
     pub user_id: String,
-    /// The groups this passport belongs to.
+    /// Comma‑separated list of group identifiers (serialization of `Vec<G>`).
     pub groups: String,
-    /// The roles this passport has.
+    /// Comma‑separated list of role identifiers (serialization of `Vec<R>`).
     pub roles: String,
 }
 
-/// Relation definition for an [Account](Model).
+/// Relation definition placeholder (no outbound relations defined for this model).
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 
