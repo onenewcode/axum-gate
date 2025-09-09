@@ -32,7 +32,9 @@
 //! fn classify(err: &Error) -> &'static str {
 //!     match err {
 //!         Error::Domain(DomainError::PermissionCollision { .. }) => "domain/collision",
+//!         Error::Domain(_) => "domain",
 //!         Error::Application(ApplicationError::Authentication { .. }) => "auth",
+//!         Error::Application(_) => "application",
 //!         Error::Infrastructure(_) => "infrastructure",
 //!         Error::Port(_) => "port",
 //!     }
@@ -75,7 +77,6 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// architectural layers, providing a unified error handling interface while
 /// maintaining clear separation of concerns.
 #[derive(Debug, Error)]
-#[non_exhaustive]
 pub enum Error {
     /// Domain layer business logic errors
     #[error(transparent)]
