@@ -314,7 +314,7 @@ pub mod http {
 /// ```
 ///
 /// SurrealDB (feature `storage-surrealdb`):
-/// ```rust
+/// ```rust,no_run
 /// # #[cfg(feature="storage-surrealdb")]
 /// # {
 /// use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
@@ -330,7 +330,7 @@ pub mod http {
 /// ```
 ///
 /// SeaORM (feature `storage-seaorm`):
-/// ```rust
+/// ```rust,no_run
 /// # #[cfg(feature="storage-seaorm")]
 /// # {
 /// use axum_gate::storage::seaorm::{SeaOrmRepository, models};
