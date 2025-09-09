@@ -212,14 +212,28 @@ cargo run --example surrealdb --features storage-surrealdb
 
 ## Versioning & Stability
 
-Semantic Versioning:
-- Patch: bug fixes & internal improvements (no API changes)
-- Minor: backward-compatible additions & performance work
-- Major: breaking changes (accompanied by migration notes)
+### Semantic Versioning
+- **Patch (1.0.x)**: bug fixes & internal improvements (no API changes)
+- **Minor (1.x.0)**: backward-compatible additions & performance work
+- **Major (x.0.0)**: breaking changes (accompanied by migration notes)
 
-MSRV: raised only in minor or major releases with justification
-Stability: public APIs considered stable; internal modules may change
-Security: coordinated disclosure details in SECURITY.md
+### Minimum Supported Rust Version (MSRV)
+**Current MSRV**: Rust 1.75.0 (matches axum-core)
+
+**MSRV Policy**:
+- MSRV will only be raised in **minor** or **major** releases, never in patch releases
+- MSRV increases require clear justification (new language features, dependency requirements, security improvements)
+- When MSRV is raised, the changelog will document the reasons and new minimum version
+- We aim to support at least the last 6 months of Rust releases when practical
+- MSRV is tested in CI to prevent accidental breakage
+
+**Compatibility Promise**: 
+- Public APIs are considered stable within major versions
+- Internal modules (`crate::domain`, `crate::infrastructure`, etc.) may change in minor releases
+- Breaking changes will be clearly documented with migration guides
+
+### Security
+Coordinated disclosure details available in [SECURITY.md](SECURITY.md)
 
 ## Contributing
 
