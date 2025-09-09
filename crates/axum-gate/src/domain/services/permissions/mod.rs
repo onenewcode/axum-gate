@@ -161,18 +161,6 @@ macro_rules! validate_permissions {
                     panic!("Permission validation failed: {}", report.summary());
                 }
             }
-
-            // Also validate at compile time by computing all hashes
-            #[allow(dead_code)]
-            const fn __validate_compile_time() {
-                $(
-                    let _id = $crate::advanced::const_sha256_u64($permission);
-                )*
-            }
-
-            // Force compile-time evaluation
-            #[allow(dead_code)]
-            const _: () = __validate_compile_time();
         }
     };
 }
