@@ -35,42 +35,6 @@
 //! If you require streaming (very large claims / payloads), introduce a separate
 //! streaming codec trait rather than expanding this one.
 //!
-//! # Example (Pseudo Custom Codec)
-//! ```rust,no_run
-//! use axum_gate::advanced::Codec;
-//! use serde::{Serialize, Deserialize};
-//!
-//! #[derive(Clone)]
-//! struct MyCodec;
-//!
-//! #[derive(Serialize, Deserialize, Clone)]
-//! struct MyPayload {
-//!     value: String,
-//! }
-//!
-//! impl Codec for MyCodec {
-//!     type Payload = MyPayload;
-//!
-//!     fn encode(&self, payload: &Self::Payload) -> axum_gate::errors::Result<Vec<u8>> {
-//!         let mut data = bincode::serialize(payload)
-//!             .map_err(|e| axum_gate::errors::Error::Infrastructure(
-//!                 axum_gate::errors::InfrastructureError::Other(format!("serialize: {e}"))
-//!             ))?;
-//!         // Optionally: encrypt / sign here
-//!         Ok(std::mem::take(&mut data))
-//!     }
-//!
-//!     fn decode(&self, encoded: &[u8]) -> axum_gate::errors::Result<Self::Payload> {
-//!         // Optionally: verify / decrypt first
-//!         let v = bincode::deserialize(encoded)
-//!             .map_err(|e| axum_gate::errors::Error::Infrastructure(
-//!                 axum_gate::errors::InfrastructureError::Other(format!("deserialize: {e}"))
-//!             ))?;
-//!         Ok(v)
-//!     }
-//! }
-//! ```
-//!
 //! # Backward Compatibility
 //! Keep custom codecs liberal in what they accept (where safe) and strict in what they
 //! produce to ease migrations (e.g. version tagging in headers / envelopes).

@@ -40,7 +40,7 @@
 //! Then you likely just need `prelude`, `auth`, `jwt`, `storage`, and `http`.
 //!
 //! # Example: Custom Login Endpoint
-//! ```rust,no_run
+//! ```rust
 //! use std::sync::Arc;
 //! use axum_gate::advanced::{LoginService, CredentialsVerifier, AccountRepository, Codec};
 //! use axum_gate::auth::{Credentials, Account, Role, Group};

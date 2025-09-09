@@ -31,29 +31,6 @@ use std::future::Future;
 /// connectivity issues, etc.). Logical “bad password” or “unknown ID” cases MUST map
 /// to `Ok(VerificationResult::Unauthorized)`.
 ///
-/// # Example
-/// ```ignore
-/// struct MyVerifier { repo: Arc<MySecretRepo> }
-///
-/// impl CredentialsVerifier<uuid::Uuid> for MyVerifier {
-///     fn verify_credentials(
-///         &self,
-///         credentials: Credentials<uuid::Uuid>,
-///     ) -> impl Future<Output = crate::errors::Result<VerificationResult>> {
-///         let repo = self.repo.clone();
-///         async move {
-///             if let Some(stored) = repo.load_secret(&credentials.id).await? {
-///                 // Perform constant‑time hash verification (Argon2, etc.)
-///                 stored.verify(&credentials.secret, repo.hasher()) // returns Result<VerificationResult>
-///             } else {
-///                 // Optionally run dummy verification here if not already handled upstream
-///                 Ok(VerificationResult::Unauthorized)
-///             }
-///         }
-///     }
-/// }
-/// ```
-///
 /// # Type Parameter
 /// * `Id` - The identifier type used to look up stored credentials (e.g. `Uuid`)
 pub trait CredentialsVerifier<Id> {

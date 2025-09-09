@@ -24,7 +24,7 @@ use uuid::Uuid;
 /// - [`LoginResult::InternalError`] – an infrastructural or unexpected error (e.g. repository failure, hashing/JWT encoding issue)
 ///
 /// Typical usage:
-/// ```rust,no_run
+/// ```rust
 /// # use axum_gate::advanced::LoginResult;
 /// # fn handle(result: LoginResult) -> Result<String, String> {
 /// match result {
@@ -112,7 +112,7 @@ where
     /// - [`LoginResult::InternalError`] for system / infrastructural failures (logging recommended).
     ///
     /// You typically pair this with a cookie builder or response constructor:
-    /// ```rust,no_run
+    /// ```rust
     /// # use std::sync::Arc;
     /// # use axum_gate::advanced::{LoginService, LoginResult, CredentialsVerifier, AccountRepository, Codec};
     /// # use axum_gate::auth::{Credentials, Account, Role, Group};

@@ -16,7 +16,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust,no_run
+//! ```rust
 //! use axum::{routing::get, Router};
 //! use axum_gate::prelude::*;
 //! use axum_gate::{storage, jwt};
@@ -152,31 +152,32 @@
 //! ```
 //!
 //! ### SurrealDB (Feature: `storage-surrealdb`)
-//! ```rust,no_run
-//! # #[cfg(feature = "storage-surrealdb")]
+//! ```rust
+//! # #[cfg(feature="storage-surrealdb")]
 //! # {
-//! use axum_gate::storage;
+//! use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
+//! use axum_gate::storage::TableNames;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!();
-//! # let scope = storage::surrealdb::DatabaseScope::default();
-//! let repo = Arc::new(storage::surrealdb::SurrealDbRepository::new(db, scope));
+//! # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!(); // In real code: surrealdb::Surreal::new(...).await
+//! # let scope = DatabaseScope::default();
+//! let repo = Arc::new(SurrealDbRepository::new(db, scope));
 //! # Ok(())
 //! # }
 //! # }
 //! ```
 //!
 //! ### SeaORM (Feature: `storage-seaorm`)
-//! ```rust,no_run
-//! # #[cfg(feature = "storage-seaorm")]
+//! ```rust
+//! # #[cfg(feature="storage-seaorm")]
 //! # {
-//! use axum_gate::storage;
+//! use axum_gate::storage::seaorm::{SeaOrmRepository, models};
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-//! # let db: sea_orm::DatabaseConnection = todo!();
-//! let repo = Arc::new(storage::seaorm::SeaOrmRepository::new(&db));
+//! # let db: sea_orm::DatabaseConnection = todo!(); // In real code: sea_orm::Database::connect(...).await
+//! let repo = Arc::new(SeaOrmRepository::new(&db));
 //! # Ok(())
 //! # }
 //! # }
@@ -313,12 +314,12 @@ pub mod http {
 /// ```
 ///
 /// SurrealDB (feature `storage-surrealdb`):
-/// ```rust,no_run
+/// ```rust
 /// # #[cfg(feature="storage-surrealdb")]
 /// # {
 /// use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
 /// use axum_gate::storage::TableNames;
-/// # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!();
+/// # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!(); // In real code: surrealdb::Surreal::new(...).await
 /// let scope = DatabaseScope {
 ///     table_names: TableNames::default(), // override if you want different table names
 ///     namespace: "axum-gate".into(),
@@ -329,11 +330,11 @@ pub mod http {
 /// ```
 ///
 /// SeaORM (feature `storage-seaorm`):
-/// ```rust,no_run
+/// ```rust
 /// # #[cfg(feature="storage-seaorm")]
 /// # {
 /// use axum_gate::storage::seaorm::{SeaOrmRepository, models};
-/// # let db: sea_orm::DatabaseConnection = todo!();
+/// # let db: sea_orm::DatabaseConnection = todo!(); // In real code: sea_orm::Database::connect(...).await
 /// // Use models::account::Entity & models::credentials::Entity in migrations
 /// let repo = SeaOrmRepository::new(&db);
 /// # }

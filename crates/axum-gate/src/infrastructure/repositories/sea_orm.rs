@@ -55,7 +55,7 @@ pub mod models;
 /// and record identifier (when available).
 ///
 /// # Usage
-/// ```ignore
+/// ```rust
 /// use axum_gate::storage::seaorm::SeaOrmRepository;
 /// use sea_orm::Database;
 /// # #[tokio::main] async fn main() -> anyhow::Result<()> {

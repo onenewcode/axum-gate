@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Credentials are typically used as input to authentication services:
 ///
-/// ```rust,no_run
+/// ```rust
 /// use axum_gate::auth::Credentials;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {

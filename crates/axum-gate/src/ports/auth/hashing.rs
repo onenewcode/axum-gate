@@ -23,22 +23,6 @@ use crate::infrastructure::hashing::HashedValue;
 /// the login flow will layer enumeration resistance. However, implementations
 /// SHOULD avoid obviously data‑dependent early exits where practical.
 ///
-/// # Example (custom wrapper)
-/// ```ignore
-/// struct MyHasher(argon2::Argon2);
-///
-/// impl axum_gate::advanced::HashingService for MyHasher {
-///     fn hash_value(&self, plain_value: &str) -> Result<HashedValue> {
-///         // produce PHC string ...
-///         todo!()
-///     }
-///     fn verify_value(&self, plain_value: &str, hashed_value: &str) -> Result<VerificationResult> {
-///         // parse + verify ...
-///         todo!()
-///     }
-/// }
-/// ```
-///
 /// See [`Argon2Hasher`](crate::advanced::Argon2Hasher) for a production‑ready implementation.
 pub trait HashingService {
     /// Hash a plaintext secret into an opaque, self‑contained representation.
