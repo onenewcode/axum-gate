@@ -13,6 +13,27 @@ use tracing::{debug, error};
 use uuid::Uuid;
 
 /// Result of a login attempt.
+///
+/// Returned by [`LoginService::authenticate`]. It deliberately *does not* reveal
+/// whether a username/account exists in the system to prevent user enumeration
+/// (both “unknown user” and “wrong password” map to [`LoginResult::InvalidCredentials`]).
+///
+/// Variants:
+/// - [`LoginResult::Success`] – authentication succeeded; contains the freshly issued JWT (already encoded as a UTF‑8 string)
+/// - [`LoginResult::InvalidCredentials`] – credentials were invalid (unknown user and wrong password are indistinguishable)
+/// - [`LoginResult::InternalError`] – an infrastructural or unexpected error (e.g. repository failure, hashing/JWT encoding issue)
+///
+/// Typical usage:
+/// ```rust,no_run
+/// # use axum_gate::advanced::LoginResult;
+/// # fn handle(result: LoginResult) -> Result<String, String> {
+/// match result {
+///     LoginResult::Success(jwt) => Ok(jwt),
+///     LoginResult::InvalidCredentials => Err("invalid credentials".into()),
+///     LoginResult::InternalError(e) => Err(format!("internal error: {e}")),
+/// }
+/// # }
+/// ```
 #[derive(Debug)]
 pub enum LoginResult {
     /// Login successful with JWT token
@@ -23,7 +44,22 @@ pub enum LoginResult {
     InternalError(String),
 }
 
-/// Application service for handling user login
+/// Application service for performing a secure login flow.
+///
+/// `LoginService` encapsulates the constant‑time, enumeration‑resistant
+/// authentication logic used by the built-in `login` route handler. Use it
+/// directly when:
+/// - You want a custom HTTP / gRPC / GraphQL login endpoint
+/// - You need to return additional metadata alongside the token
+/// - You are composing a larger authentication pipeline
+///
+/// Security characteristics:
+/// - Performs a repository lookup *and* a password verification every time
+/// - Uses a fixed dummy UUID when the user is not found or an error occurs before verification
+/// - Collapses “user not found” and “wrong password” into a single outcome
+///
+/// Returns a signed JWT (as `String`) on success; you are responsible for
+/// setting a cookie, header, or other transport mechanism.
 pub struct LoginService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -37,14 +73,70 @@ where
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
-    /// Create a new login service
+    /// Creates a new stateless `LoginService`.
+    ///
+    /// The service holds no internal state; you can create one per request
+    /// or reuse a single instance. All dependencies (repositories / codec)
+    /// are supplied to [`authenticate`](Self::authenticate).
     pub fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
         }
     }
 
-    /// Authenticate a user and generate a JWT token
+    /// Authenticates credentials and (on success) produces a signed JWT.
+    ///
+    /// Flow (all steps executed in constant time wrt account existence):
+    /// 1. Query account repository by user identifier.
+    /// 2. Always invoke credential verification using either the real account UUID
+    ///    or a fixed dummy UUID if the account was absent / lookup failed.
+    /// 3. Combine (user_exists AND password_valid) using constant‑time bit logic.
+    /// 4. On success: embed the full [`Account`] plus provided [`RegisteredClaims`]
+    ///    into [`JwtClaims`] and encode via the supplied [`Codec`].
+    ///
+    /// Enumeration resistance:
+    /// - A missing user still triggers a password verification on a dummy identifier.
+    /// - Result collapses to [`LoginResult::InvalidCredentials`] for both “user not found”
+    ///   and “incorrect password”.
+    ///
+    /// Parameters:
+    /// - `credentials`: User‑supplied identifier + secret (identifier is a `String` user ID/email).
+    /// - `registered_claims`: Pre-built JWT registered claims (issuer, exp, etc.).
+    /// - `credentials_verifier`: Implementation that verifies (UUID, password) pairs.
+    /// - `account_repository`: Provides account lookup by user ID.
+    /// - `codec`: JWT encoder/decoder implementing [`Codec`] whose payload is `JwtClaims<Account<..>>`.
+    ///
+    /// Returns:
+    /// - [`LoginResult::Success`] with the encoded JWT string.
+    /// - [`LoginResult::InvalidCredentials`] for any auth failure that should not leak detail.
+    /// - [`LoginResult::InternalError`] for system / infrastructural failures (logging recommended).
+    ///
+    /// You typically pair this with a cookie builder or response constructor:
+    /// ```rust,no_run
+    /// # use std::sync::Arc;
+    /// # use axum_gate::advanced::{LoginService, LoginResult, CredentialsVerifier, AccountRepository, Codec};
+    /// # use axum_gate::auth::{Credentials, Account, Role, Group};
+    /// # use axum_gate::jwt::{RegisteredClaims, JwtClaims, JsonWebToken};
+    /// async fn perform_login<CV, AR, C>(
+    ///     creds: Credentials<String>,
+    ///     cv: Arc<CV>,
+    ///     repo: Arc<AR>,
+    ///     codec: Arc<C>,
+    /// ) -> Result<String, String>
+    /// where
+    ///     CV: CredentialsVerifier<uuid::Uuid>,
+    ///     AR: AccountRepository<Role, Group>,
+    ///     C: Codec<Payload = JwtClaims<Account<Role, Group>>>,
+    /// {
+    ///     let registered = RegisteredClaims::new("example-app", chrono::Utc::now().timestamp() as u64 + 3600);
+    ///     let service = LoginService::<Role, Group>::new();
+    ///     match service.authenticate(creds, registered, cv, repo, codec).await {
+    ///         LoginResult::Success(token) => Ok(token),
+    ///         LoginResult::InvalidCredentials => Err("invalid credentials".into()),
+    ///         LoginResult::InternalError(e) => Err(format!("internal error: {e}")),
+    ///     }
+    /// }
+    /// ```
     pub async fn authenticate<CredVeri, AccRepo, C>(
         &self,
         credentials: Credentials<String>,
