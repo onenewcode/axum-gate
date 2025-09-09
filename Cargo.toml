@@ -10,6 +10,7 @@ members = [
     "examples/surrealdb",
 ]
 resolver = "3"
+rust-version = "1.89"
 
 [workspace.package]
 version = "1.0.0"
