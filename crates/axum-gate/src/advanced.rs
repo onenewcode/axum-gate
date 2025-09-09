@@ -39,12 +39,6 @@
 //!
 //! Then you likely just need `prelude`, `auth`, `jwt`, `storage`, and `http`.
 //!
-//! # Stability Notice
-//! These exports are lower-level and may evolve more rapidly. Previously exported internals
-//! like `AccessScope` and raw hashing helpers (e.g. internal hashing constants) are intentionally
-//! not re-exported to prevent accidental coupling to implementation details. Open an issue if you
-//! have a legitimate use case for something removed here.
-//!
 //! # Example: Custom Login Endpoint
 //! ```rust,no_run
 //! use std::sync::Arc;
