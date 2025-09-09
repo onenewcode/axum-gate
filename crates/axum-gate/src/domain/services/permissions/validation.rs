@@ -240,19 +240,105 @@ impl PermissionCollisionChecker {
     }
 }
 
-/// Detailed report of permission validation results.
+/// Validation outcome for a set of permission strings.
 ///
-/// This struct contains comprehensive information about validation results,
-/// including any duplicates found and hash collisions detected.
+/// Produced by:
+/// - [`PermissionCollisionChecker::validate`]
+/// - [`ApplicationValidator::validate`]
+///
+/// # Terminology
+/// - *Duplicate* permission: The exact same string appears more than once. These are
+///   represented internally as a "collision" where every entry in the collision
+///   group is identical.
+/// - *Hash collision*: Two **different** normalized permission strings that deterministically
+///   hash (via the 64‑bit truncated SHA‑256) to the same ID. This is extremely unlikely
+///   and should be treated as a critical configuration problem if it ever occurs.
+///
+/// # Interpreting Results
+/// - [`ValidationReport::is_valid`] is `true` when there are **no** collisions at all
+///   (neither duplicates nor distinct-string collisions).
+/// - [`ValidationReport::duplicates`] returns only pure duplicates (all strings in the
+///   collision set are identical).
+/// - Distinct collisions (same hash, different strings) are considered more severe and
+///   will appear in log output / `detailed_errors` but **not** in `duplicates()`.
+///
+/// # Typical Actions
+/// | Situation                                 | Action                                                                 | Severity            |
+/// |-------------------------------------------|------------------------------------------------------------------------|---------------------|
+/// | Report is valid                           | Proceed with startup / reload                                          | None                |
+/// | One or more duplicates only               | Remove redundant entries (usually a config hygiene issue)             | Low / Medium        |
+/// | Any non‑duplicate hash collision detected | Rename at least one colliding permission (treat as urgent)             | High (very rare)    |
+///
+/// # Convenience Methods
+/// - [`summary`](Self::summary) gives a compact human‑readable description (good for logs / errors).
+/// - [`detailed_errors`](Self::detailed_errors) enumerates each issue (useful for API / CLI feedback).
+/// - [`total_issues`](Self::total_issues) counts total collision groups (duplicates + distinct collisions).
+///
+/// # Example
+/// ```rust
+/// use axum_gate::advanced::{PermissionCollisionChecker, ApplicationValidator};
+///
+/// // Direct checker
+/// let mut checker = PermissionCollisionChecker::new(vec![
+///     "user:read".into(),
+///     "user:read".into(),      // duplicate
+///     "admin:full".into(),
+/// ]);
+/// let report = checker.validate().unwrap();
+/// assert!(!report.is_valid());
+/// assert_eq!(report.duplicates(), vec!["user:read".to_string()]);
+///
+/// // Builder style
+/// let report2 = ApplicationValidator::new()
+///     .add_permissions(["user:read", "user:read"])
+///     .validate()
+///     .unwrap();
+/// assert!(!report2.is_valid());
+/// ```
+///
+/// # Performance Notes
+/// The validator groups by 64‑bit IDs first; memory usage is proportional to the
+/// number of *distinct* permission IDs plus total string storage. For typical
+/// application-scale permission sets (≪10k) this is negligible.
+///
+/// # Logging
+/// Use [`log_results`](Self::log_results) for structured `tracing` output. Successful validation logs
+/// at `INFO`, issues at `WARN`.
 #[derive(Debug, Default)]
 pub struct ValidationReport {
-    /// List of hash collisions detected.
+    /// All collision groups (duplicates and *true* hash collisions).
+    ///
+    /// Each entry contains:
+    /// - The 64‑bit permission ID (`id`)
+    /// - The list of original permission strings that map to that ID
+    ///
+    /// Invariants:
+    /// - Length >= 2 for each `permissions` vector
+    /// - A "duplicate" group has every element string-equal
+    /// - A "distinct collision" group has at least one differing string
     pub collisions: Vec<PermissionCollision>,
 }
 
-/// Information about a detected hash collision.
+/// A group of permission strings that share the same 64‑bit deterministic hash.
 ///
-/// Contains the colliding hash ID and all permission strings that hash to that ID.
+/// This can represent:
+/// - Pure duplicates (all strings identical)
+/// - A *true* collision (different strings hashing to the same 64‑bit value; extremely rare)
+///
+/// Use logic like:
+/// ```rust
+/// # use axum_gate::advanced::ValidationReport;
+/// # fn analyze(report: &ValidationReport) {
+/// for group in &report.collisions {
+///     let all_equal = group.permissions.windows(2).all(|w| w[0] == w[1]);
+///     if all_equal {
+///         // handle duplicate
+///     } else {
+///         // handle distinct collision (critical)
+///     }
+/// }
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct PermissionCollision {
     /// The hash ID that has multiple permissions mapping to it (64-bit).
