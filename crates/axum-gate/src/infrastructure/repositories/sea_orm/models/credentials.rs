@@ -1,4 +1,4 @@
-//! Credentials model to be used with [sea-orm].
+//! Credentials model to be used with [sea-orm](sea_orm).
 
 use crate::domain::values::Secret;
 

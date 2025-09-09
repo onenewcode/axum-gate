@@ -1,4 +1,4 @@
-//! Passport model to be used with [sea-orm].
+//! Passport model to be used with [sea-orm](sea_orm).
 
 use crate::domain::entities::Account;
 use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
@@ -23,7 +23,7 @@ pub struct Model {
     pub roles: String,
 }
 
-/// Relation definition for a [Passport](Model).
+/// Relation definition for an [Account](Model).
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
 

@@ -296,19 +296,61 @@ pub mod http {
     pub use cookie::time::Duration;
 }
 
-/// Account and secret storage backends.
+/// Storage backends for accounts (roles / groups / permissions) and authentication secrets.
 ///
-/// - `memory` - In-memory storage for development
-/// - `surrealdb` - SurrealDB backend (requires feature)
-/// - `seaorm` - SeaORM backend (requires feature)
+/// Available backends (enable the feature flags you need):
+/// - memory (default, no feature): Fast & ephemeral. Use for tests and local development only.
+/// - surrealdb (feature: `storage-surrealdb`): SurrealDB (KV/SQL hybrid). Customize tables / namespace / database.
+/// - seaorm (feature: `storage-seaorm`): Any SQL database supported by SeaORM. Use provided entity models for schema creation.
+///
+/// Quick start (memory):
+/// ```rust
+/// use axum_gate::{storage, auth};
+/// use std::sync::Arc;
+/// let accounts = Arc::new(storage::MemoryAccountRepository::<auth::Role, auth::Group>::default());
+/// let secrets  = Arc::new(storage::MemorySecretRepository::default());
+/// ```
+///
+/// SurrealDB (feature `storage-surrealdb`):
+/// ```rust,no_run
+/// # #[cfg(feature="storage-surrealdb")]
+/// # {
+/// use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
+/// use axum_gate::storage::TableNames;
+/// # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!();
+/// let scope = DatabaseScope {
+///     table_names: TableNames::default(), // override if you want different table names
+///     namespace: "axum-gate".into(),
+///     database: "axum-gate".into(),
+/// };
+/// let repo = SurrealDbRepository::new(db, scope);
+/// # }
+/// ```
+///
+/// SeaORM (feature `storage-seaorm`):
+/// ```rust,no_run
+/// # #[cfg(feature="storage-seaorm")]
+/// # {
+/// use axum_gate::storage::seaorm::{SeaOrmRepository, models};
+/// # let db: sea_orm::DatabaseConnection = todo!();
+/// // Use models::account::Entity & models::credentials::Entity in migrations
+/// let repo = SeaOrmRepository::new(&db);
+/// # }
+/// ```
+///
+/// All backends implement:
+/// - [`AccountRepository`](crate::advanced::AccountRepository)
+/// - [`SecretRepository`](crate::advanced::SecretRepository)
+/// - [`CredentialsVerifier`](crate::advanced::CredentialsVerifier)
+///
+/// Security: Every backend performs constant-time credential verification (dummy hash for non‑existent users) to reduce timing side channel risk.
 pub mod storage {
-
     pub use crate::infrastructure::repositories::memory::{
         MemoryAccountRepository, MemorySecretRepository,
     };
 
     #[cfg(feature = "storage-surrealdb")]
-    /// SurrealDB storage backend.
+    /// SurrealDB storage backend (enable the `storage-surrealdb` feature).
     pub mod surrealdb {
         pub use crate::infrastructure::repositories::surrealdb::{
             DatabaseScope, SurrealDbRepository,
@@ -316,12 +358,13 @@ pub mod storage {
     }
 
     #[cfg(feature = "storage-seaorm")]
-    /// SeaORM storage backend.
+    /// SeaORM storage backend (enable the `storage-seaorm` feature).
     pub mod seaorm {
         pub use crate::infrastructure::repositories::sea_orm::{SeaOrmRepository, models};
     }
 
-    #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
+    // Re-export for SurrealDB table / namespace customization and (optionally) other DB backends.
+    #[cfg(any(feature = "storage-surrealdb"))]
     pub use crate::infrastructure::repositories::TableNames;
 }
 
