@@ -11,12 +11,15 @@ pub use repository_additions::*;
 
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
 mod repository_additions {
-    /// Table names that are used within the database.
+    /// Configurable table names used by the storage backends.
+    ///
+    /// Most users can rely on `TableNames::default()`. Override only if your existing
+    /// database schema uses different table names.
     #[derive(Clone, Debug)]
     pub struct TableNames {
-        /// Where accounts are being stored.
+        /// Accounts table (stores user id, groups, roles).
         pub accounts: String,
-        /// Where credentials are stored.
+        /// Credentials table (stores hashed secrets).
         pub credentials: String,
     }
 
