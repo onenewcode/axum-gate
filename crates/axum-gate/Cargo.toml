@@ -1,6 +1,6 @@
 [package]
 name = "axum-gate"
-version = "1.0.0-rc.0"
+version = "1.0.0"
 edition = "2024"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
