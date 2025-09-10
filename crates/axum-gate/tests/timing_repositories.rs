@@ -1,9 +1,11 @@
 //! Integration timing tests for repository credential verification.
 //!
 //! These tests assert that credential verification for:
+//!
 //!   1. Non-existent account
 //!   2. Existing account with wrong password
 //!   3. Existing account with correct password
+//!
 //! take comparable time (no large timing gap between (1) and (2)),
 //! which would otherwise permit user enumeration via timing analysis.
 //!

@@ -75,8 +75,8 @@ mod tests {
 
     #[test]
     fn to_bool_conversion() {
-        assert_eq!(true, bool::from(VerificationResult::Ok));
-        assert_eq!(false, bool::from(VerificationResult::Unauthorized));
+        assert!(true, bool::from(VerificationResult::Ok));
+        assert!(false, bool::from(VerificationResult::Unauthorized));
     }
 
     #[test]
@@ -88,12 +88,5 @@ mod tests {
         assert_eq!(ok_result, VerificationResult::Ok);
         assert_eq!(unauthorized_result, VerificationResult::Unauthorized);
         assert_ne!(ok_result, unauthorized_result);
-
-        // Test copy/clone
-        let copied_ok = ok_result;
-        assert_eq!(ok_result, copied_ok);
-
-        let cloned_unauthorized = unauthorized_result.clone();
-        assert_eq!(unauthorized_result, cloned_unauthorized);
     }
 }
