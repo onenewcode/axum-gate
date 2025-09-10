@@ -9,7 +9,7 @@ members = [
     "examples/simple-usage",
     "examples/surrealdb",
 ]
-resolver = "3"
+resolver = "2"
 rust-version = "1.75"
 
 [workspace.package]
