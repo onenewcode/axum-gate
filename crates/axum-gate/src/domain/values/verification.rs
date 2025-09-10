@@ -74,12 +74,6 @@ mod tests {
     }
 
     #[test]
-    fn to_bool_conversion() {
-        assert!(true, bool::from(VerificationResult::Ok));
-        assert!(false, bool::from(VerificationResult::Unauthorized));
-    }
-
-    #[test]
     fn verification_result_properties() {
         let ok_result = VerificationResult::Ok;
         let unauthorized_result = VerificationResult::Unauthorized;
