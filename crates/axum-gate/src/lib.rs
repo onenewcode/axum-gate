@@ -362,7 +362,7 @@ pub mod storage {
     #[cfg(feature = "storage-seaorm")]
     /// SeaORM storage backend (enable the `storage-seaorm` feature).
     pub mod seaorm {
-        pub use crate::infrastructure::repositories::sea_orm::{models, SeaOrmRepository};
+        pub use crate::infrastructure::repositories::sea_orm::{SeaOrmRepository, models};
     }
 
     // Re-export for SurrealDB table / namespace customization and (optionally) other DB backends.
