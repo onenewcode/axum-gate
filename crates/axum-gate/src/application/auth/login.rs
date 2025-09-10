@@ -32,6 +32,7 @@ pub enum LoginResult {
 /// 1. Account lookup by user identifier.
 /// 2. Credential verification against either the real account UUID or a
 ///    fixed dummy UUID when the account is absent.
+///
 /// This equalises timing characteristics between "user not found" and
 /// "wrong password" cases.
 ///

@@ -34,11 +34,6 @@ use axum_gate::advanced::{
 };
 use axum_gate::auth::{Account, Credentials, Group, Role};
 
-/// Helper to compute absolute duration difference.
-fn abs_diff(a: std::time::Duration, b: std::time::Duration) -> std::time::Duration {
-    if a > b { a - b } else { b - a }
-}
-
 /// Returns a fresh random (UUID v7 backed) email identifier to avoid collisions in shared DBs.
 fn random_user_id() -> String {
     format!("user+{}@example.test", uuid::Uuid::now_v7())
@@ -120,7 +115,7 @@ async fn surrealdb_timing_symmetry() {
         axum_gate::advanced::VerificationResult::Ok
     ));
 
-    let diff = abs_diff(dur_nonexistent, dur_wrong);
+    let diff = dur_nonexistent.abs_diff(dur_wrong);
 
     println!(
         "[SurrealDB Timing] nonexistent={:?}, wrong={:?}, correct={:?}, diff(nonexist vs wrong)={:?}",
@@ -269,7 +264,7 @@ async fn seaorm_timing_symmetry() {
         axum_gate::advanced::VerificationResult::Ok
     ));
 
-    let diff = abs_diff(dur_nonexistent, dur_wrong);
+    let diff = dur_nonexistent.abs_diff(dur_wrong);
 
     println!(
         "[SeaORM Timing] nonexistent={:?}, wrong={:?}, correct={:?}, diff(nonexist vs wrong)={:?}",
