@@ -2,7 +2,7 @@
 name = "axum-gate"
 version = "1.0.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.86"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Role based access for axum using JWT cookies. For both, single nodes and distributed systems."

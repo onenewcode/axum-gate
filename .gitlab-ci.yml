@@ -24,7 +24,7 @@ stages:
 
 # Base job configuration
 .rust_job: &rust_job
-    image: rust:1.85
+    image: rust:1.86
     before_script:
         - rustc --version
         - cargo --version
@@ -211,7 +211,7 @@ examples_access_policy:
 
 # Build verification for different Rust versions
 test_msrv:
-    image: rust:1.85
+    image: rust:1.86
     stage: test
     script:
         - rustc --version
