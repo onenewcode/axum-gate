@@ -79,7 +79,7 @@
 //! ```rust
 //! use axum_gate::auth::{AccessPolicy, PermissionId, Role, Group};
 //!
-//! // Validate permissions at compile-time
+//! // Validate permissions at test-time (checks for hash collisions)
 //! axum_gate::validate_permissions!["read:api", "write:api", "admin:system"];
 //!
 //! // Use in policies
@@ -224,7 +224,7 @@
 //! - **Key rotation**: Implement periodic key rotation strategies for enhanced security
 //!
 //! ### Permission System
-//! - **Compile-time validation**: Use `validate_permissions!` macro to detect permission collisions at build time
+//! - **Test-time validation**: Use `validate_permissions!` macro to detect permission collisions during testing
 //! - **Runtime validation**: Implement `PermissionCollisionChecker` for dynamic permission sets from config/database
 //! - **Principle of least privilege**: Grant minimal necessary permissions and use specific role/group combinations
 //!

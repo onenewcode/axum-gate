@@ -1,7 +1,7 @@
 //! Validation utilities for permission collision checking.
 //!
 //! This module provides runtime validation capabilities for permission strings,
-//! complementing the compile-time validation provided by the `validate_permissions!` macro.
+//! complementing the test-time validation provided by the `validate_permissions!` macro.
 //! It's particularly useful when dealing with dynamic permission strings loaded from
 //! configuration files, databases, or other runtime sources.
 use crate::domain::values::PermissionId;

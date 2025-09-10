@@ -20,7 +20,7 @@ Report issues or ergonomic improvement ideas via GitHub Issues or Discussions.
 - Secure JWT (HMAC) cookie authentication with configurable lifetimes
 - Hierarchical role model with supervisor / subordinate semantics
 - Dense, roaring-bitmap powered permission sets (fast membership tests)
-- Compile-time friendly permission enumeration & validation helpers
+- Test-time permission collision validation & enumeration helpers
 - Pluggable account + secret storage (can be fully separated)
 - Multiple storage backends: in-memory (default), SurrealDB, SeaORM
 - Deterministic hashing / zero cross-node sync for permission evaluation
@@ -192,7 +192,7 @@ Errors implement rich variants enabling mapping to structured HTTP responses. Wh
 | `basic` | Minimal setup & login flow |
 | `simple-usage` | Streamlined API usage with default services |
 | `distributed` | Deterministic permission hashing across nodes |
-| `permission-validation` | Compile-time + runtime permission checks |
+| `permission-validation` | Test-time + runtime permission checks |
 | `rate-limiting` | Integration with tower rate limiting middleware |
 | `surrealdb` | SurrealDB storage backend |
 | `sea-orm` | SeaORM backend integration |

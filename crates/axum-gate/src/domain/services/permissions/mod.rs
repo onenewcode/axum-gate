@@ -13,8 +13,7 @@
 //! axum_gate::validate_permissions![
 //!     "read:resource1",
 //!     "write:resource1",
-//!     "read:resource2",
-//!     "admin:system"
+//!     "admin:system",
 //! ];
 //! ```
 //!
@@ -121,28 +120,48 @@
 
 pub mod validation;
 
-/// Macro for compile-time permission validation.
+/// Macro for test-time permission validation.
 ///
 /// This macro validates that the provided permission strings don't have hash collisions
-/// and generates a compile-time test to ensure the validation passes. It should be called
-/// once in your application with all the permission strings you use.
+/// by generating a test that runs during `cargo test`. It should be called once in your
+/// application with all the permission strings you use.
+///
+/// The macro accepts both square brackets and parentheses syntax.
 ///
 /// # Examples
 ///
 /// ```rust
 /// # use axum_gate::validate_permissions;
 ///
+/// // Using square brackets (recommended style)
 /// validate_permissions![
 ///     "read:users",
 ///     "write:users",
 ///     "delete:users",
 ///     "admin:system"
 /// ];
+///
+/// // Using parentheses (also valid)
+/// validate_permissions!(
+///     "read:posts",
+///     "write:posts",
+///     "delete:posts"
+/// );
+///
+/// // Mixed permission types
+/// validate_permissions![
+///     "api:read",
+///     "api:write",
+///     "admin:users",
+///     "admin:system",
+///     "billing:read",
+///     "billing:write"
+/// ];
 /// ```
 ///
 /// # Panics
 ///
-/// This macro will cause a compile-time error if any of the permission strings
+/// This macro will cause a test failure if any of the permission strings
 /// hash to the same value (extremely unlikely with SHA-256).
 #[macro_export]
 macro_rules! validate_permissions {
