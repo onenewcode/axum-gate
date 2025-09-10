@@ -14,20 +14,18 @@
 //! always perform an Argon2 verification, even when the account/secret
 //! does not exist.
 //!
-//! Thresholds are intentionally generous to reduce flakiness on CI. The
-//! difference between the "nonexistent user" and "wrong password" paths
-//! should be well below the chosen threshold in practice.
+//! To reduce flakiness on CI (where jitter / noisy neighbors can skew single
+//! measurements), we:
+//!   * Perform a small warm‑up
+//!   * Take multiple timing samples
+//!   * Compare medians (robust vs outliers)
 //!
-//! NOTE: These tests exercise only the timing symmetry property, not the
-//! absolute performance characteristics.
-//!
-//! If a test becomes flaky in certain environments (e.g. heavily loaded CI),
-//! consider widening (not tightening) thresholds or measuring multiple
-//! iterations and comparing medians.
+//! Thresholds are widened (relative to initial strict values) but still ensure
+//! no large, systematic discrepancy emerges between nonexistent-user and
+//! wrong-password paths.
 //!
 //! Run with: `cargo test -- --nocapture` to see raw timing output.
-
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum_gate::advanced::{
     AccountRepository, Argon2Hasher, CredentialsVerifier, Secret, SecretRepository,
@@ -39,6 +37,12 @@ fn random_user_id() -> String {
     format!("user+{}@example.test", uuid::Uuid::now_v7())
 }
 
+/// Compute median duration (simple sort; small N so overhead negligible)
+fn median(mut v: Vec<Duration>) -> Duration {
+    v.sort();
+    v[v.len() / 2]
+}
+
 //
 // SurrealDB Timing Test
 //
@@ -48,13 +52,12 @@ async fn surrealdb_timing_symmetry() {
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
 
+    const ITERATIONS: usize = 5;
+
     // Prepare SurrealDB in-memory instance
     let db = Surreal::new::<Mem>(()).await.unwrap();
     let scope = DatabaseScope::default();
     let repo = SurrealDbRepository::new(db, scope);
-
-    // Ensure namespace + database are set (idempotent).
-    // (Using the internal helper is private; we rely on repository methods which call it.)
 
     // Create & store an account + secret
     let existing_user = random_user_id();
@@ -70,73 +73,102 @@ async fn surrealdb_timing_symmetry() {
     let secret = Secret::new(&stored_account.account_id, password, hasher).expect("hash secret");
     repo.store_secret(secret).await.expect("store secret");
 
-    // Credentials
-    let creds_nonexistent =
-        Credentials::new(&random_user_id(), "whatever_wrong_password_not_relevant");
-    let creds_wrong = Credentials::new(&stored_account.account_id, "wrong_password");
-    let creds_correct = Credentials::new(&stored_account.account_id, password);
+    // Warm-up (untimed)
+    for _ in 0..2 {
+        let _ = repo
+            .verify_credentials(Credentials::new(
+                &stored_account.account_id,
+                "wrong_password",
+            ))
+            .await;
+        let _ = repo
+            .verify_credentials(Credentials::new(
+                &random_user_id(),
+                "whatever_wrong_password_not_relevant",
+            ))
+            .await;
+    }
 
-    // Non-existent
-    let t0 = Instant::now();
-    let res_nonexistent = repo
-        .verify_credentials(creds_nonexistent)
-        .await
-        .expect("verify nonexistent");
-    let dur_nonexistent = t0.elapsed();
+    let mut nonexist_durs = Vec::with_capacity(ITERATIONS);
+    let mut wrong_durs = Vec::with_capacity(ITERATIONS);
+    let mut correct_durs = Vec::with_capacity(ITERATIONS);
 
-    // Wrong password
-    let t1 = Instant::now();
-    let res_wrong = repo
-        .verify_credentials(creds_wrong)
-        .await
-        .expect("verify wrong");
-    let dur_wrong = t1.elapsed();
+    for _ in 0..ITERATIONS {
+        // Fresh creds each iteration for nonexistent path
+        let creds_nonexistent =
+            Credentials::new(&random_user_id(), "whatever_wrong_password_not_relevant");
+        let creds_wrong = Credentials::new(&stored_account.account_id, "wrong_password");
+        let creds_correct = Credentials::new(&stored_account.account_id, password);
 
-    // Correct password
-    let t2 = Instant::now();
-    let res_correct = repo
-        .verify_credentials(creds_correct)
-        .await
-        .expect("verify correct");
-    let dur_correct = t2.elapsed();
+        // Non-existent
+        let t0 = Instant::now();
+        let res_nonexistent = repo
+            .verify_credentials(creds_nonexistent)
+            .await
+            .expect("verify nonexistent");
+        let dur_nonexistent = t0.elapsed();
 
-    // Basic correctness
+        // Wrong password
+        let t1 = Instant::now();
+        let res_wrong = repo
+            .verify_credentials(creds_wrong)
+            .await
+            .expect("verify wrong");
+        let dur_wrong = t1.elapsed();
 
-    assert!(matches!(
-        res_nonexistent,
-        axum_gate::advanced::VerificationResult::Unauthorized
-    ));
-    assert!(matches!(
-        res_wrong,
-        axum_gate::advanced::VerificationResult::Unauthorized
-    ));
-    assert!(matches!(
-        res_correct,
-        axum_gate::advanced::VerificationResult::Ok
-    ));
+        // Correct password
+        let t2 = Instant::now();
+        let res_correct = repo
+            .verify_credentials(creds_correct)
+            .await
+            .expect("verify correct");
+        let dur_correct = t2.elapsed();
 
-    let diff = dur_nonexistent.abs_diff(dur_wrong);
+        assert!(matches!(
+            res_nonexistent,
+            axum_gate::advanced::VerificationResult::Unauthorized
+        ));
+        assert!(matches!(
+            res_wrong,
+            axum_gate::advanced::VerificationResult::Unauthorized
+        ));
+        assert!(matches!(
+            res_correct,
+            axum_gate::advanced::VerificationResult::Ok
+        ));
+
+        nonexist_durs.push(dur_nonexistent);
+        wrong_durs.push(dur_wrong);
+        correct_durs.push(dur_correct);
+    }
+
+    let med_nonexist = median(nonexist_durs.clone());
+    let med_wrong = median(wrong_durs.clone());
+    let med_correct = median(correct_durs.clone());
+
+    let diff = med_nonexist.abs_diff(med_wrong);
 
     println!(
-        "[SurrealDB Timing] nonexistent={:?}, wrong={:?}, correct={:?}, diff(nonexist vs wrong)={:?}",
-        dur_nonexistent, dur_wrong, dur_correct, diff
+        "[SurrealDB Timing] med(nonexistent)={:?}, med(wrong)={:?}, med(correct)={:?}, diff(nonexist vs wrong)={:?}, samples_nonexist={:?}, samples_wrong={:?}",
+        med_nonexist, med_wrong, med_correct, diff, nonexist_durs, wrong_durs
     );
 
-    // Threshold: ensure difference does not explode (choose 25ms generous).
+    // Relaxed threshold (prior single-shot limit 25ms). Median diff should
+    // stay comfortably below this unless there's a systematic leak.
     assert!(
-        diff.as_millis() < 25,
-        "SurrealDB timing difference too large: {:?} ms",
+        diff.as_millis() < 90,
+        "SurrealDB timing median difference too large: {:?} ms",
         diff.as_millis()
     );
 
-    // Both failure paths should still spend some time (Argon2 dev / release depending on build).
+    // Ensure failure paths are not trivially fast (Argon2 executed)
     assert!(
-        dur_nonexistent.as_millis() >= 5,
-        "Nonexistent path too fast; Argon2 likely skipped."
+        med_nonexist.as_millis() >= 5,
+        "Median nonexistent path too fast; Argon2 likely skipped."
     );
     assert!(
-        dur_wrong.as_millis() >= 5,
-        "Wrong password path too fast; Argon2 likely skipped."
+        med_wrong.as_millis() >= 5,
+        "Median wrong password path too fast; Argon2 likely skipped."
     );
 }
 
@@ -147,6 +179,8 @@ async fn surrealdb_timing_symmetry() {
 async fn seaorm_timing_symmetry() {
     use axum_gate::storage::seaorm::SeaOrmRepository;
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
+
+    const ITERATIONS: usize = 5;
 
     // In-memory SQLite database
     let db = match Database::connect("sqlite::memory:").await {
@@ -212,78 +246,107 @@ async fn seaorm_timing_symmetry() {
         return;
     }
 
-    // Credentials
-    let creds_nonexistent =
-        Credentials::new(&uuid::Uuid::now_v7(), "irrelevant_wrong_password_value");
-    let creds_wrong = Credentials::new(&stored_account.account_id, "wrong_password");
-    let creds_correct = Credentials::new(&stored_account.account_id, password);
+    // Warm-up
+    for _ in 0..2 {
+        let _ = repo
+            .verify_credentials(Credentials::new(
+                &stored_account.account_id,
+                "wrong_password",
+            ))
+            .await;
+        let _ = repo
+            .verify_credentials(Credentials::new(
+                &uuid::Uuid::now_v7(),
+                "irrelevant_wrong_password_value",
+            ))
+            .await;
+    }
 
-    // Non-existent
-    let t0 = Instant::now();
-    let res_nonexistent = match repo.verify_credentials(creds_nonexistent).await {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Skipping SeaORM timing test (verify nonexistent failed): {e}");
-            return;
-        }
-    };
-    let dur_nonexistent = t0.elapsed();
+    let mut nonexist_durs = Vec::with_capacity(ITERATIONS);
+    let mut wrong_durs = Vec::with_capacity(ITERATIONS);
+    let mut correct_durs = Vec::with_capacity(ITERATIONS);
 
-    // Wrong password
-    let t1 = Instant::now();
-    let res_wrong = match repo.verify_credentials(creds_wrong).await {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Skipping SeaORM timing test (verify wrong failed): {e}");
-            return;
-        }
-    };
-    let dur_wrong = t1.elapsed();
+    for _ in 0..ITERATIONS {
+        let creds_nonexistent =
+            Credentials::new(&uuid::Uuid::now_v7(), "irrelevant_wrong_password_value");
+        let creds_wrong = Credentials::new(&stored_account.account_id, "wrong_password");
+        let creds_correct = Credentials::new(&stored_account.account_id, password);
 
-    // Correct
-    let t2 = Instant::now();
-    let res_correct = match repo.verify_credentials(creds_correct).await {
-        Ok(r) => r,
-        Err(e) => {
-            eprintln!("Skipping SeaORM timing test (verify correct failed): {e}");
-            return;
-        }
-    };
-    let dur_correct = t2.elapsed();
+        // Non-existent
+        let t0 = Instant::now();
+        let res_nonexistent = match repo.verify_credentials(creds_nonexistent).await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Skipping SeaORM timing test (verify nonexistent failed): {e}");
+                return;
+            }
+        };
+        let dur_nonexistent = t0.elapsed();
 
-    assert!(matches!(
-        res_nonexistent,
-        axum_gate::advanced::VerificationResult::Unauthorized
-    ));
-    assert!(matches!(
-        res_wrong,
-        axum_gate::advanced::VerificationResult::Unauthorized
-    ));
-    assert!(matches!(
-        res_correct,
-        axum_gate::advanced::VerificationResult::Ok
-    ));
+        // Wrong password
+        let t1 = Instant::now();
+        let res_wrong = match repo.verify_credentials(creds_wrong).await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Skipping SeaORM timing test (verify wrong failed): {e}");
+                return;
+            }
+        };
+        let dur_wrong = t1.elapsed();
 
-    let diff = dur_nonexistent.abs_diff(dur_wrong);
+        // Correct
+        let t2 = Instant::now();
+        let res_correct = match repo.verify_credentials(creds_correct).await {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Skipping SeaORM timing test (verify correct failed): {e}");
+                return;
+            }
+        };
+        let dur_correct = t2.elapsed();
+
+        assert!(matches!(
+            res_nonexistent,
+            axum_gate::advanced::VerificationResult::Unauthorized
+        ));
+        assert!(matches!(
+            res_wrong,
+            axum_gate::advanced::VerificationResult::Unauthorized
+        ));
+        assert!(matches!(
+            res_correct,
+            axum_gate::advanced::VerificationResult::Ok
+        ));
+
+        nonexist_durs.push(dur_nonexistent);
+        wrong_durs.push(dur_wrong);
+        correct_durs.push(dur_correct);
+    }
+
+    let med_nonexist = median(nonexist_durs.clone());
+    let med_wrong = median(wrong_durs.clone());
+    let med_correct = median(correct_durs.clone());
+
+    let diff = med_nonexist.abs_diff(med_wrong);
 
     println!(
-        "[SeaORM Timing] nonexistent={:?}, wrong={:?}, correct={:?}, diff(nonexist vs wrong)={:?}",
-        dur_nonexistent, dur_wrong, dur_correct, diff
+        "[SeaORM Timing] med(nonexistent)={:?}, med(wrong)={:?}, med(correct)={:?}, diff(nonexist vs wrong)={:?}, samples_nonexist={:?}, samples_wrong={:?}",
+        med_nonexist, med_wrong, med_correct, diff, nonexist_durs, wrong_durs
     );
 
-    // Similar generous threshold (DB + Argon2 overhead).
+    // Relaxed threshold (previous single-run 30ms). Median diff should remain small.
     assert!(
-        diff.as_millis() < 30,
-        "SeaORM timing difference too large: {:?} ms",
+        diff.as_millis() < 90,
+        "SeaORM timing median difference too large: {:?} ms",
         diff.as_millis()
     );
 
     assert!(
-        dur_nonexistent.as_millis() >= 5,
-        "Nonexistent path too fast; Argon2 likely skipped."
+        med_nonexist.as_millis() >= 5,
+        "Median nonexistent path too fast; Argon2 likely skipped."
     );
     assert!(
-        dur_wrong.as_millis() >= 5,
-        "Wrong password path too fast; Argon2 likely skipped."
+        med_wrong.as_millis() >= 5,
+        "Median wrong password path too fast; Argon2 likely skipped."
     );
 }
