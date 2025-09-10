@@ -218,7 +218,7 @@ cargo run --example surrealdb --features storage-surrealdb
 - **Major (x.0.0)**: breaking changes (accompanied by migration notes)
 
 ### Minimum Supported Rust Version (MSRV)
-**Current MSRV**: Rust 1.75.0 (matches axum-core)
+**Current MSRV**: Rust 1.85.0
 
 **MSRV Policy**:
 - MSRV will only be raised in **minor** or **major** releases, never in patch releases
@@ -227,7 +227,7 @@ cargo run --example surrealdb --features storage-surrealdb
 - We aim to support at least the last 6 months of Rust releases when practical
 - MSRV is tested in CI to prevent accidental breakage
 
-**Compatibility Promise**: 
+**Compatibility Promise**:
 - Public APIs are considered stable within major versions
 - Internal modules (`crate::domain`, `crate::infrastructure`, etc.) may change in minor releases
 - Breaking changes will be clearly documented with migration guides

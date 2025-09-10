@@ -9,8 +9,7 @@ members = [
     "examples/simple-usage",
     "examples/surrealdb",
 ]
-resolver = "2"
-rust-version = "1.75"
+resolver = "3"
 
 [workspace.package]
 version = "1.0.0"
