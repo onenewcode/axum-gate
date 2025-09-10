@@ -124,11 +124,11 @@ where
     /// ```rust
     /// use axum_gate::auth::{AccountInsertService, Permissions, Role, Group};
     ///
-    /// let permissions = Permissions::from_iter([
+    /// let permissions: Permissions = [
     ///     "read:api",
     ///     "write:api",
     ///     "manage:users"
-    /// ]);
+    /// ].into_iter().collect();
     ///
     /// let builder = AccountInsertService::<Role, Group>::insert("admin@example.com", "password")
     ///     .with_permissions(permissions);

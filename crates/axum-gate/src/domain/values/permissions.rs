@@ -71,35 +71,6 @@ impl Permissions {
         }
     }
 
-    /// Creates a permission set from an iterator of permission names.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use axum_gate::auth::Permissions;
-    ///
-    /// let permissions = Permissions::from_iter([
-    ///     "read:profile",
-    ///     "write:profile",
-    ///     "read:posts"
-    /// ]);
-    ///
-    /// assert!(permissions.has("read:profile"));
-    /// assert!(permissions.has("write:profile"));
-    /// assert!(permissions.has("read:posts"));
-    /// ```
-    pub fn from_iter<I, P>(permissions: I) -> Self
-    where
-        I: IntoIterator<Item = P>,
-        P: Into<PermissionId>,
-    {
-        let mut perms = Self::new();
-        for permission in permissions {
-            perms.grant(permission);
-        }
-        perms
-    }
-
     /// Grants a permission to this permission set.
     ///
     /// Returns a mutable reference to self for method chaining.
@@ -135,7 +106,7 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::{Permissions, PermissionId};
     ///
-    /// let mut permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+    /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// permissions.revoke(PermissionId::from("write:profile"));
     ///
     /// assert!(permissions.has("read:profile"));
@@ -157,7 +128,7 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::{Permissions, PermissionId};
     ///
-    /// let permissions = Permissions::from_iter(["read:profile"]);
+    /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
     /// assert!(permissions.has("read:profile"));
     /// assert!(permissions.has(PermissionId::from("read:profile")));
@@ -178,11 +149,11 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::{Permissions, PermissionId};
     ///
-    /// let permissions = Permissions::from_iter([
+    /// let permissions: Permissions = [
     ///     "read:profile",
     ///     "write:profile",
-    ///     "read:posts"
-    /// ]);
+    ///     "read:posts",
+    /// ].into_iter().collect();
     ///
     /// assert!(permissions.has_all(["read:profile", "write:profile"]));
     /// assert!(permissions.has_all([PermissionId::from("read:profile")]));
@@ -203,7 +174,7 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::{Permissions, PermissionId};
     ///
-    /// let permissions = Permissions::from_iter(["read:profile"]);
+    /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
     /// assert!(permissions.has_any(["read:profile", "write:profile"]));
     /// assert!(permissions.has_any([PermissionId::from("read:profile")]));
@@ -224,7 +195,7 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::Permissions;
     ///
-    /// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+    /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// assert_eq!(permissions.len(), 2);
     /// ```
     pub fn len(&self) -> usize {
@@ -256,7 +227,7 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::Permissions;
     ///
-    /// let mut permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+    /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// assert!(!permissions.is_empty());
     ///
     /// permissions.clear();
@@ -275,8 +246,8 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::Permissions;
     ///
-    /// let mut permissions1 = Permissions::from_iter(["read:profile"]);
-    /// let permissions2 = Permissions::from_iter(["write:profile"]);
+    /// let mut permissions1: Permissions = ["read:profile"].into_iter().collect();
+    /// let permissions2: Permissions = ["write:profile"].into_iter().collect();
     ///
     /// permissions1.union(&permissions2);
     ///
@@ -297,8 +268,8 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::Permissions;
     ///
-    /// let mut permissions1 = Permissions::from_iter(["read:profile", "write:profile"]);
-    /// let permissions2 = Permissions::from_iter(["read:profile", "admin:users"]);
+    /// let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
+    /// let permissions2: Permissions = ["read:profile", "admin:users"].into_iter().collect();
     ///
     /// permissions1.intersection(&permissions2);
     ///
@@ -320,8 +291,8 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::Permissions;
     ///
-    /// let mut permissions1 = Permissions::from_iter(["read:profile", "write:profile"]);
-    /// let permissions2 = Permissions::from_iter(["write:profile"]);
+    /// let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
+    /// let permissions2: Permissions = ["write:profile"].into_iter().collect();
     ///
     /// permissions1.difference(&permissions2);
     ///
@@ -387,7 +358,7 @@ impl Permissions {
     /// ```rust
     /// use axum_gate::auth::Permissions;
     ///
-    /// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+    /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let ids: Vec<u64> = permissions.iter().collect();
     /// assert_eq!(ids.len(), 2);
     /// ```
@@ -436,6 +407,34 @@ impl AsRef<roaring::RoaringTreemap> for Permissions {
     }
 }
 
+impl<P> std::iter::FromIterator<P> for Permissions
+where
+    P: Into<PermissionId>,
+{
+    /// Creates a permission set from an iterator of permission names.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use axum_gate::auth::Permissions;
+    ///
+    /// let permissions: Permissions = ["read:profile", "write:profile", "read:posts"]
+    ///     .into_iter()
+    ///     .collect();
+    ///
+    /// assert!(permissions.has("read:profile"));
+    /// assert!(permissions.has("write:profile"));
+    /// assert!(permissions.has("read:posts"));
+    /// ```
+    fn from_iter<I: IntoIterator<Item = P>>(iter: I) -> Self {
+        let mut perms = Self::new();
+        for permission in iter {
+            perms.grant(permission);
+        }
+        perms
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -474,7 +473,7 @@ mod tests {
 
     #[test]
     fn revoke_permission() {
-        let mut permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+        let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
         permissions.revoke("write:profile");
 
         assert!(permissions.has("read:profile"));
@@ -484,7 +483,9 @@ mod tests {
 
     #[test]
     fn has_all_permissions() {
-        let permissions = Permissions::from_iter(["read:profile", "write:profile", "read:posts"]);
+        let permissions: Permissions = ["read:profile", "write:profile", "read:posts"]
+            .into_iter()
+            .collect();
 
         assert!(permissions.has_all(["read:profile", "write:profile"]));
         assert!(permissions.has_all(["read:profile"]));
@@ -494,7 +495,7 @@ mod tests {
 
     #[test]
     fn has_any_permission() {
-        let permissions = Permissions::from_iter(["read:profile"]);
+        let permissions: Permissions = ["read:profile"].into_iter().collect();
 
         assert!(permissions.has_any(["read:profile", "write:profile"]));
         assert!(permissions.has_any(["write:profile", "read:profile"]));
@@ -504,7 +505,7 @@ mod tests {
 
     #[test]
     fn clear_permissions() {
-        let mut permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+        let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
         assert!(!permissions.is_empty());
 
         permissions.clear();
@@ -514,8 +515,8 @@ mod tests {
 
     #[test]
     fn union_permissions() {
-        let mut permissions1 = Permissions::from_iter(["read:profile"]);
-        let permissions2 = Permissions::from_iter(["write:profile", "read:posts"]);
+        let mut permissions1: Permissions = ["read:profile"].into_iter().collect();
+        let permissions2: Permissions = ["write:profile", "read:posts"].into_iter().collect();
 
         permissions1.union(&permissions2);
 
@@ -527,8 +528,8 @@ mod tests {
 
     #[test]
     fn intersection_permissions() {
-        let mut permissions1 = Permissions::from_iter(["read:profile", "write:profile"]);
-        let permissions2 = Permissions::from_iter(["read:profile", "admin:users"]);
+        let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
+        let permissions2: Permissions = ["read:profile", "admin:users"].into_iter().collect();
 
         permissions1.intersection(&permissions2);
 
@@ -564,7 +565,9 @@ mod tests {
 
     #[test]
     fn from_iter() {
-        let permissions = Permissions::from_iter(["read:profile", "write:profile", "read:posts"]);
+        let permissions: Permissions = ["read:profile", "write:profile", "read:posts"]
+            .into_iter()
+            .collect();
 
         assert!(permissions.has("read:profile"));
         assert!(permissions.has("write:profile"));

@@ -191,9 +191,6 @@ impl JsonWebTokenOptions {
 /// );
 /// ```
 ///
-
-///
-///
 /// ## When It Is Safe to Use the Default
 /// - Unit / integration tests
 /// - Short-lived local development where logout on restart is acceptable

@@ -366,7 +366,7 @@ pub mod storage {
     }
 
     // Re-export for SurrealDB table / namespace customization and (optionally) other DB backends.
-    #[cfg(any(feature = "storage-surrealdb"))]
+    #[cfg(feature = "storage-surrealdb")]
     pub use crate::infrastructure::repositories::TableNames;
 }
 

@@ -20,7 +20,7 @@ use uuid::Uuid;
 /// let account = Account::new("user123", &[Role::User], &[Group::new("staff")]);
 ///
 /// // Create account with permissions
-/// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+/// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
 ///
 /// let account = Account::<Role, Group>::new("admin@example.com", &[Role::Admin], &[])
 ///     .with_permissions(permissions);
@@ -153,7 +153,7 @@ where
     /// use axum_gate::auth::{Account, Role, Group, Permissions};
     ///
     /// // Create permissions
-    /// let permissions = Permissions::from_iter(["read:profile", "write:profile"]);
+    /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     ///
     /// let account = Account::<Role, Group>::new("user@example.com", &[Role::User], &[])
     ///     .with_permissions(permissions);
