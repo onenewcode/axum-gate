@@ -1,0 +1,257 @@
+# GitLab CI configuration for axum-gate
+# Runs comprehensive tests for all features and combinations
+
+variables:
+    CARGO_HOME: $CI_PROJECT_DIR/.cargo
+    RUST_BACKTRACE: 1
+    RUSTFLAGS: "-D warnings"
+
+# Cache configuration
+.cargo_cache: &cargo_cache
+    cache:
+        key:
+            files:
+                - Cargo.lock
+        paths:
+            - .cargo/
+            - target/
+
+stages:
+    - check
+    - test
+    - security
+    - examples
+
+# Base job configuration
+.rust_job: &rust_job
+    image: rust:1.75
+    before_script:
+        - rustc --version
+        - cargo --version
+        - rustup component add clippy rustfmt
+    <<: *cargo_cache
+
+# Check stage jobs
+format_check:
+    <<: *rust_job
+    stage: check
+    script:
+        - cargo fmt --all -- --check
+    allow_failure: false
+
+clippy_check:
+    <<: *rust_job
+    stage: check
+    script:
+        - cargo clippy --workspace --all-targets --all-features -- -D warnings
+    allow_failure: false
+
+# Test stage jobs - Core tests
+test_no_features:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features
+    allow_failure: false
+
+test_default_features:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace
+    allow_failure: false
+
+test_all_features:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --all-features
+    allow_failure: false
+
+# Individual feature tests
+test_insecure_fast_hash:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features --features insecure-fast-hash
+    allow_failure: false
+
+test_storage_surrealdb:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features --features storage-surrealdb
+    allow_failure: false
+
+test_storage_seaorm:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features --features storage-seaorm
+    allow_failure: false
+
+# Feature combination tests
+test_all_storage_features:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features --features storage-surrealdb,storage-seaorm
+    allow_failure: false
+
+test_fast_hash_with_surrealdb:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features --features insecure-fast-hash,storage-surrealdb
+    allow_failure: false
+
+test_fast_hash_with_seaorm:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --no-default-features --features insecure-fast-hash,storage-seaorm
+    allow_failure: false
+
+# Integration and doc tests
+test_integration:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --all-features --test '*'
+    allow_failure: false
+
+test_doc:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --all-features --doc
+    allow_failure: false
+
+# Security stage jobs
+cargo_audit:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-audit
+        - cargo audit
+    allow_failure: false
+
+cargo_deny:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-deny
+        - cargo deny check
+    allow_failure: false
+
+# Example compilation and basic tests
+examples_simple_usage:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p simple-usage-example
+        - cargo test -p simple-usage-example --all-features
+    allow_failure: false
+
+examples_custom_roles:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p custom-roles-example
+        - cargo test -p custom-roles-example --all-features
+    allow_failure: false
+
+examples_distributed:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p distributed
+        - cargo test -p distributed --all-features
+    allow_failure: false
+
+examples_permission_validation:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p permission-validation-example
+        - cargo test -p permission-validation-example --all-features
+    allow_failure: false
+
+examples_rate_limiting:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p rate-limiting-example
+        - cargo test -p rate-limiting-example --all-features
+    allow_failure: false
+
+examples_sea_orm:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p sea-orm-example --features storage-seaorm
+        - cargo test -p sea-orm-example --features storage-seaorm
+    allow_failure: false
+
+examples_surrealdb:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check -p surrealdb-example --features storage-surrealdb
+        - cargo test -p surrealdb-example --features storage-surrealdb
+    allow_failure: false
+
+examples_access_policy:
+    <<: *rust_job
+    stage: examples
+    script:
+        - cargo check --example access_policy_example
+        - cargo test --example access_policy_example --all-features
+    allow_failure: false
+
+# Build verification for different Rust versions
+test_msrv:
+    image: rust:1.75
+    stage: test
+    script:
+        - rustc --version
+        - cargo check --workspace --all-features
+        - cargo test --workspace --all-features
+    allow_failure: false
+
+test_stable:
+    image: rust:latest
+    stage: test
+    script:
+        - rustc --version
+        - cargo check --workspace --all-features
+        - cargo test --workspace --all-features
+    allow_failure: true
+
+# Performance and benchmark tests (if any)
+bench_tests:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo test --workspace --all-features --benches
+    allow_failure: true
+    only:
+        - main
+        - merge_requests
+
+# Coverage report (optional)
+coverage:
+    <<: *rust_job
+    stage: test
+    script:
+        - cargo install cargo-tarpaulin
+        - cargo tarpaulin --workspace --all-features --out xml
+    coverage: '/(\d+\.\d+)% coverage/'
+    artifacts:
+        reports:
+            coverage_report:
+                coverage_format: cobertura
+                path: cobertura.xml
+    allow_failure: true
+    only:
+        - main
