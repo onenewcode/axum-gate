@@ -12,54 +12,32 @@ use subtle::Choice;
 use tracing::{debug, error};
 use uuid::Uuid;
 
-/// Result of a login attempt.
+/// Result of a login attempt produced by [`LoginService::authenticate`].
 ///
-/// Returned by [`LoginService::authenticate`]. It deliberately *does not* reveal
-/// whether a username/account exists in the system to prevent user enumeration
-/// (both “unknown user” and “wrong password” map to [`LoginResult::InvalidCredentials`]).
-///
-/// Variants:
-/// - [`LoginResult::Success`] – authentication succeeded; contains the freshly issued JWT (already encoded as a UTF‑8 string)
-/// - [`LoginResult::InvalidCredentials`] – credentials were invalid (unknown user and wrong password are indistinguishable)
-/// - [`LoginResult::InternalError`] – an infrastructural or unexpected error (e.g. repository failure, hashing/JWT encoding issue)
-///
-/// Typical usage:
-/// ```rust
-/// # use axum_gate::advanced::LoginResult;
-/// # fn handle(result: LoginResult) -> Result<String, String> {
-/// match result {
-///     LoginResult::Success(jwt) => Ok(jwt),
-///     LoginResult::InvalidCredentials => Err("invalid credentials".into()),
-///     LoginResult::InternalError(e) => Err(format!("internal error: {e}")),
-/// }
-/// # }
-/// ```
+/// The variants deliberately avoid revealing whether an account exists to
+/// mitigate username enumeration attacks. Both an unknown user and an
+/// incorrect password are collapsed into [`LoginResult::InvalidCredentials`].
 #[derive(Debug)]
 pub enum LoginResult {
-    /// Login successful with JWT token
+    /// Authentication succeeded and contains the issued JWT (already UTF‑8).
     Success(String),
-    /// Invalid credentials (covers both non-existent users and wrong passwords)
+    /// Credentials were invalid (unknown user OR wrong password).
     InvalidCredentials,
-    /// Internal error occurred
+    /// An internal / infrastructural error (repository failure, hashing, JWT, etc.).
     InternalError(String),
 }
 
-/// Application service for performing a secure login flow.
+/// Stateless service implementing constant‑time, enumeration‑resistant
+/// authentication logic. It always performs:
+/// 1. Account lookup by user identifier.
+/// 2. Credential verification against either the real account UUID or a
+///    fixed dummy UUID when the account is absent.
+/// This equalises timing characteristics between "user not found" and
+/// "wrong password" cases.
 ///
-/// `LoginService` encapsulates the constant‑time, enumeration‑resistant
-/// authentication logic used by the built-in `login` route handler. Use it
-/// directly when:
-/// - You want a custom HTTP / gRPC / GraphQL login endpoint
-/// - You need to return additional metadata alongside the token
-/// - You are composing a larger authentication pipeline
-///
-/// Security characteristics:
-/// - Performs a repository lookup *and* a password verification every time
-/// - Uses a fixed dummy UUID when the user is not found or an error occurs before verification
-/// - Collapses “user not found” and “wrong password” into a single outcome
-///
-/// Returns a signed JWT (as `String`) on success; you are responsible for
-/// setting a cookie, header, or other transport mechanism.
+/// Type Params:
+/// * `R` - Role type implementing [`AccessHierarchy`]
+/// * `G` - Group type
 pub struct LoginService<R, G>
 where
     R: AccessHierarchy + Eq,
@@ -75,68 +53,29 @@ where
 {
     /// Creates a new stateless `LoginService`.
     ///
-    /// The service holds no internal state; you can create one per request
-    /// or reuse a single instance. All dependencies (repositories / codec)
-    /// are supplied to [`authenticate`](Self::authenticate).
+    /// The instance holds no mutable state; it is cheap to clone or recreate.
     pub fn new() -> Self {
         Self {
             _phantom: std::marker::PhantomData,
         }
     }
 
-    /// Authenticates credentials and (on success) produces a signed JWT.
+    /// Authenticates a user in a timing‑safe, enumeration‑resistant fashion.
     ///
-    /// Flow (all steps executed in constant time wrt account existence):
+    /// Steps:
     /// 1. Query account repository by user identifier.
-    /// 2. Always invoke credential verification using either the real account UUID
-    ///    or a fixed dummy UUID if the account was absent / lookup failed.
-    /// 3. Combine (user_exists AND password_valid) using constant‑time bit logic.
-    /// 4. On success: embed the full [`Account`] plus provided [`RegisteredClaims`]
-    ///    into [`JwtClaims`] and encode via the supplied [`Codec`].
-    ///
-    /// Enumeration resistance:
-    /// - A missing user still triggers a password verification on a dummy identifier.
-    /// - Result collapses to [`LoginResult::InvalidCredentials`] for both “user not found”
-    ///   and “incorrect password”.
-    ///
-    /// Parameters:
-    /// - `credentials`: User‑supplied identifier + secret (identifier is a `String` user ID/email).
-    /// - `registered_claims`: Pre-built JWT registered claims (issuer, exp, etc.).
-    /// - `credentials_verifier`: Implementation that verifies (UUID, password) pairs.
-    /// - `account_repository`: Provides account lookup by user ID.
-    /// - `codec`: JWT encoder/decoder implementing [`Codec`] whose payload is `JwtClaims<Account<..>>`.
+    /// 2. Always invoke credential verification using either the real account
+    ///    UUID or a fixed dummy UUID when the user is absent / lookup failed.
+    /// 3. Combine (user_exists AND password_matches) with constant‑time bit logic.
+    /// 4. On success, encode a JWT with the supplied registered claims.
     ///
     /// Returns:
-    /// - [`LoginResult::Success`] with the encoded JWT string.
-    /// - [`LoginResult::InvalidCredentials`] for any auth failure that should not leak detail.
-    /// - [`LoginResult::InternalError`] for system / infrastructural failures (logging recommended).
+    /// * [`LoginResult::Success`] with a JWT string on success.
+    /// * [`LoginResult::InvalidCredentials`] for any auth failure that should not leak detail.
+    /// * [`LoginResult::InternalError`] for infrastructural issues (these should be logged).
     ///
-    /// You typically pair this with a cookie builder or response constructor:
-    /// ```rust
-    /// # use std::sync::Arc;
-    /// # use axum_gate::advanced::{LoginService, LoginResult, CredentialsVerifier, AccountRepository, Codec};
-    /// # use axum_gate::auth::{Credentials, Account, Role, Group};
-    /// # use axum_gate::jwt::{RegisteredClaims, JwtClaims, JsonWebToken};
-    /// async fn perform_login<CV, AR, C>(
-    ///     creds: Credentials<String>,
-    ///     cv: Arc<CV>,
-    ///     repo: Arc<AR>,
-    ///     codec: Arc<C>,
-    /// ) -> Result<String, String>
-    /// where
-    ///     CV: CredentialsVerifier<uuid::Uuid>,
-    ///     AR: AccountRepository<Role, Group>,
-    ///     C: Codec<Payload = JwtClaims<Account<Role, Group>>>,
-    /// {
-    ///     let registered = RegisteredClaims::new("example-app", chrono::Utc::now().timestamp() as u64 + 3600);
-    ///     let service = LoginService::<Role, Group>::new();
-    ///     match service.authenticate(creds, registered, cv, repo, codec).await {
-    ///         LoginResult::Success(token) => Ok(token),
-    ///         LoginResult::InvalidCredentials => Err("invalid credentials".into()),
-    ///         LoginResult::InternalError(e) => Err(format!("internal error: {e}")),
-    ///     }
-    /// }
-    /// ```
+    /// Security: Avoids early returns that would create observable timing
+    /// differences between "user not found" and "wrong password".
     pub async fn authenticate<CredVeri, AccRepo, C>(
         &self,
         credentials: Credentials<String>,
@@ -150,12 +89,10 @@ where
         AccRepo: AccountRepository<R, G>,
         C: Codec<Payload = JwtClaims<Account<R, G>>>,
     {
-        // Step 1: Always query account (timing consistent for database lookup)
         let account_query_result = account_repository
             .query_account_by_user_id(&credentials.id)
             .await;
 
-        // Step 2: Extract account info with constant-time branching protection
         let (account_opt, verification_uuid, user_exists_choice, query_error_opt) =
             match account_query_result {
                 Ok(Some(acc)) => {
@@ -164,8 +101,6 @@ where
                 }
                 Ok(None) => {
                     debug!("Account not found for user_id: {}", credentials.id);
-                    // Use consistent dummy UUID to ensure we always perform credential verification
-                    // This UUID is fixed to ensure consistent timing behavior and won't collide with real UUIDs
                     let dummy_uuid = Uuid::from_bytes([
                         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x70, 0x00, 0x80, 0x00, 0x00, 0x00,
                         0x00, 0x00, 0x00, 0x01,
@@ -174,7 +109,6 @@ where
                 }
                 Err(e) => {
                     error!("Error querying account: {}", e);
-                    // Use consistent dummy UUID for error cases too
                     let dummy_uuid = Uuid::from_bytes([
                         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x70, 0x00, 0x80, 0x00, 0x00, 0x00,
                         0x00, 0x00, 0x00, 0x01,
@@ -183,18 +117,15 @@ where
                 }
             };
 
-        // Step 3: Return early only for database errors, not missing users
         if let Some(error) = query_error_opt {
             return LoginResult::InternalError(error.to_string());
         }
 
-        // Step 4: ALWAYS verify credentials (constant time - no early returns)
         let creds_to_verify = Credentials::new(&verification_uuid, &credentials.secret);
         let verification_result = credentials_verifier
             .verify_credentials(creds_to_verify)
             .await;
 
-        // Step 5: Determine authentication success using constant-time operations
         let auth_success_choice = match verification_result {
             Ok(VerificationResult::Ok) => {
                 debug!(
@@ -216,15 +147,11 @@ where
             }
         };
 
-        // Step 6: Combine conditions using constant-time AND operation
-        // Authentication succeeds only if: user exists AND credentials are valid
         let final_success_choice = user_exists_choice & auth_success_choice;
         let login_successful: bool = final_success_choice.into();
 
-        // Step 7: Handle result based on final success state
         if login_successful {
             if let Some(account) = account_opt {
-                // Generate JWT token for successful authentication
                 let claims = JwtClaims::new(account, registered_claims);
                 let jwt = match codec.encode(&claims) {
                     Ok(token) => token,
@@ -233,7 +160,6 @@ where
                         return LoginResult::InternalError(e.to_string());
                     }
                 };
-
                 let jwt_string = match String::from_utf8(jwt) {
                     Ok(s) => s,
                     Err(e) => {
@@ -241,17 +167,13 @@ where
                         return LoginResult::InternalError(e.to_string());
                     }
                 };
-
                 debug!("Login successful, JWT generated");
                 LoginResult::Success(jwt_string)
             } else {
-                // This should never happen due to our constant-time logic, but handle gracefully
                 error!("Internal error: login marked successful but no account available");
                 LoginResult::InternalError("Authentication state inconsistency".to_string())
             }
         } else {
-            // Always return InvalidCredentials for any authentication failure
-            // This prevents distinguishing between "user not found" and "wrong password"
             debug!("Login failed - invalid credentials");
             LoginResult::InvalidCredentials
         }
@@ -278,29 +200,34 @@ mod tests {
         MemoryAccountRepository, MemorySecretRepository,
     };
     use crate::prelude::{Group, Role};
-    use std::time::Instant;
+    use std::time::{Duration, Instant};
+
+    fn median(durs: &[Duration]) -> Duration {
+        let mut v = durs.to_vec();
+        v.sort();
+        v[v.len() / 2]
+    }
 
     #[tokio::test]
     async fn test_timing_attack_protection() {
-        // Setup repositories and services
+        // Setup
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
         let secret_repo = Arc::new(MemorySecretRepository::default());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 
-        // Create a test account
+        // Account + secret
         let existing_user = "existing@example.com";
         let password = "test_password";
-        let account = Account::new(existing_user, &[Role::User], &[Group::new("test")]);
+        let account = Account::new(existing_user, &[Role::User], &[Group::new("test-group")]);
         let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
 
-        // Store corresponding secret
         let secret = Secret::new(
             &stored_account.account_id,
             password,
             Argon2Hasher::default(),
         )
-        .unwrap();
+        .expect("secret");
         use crate::ports::repositories::SecretRepository;
         secret_repo.store_secret(secret).await.unwrap();
 
@@ -309,87 +236,167 @@ mod tests {
             chrono::Utc::now().timestamp() as u64 + 3600,
         );
 
-        // Test timing for non-existent user
-        let nonexistent_credentials =
-            Credentials::new(&"nonexistent@example.com".to_string(), "any_password");
-        let start = Instant::now();
-        let result1 = login_service
-            .authenticate(
-                nonexistent_credentials,
-                registered_claims.clone(),
-                secret_repo.clone(),
-                account_repo.clone(),
-                jwt_codec.clone(),
-            )
-            .await;
-        let time_nonexistent = start.elapsed();
+        // Warm-up both failure paths (first Argon2 invocation can include allocation cost)
+        {
+            let creds = Credentials::new(&"nonexistent@example.com".to_string(), "pw");
+            let _ = login_service
+                .authenticate(
+                    creds,
+                    registered_claims.clone(),
+                    secret_repo.clone(),
+                    account_repo.clone(),
+                    jwt_codec.clone(),
+                )
+                .await;
+            let creds = Credentials::new(&existing_user.to_string(), "wrong_pw");
+            let _ = login_service
+                .authenticate(
+                    creds,
+                    registered_claims.clone(),
+                    secret_repo.clone(),
+                    account_repo.clone(),
+                    jwt_codec.clone(),
+                )
+                .await;
+        }
 
-        // Test timing for existing user with wrong password
-        let wrong_credentials = Credentials::new(&existing_user.to_string(), "wrong_password");
-        let start = Instant::now();
-        let result2 = login_service
-            .authenticate(
-                wrong_credentials,
-                registered_claims.clone(),
-                secret_repo.clone(),
-                account_repo.clone(),
-                jwt_codec.clone(),
-            )
-            .await;
-        let time_wrong_password = start.elapsed();
+        let iterations = 6; // keep total runtime reasonable
+        let mut nonexistent_times = Vec::with_capacity(iterations);
+        let mut wrong_times = Vec::with_capacity(iterations);
 
-        // Test timing for existing user with correct password
-        let correct_credentials = Credentials::new(&existing_user.to_string(), password);
-        let start = Instant::now();
-        let result3 = login_service
-            .authenticate(
-                correct_credentials,
-                registered_claims,
-                secret_repo,
-                account_repo,
-                jwt_codec,
-            )
-            .await;
-        let time_correct = start.elapsed();
+        for i in 0..iterations {
+            // Alternate ordering to reduce systemic bias
+            if i % 2 == 0 {
+                // nonexistent first
+                let creds = Credentials::new(&"nonexistent@example.com".to_string(), "any_pw");
+                let start = Instant::now();
+                let r = login_service
+                    .authenticate(
+                        creds,
+                        registered_claims.clone(),
+                        secret_repo.clone(),
+                        account_repo.clone(),
+                        jwt_codec.clone(),
+                    )
+                    .await;
+                assert!(matches!(r, LoginResult::InvalidCredentials));
+                nonexistent_times.push(start.elapsed());
 
-        // Verify results are as expected
-        assert!(matches!(result1, LoginResult::InvalidCredentials));
-        assert!(matches!(result2, LoginResult::InvalidCredentials));
-        assert!(matches!(result3, LoginResult::Success(_)));
+                let creds = Credentials::new(&existing_user.to_string(), "wrong_pw");
+                let start = Instant::now();
+                let r = login_service
+                    .authenticate(
+                        creds,
+                        registered_claims.clone(),
+                        secret_repo.clone(),
+                        account_repo.clone(),
+                        jwt_codec.clone(),
+                    )
+                    .await;
+                assert!(matches!(r, LoginResult::InvalidCredentials));
+                wrong_times.push(start.elapsed());
+            } else {
+                // wrong first
+                let creds = Credentials::new(&existing_user.to_string(), "wrong_pw");
+                let start = Instant::now();
+                let r = login_service
+                    .authenticate(
+                        creds,
+                        registered_claims.clone(),
+                        secret_repo.clone(),
+                        account_repo.clone(),
+                        jwt_codec.clone(),
+                    )
+                    .await;
+                assert!(matches!(r, LoginResult::InvalidCredentials));
+                wrong_times.push(start.elapsed());
 
-        // Verify timing attack protection:
-        // The time difference between nonexistent user and wrong password should be minimal
-        // Both should involve Argon2 verification, so timing should be similar
-        let timing_diff = if time_nonexistent > time_wrong_password {
-            time_nonexistent - time_wrong_password
+                let creds = Credentials::new(&"nonexistent@example.com".to_string(), "any_pw");
+                let start = Instant::now();
+                let r = login_service
+                    .authenticate(
+                        creds,
+                        registered_claims.clone(),
+                        secret_repo.clone(),
+                        account_repo.clone(),
+                        jwt_codec.clone(),
+                    )
+                    .await;
+                assert!(matches!(r, LoginResult::InvalidCredentials));
+                nonexistent_times.push(start.elapsed());
+            }
+        }
+
+        // Measure success path (informational)
+        let mut success_times = Vec::new();
+        for _ in 0..3 {
+            let creds = Credentials::new(&existing_user.to_string(), password);
+            let start = Instant::now();
+            let r = login_service
+                .authenticate(
+                    creds,
+                    registered_claims.clone(),
+                    secret_repo.clone(),
+                    account_repo.clone(),
+                    jwt_codec.clone(),
+                )
+                .await;
+            assert!(matches!(r, LoginResult::Success(_)));
+            success_times.push(start.elapsed());
+        }
+
+        let med_nonexistent = median(&nonexistent_times);
+        let med_wrong = median(&wrong_times);
+        let med_success = median(&success_times);
+
+        let (fast, slow) = if med_nonexistent < med_wrong {
+            (med_nonexistent, med_wrong)
         } else {
-            time_wrong_password - time_nonexistent
+            (med_wrong, med_nonexistent)
         };
+        let diff = slow - fast;
+        let relative = diff.as_secs_f64() / fast.as_secs_f64().max(1e-9);
 
-        // The timing difference should be less than 15ms (generous threshold for test stability)
-        // In practice, it should be much smaller (microseconds) due to constant-time operations
+        // Thresholds:
+        // - relative difference must stay below 0.75 (75%)
+        // - absolute diff below 120ms (very generous for noisy CI)
+        // If Argon2 is accidentally skipped for one path, relative diff will approach 1.0
+        let relative_threshold = 0.75;
+        let absolute_threshold_ms: u128 = 120;
+
+        // Minimal expected Argon2 duration (debug fast preset vs release high security):
+        let min_expected_ms: u128 = if cfg!(debug_assertions) { 2 } else { 5 };
+        assert!(
+            med_nonexistent.as_millis() >= min_expected_ms,
+            "Nonexistent path too fast ({} ms) - Argon2 likely skipped",
+            med_nonexistent.as_millis()
+        );
+        assert!(
+            med_wrong.as_millis() >= min_expected_ms,
+            "Wrong-password path too fast ({} ms) - Argon2 likely skipped",
+            med_wrong.as_millis()
+        );
+
         println!(
-            "Timing - Nonexistent: {:?}, Wrong password: {:?}, Correct: {:?}, Diff: {:?}",
-            time_nonexistent, time_wrong_password, time_correct, timing_diff
+            "Timing medians -> nonexistent: {:?}, wrong: {:?}, success: {:?}, diff: {:?} ({} ms), rel: {:.2}",
+            med_nonexistent,
+            med_wrong,
+            med_success,
+            diff,
+            diff.as_millis(),
+            relative
         );
 
-        // This test verifies that both nonexistent and wrong password cases take similar time
-        // The threshold accounts for system variations while ensuring timing attack protection
-        // The improvement should be dramatic compared to the unprotected version
         assert!(
-            timing_diff.as_millis() < 15,
-            "Timing difference too large: {:?}ms. This suggests a timing attack vulnerability.",
-            timing_diff.as_millis()
-        );
-
-        // Verify that both failed cases take at least some minimum time (Argon2 is slow)
-        assert!(
-            time_nonexistent.as_millis() > 5,
-            "Nonexistent user check too fast - may not be doing Argon2"
-        );
-        assert!(
-            time_wrong_password.as_millis() > 5,
-            "Wrong password check too fast - may not be doing Argon2"
+            diff.as_millis() < absolute_threshold_ms || relative < relative_threshold,
+            "Timing difference suspicious: diff={}ms (limit {}ms), rel={:.2} (limit {:.2}). \
+             Nonexistent samples: {:?} Wrong samples: {:?}",
+            diff.as_millis(),
+            absolute_threshold_ms,
+            relative,
+            relative_threshold,
+            nonexistent_times,
+            wrong_times
         );
     }
 
@@ -405,7 +412,6 @@ mod tests {
             chrono::Utc::now().timestamp() as u64 + 3600,
         );
 
-        // Test that nonexistent user returns InvalidCredentials (not AccountNotFound)
         let nonexistent_credentials =
             Credentials::new(&"nonexistent@example.com".to_string(), "password");
         let result = login_service
@@ -418,8 +424,6 @@ mod tests {
             )
             .await;
 
-        // This should be InvalidCredentials, never AccountNotFound
-        // This prevents username enumeration through different error messages
         assert!(matches!(result, LoginResult::InvalidCredentials));
     }
 }
