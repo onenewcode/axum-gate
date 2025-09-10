@@ -208,13 +208,12 @@ async fn dashboard_handler(jar: CookieJar) -> Result<Response, StatusCode> {
     if jar.get("my-app").is_none() {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    let html = format!(
-        r#"
+    let html = r#"
         <!DOCTYPE html>
         <html>
         <head>
             <title>Dashboard</title>
-            <style>body {{ font-family: Arial, sans-serif; margin: 40px; }}</style>
+            <style>body { font-family: Arial, sans-serif; margin: 40px; }</style>
         </head>
         <body>
             <h1>📊 Dashboard</h1>
@@ -227,8 +226,7 @@ async fn dashboard_handler(jar: CookieJar) -> Result<Response, StatusCode> {
             </form>
         </body>
         </html>
-        "#,
-    );
+        "#.to_string();
 
     Ok(Html(html).into_response())
 }
@@ -238,13 +236,12 @@ async fn admin_handler(jar: CookieJar) -> Result<Response, StatusCode> {
     if jar.get("my-app").is_none() {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    let html = format!(
-        r#"
+    let html = r#"
         <!DOCTYPE html>
         <html>
         <head>
             <title>Admin Panel</title>
-            <style>body {{ font-family: Arial, sans-serif; margin: 40px; }}</style>
+            <style>body { font-family: Arial, sans-serif; margin: 40px; }</style>
         </head>
         <body>
             <h1>⚙️ Admin Panel</h1>
@@ -258,8 +255,7 @@ async fn admin_handler(jar: CookieJar) -> Result<Response, StatusCode> {
             </form>
         </body>
         </html>
-        "#,
-    );
+        "#.to_string();
 
     Ok(Html(html).into_response())
 }

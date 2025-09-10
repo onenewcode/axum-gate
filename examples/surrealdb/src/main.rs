@@ -9,7 +9,6 @@ use std::sync::Arc;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
-use dotenv;
 use surrealdb::{Surreal, engine::local::Mem};
 use tracing::debug;
 
@@ -34,7 +33,7 @@ async fn main() {
     // Surrealdb memory database connection
     let db = Surreal::new::<Mem>(())
         .await
-        .expect(&format!("Could not connect to surrealdb memory database."));
+        .expect("Could not connect to surrealdb memory database.");
 
     let account_repository = Arc::new(SurrealDbRepository::new(db, DatabaseScope::default()));
     debug!("Account repository initialized.");

@@ -167,7 +167,7 @@ impl PermissionCollisionChecker {
             let id_raw = PermissionId::from(permission.as_str()).as_u64();
             id_to_permissions
                 .entry(id_raw)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(permission.clone());
         }
 
@@ -190,7 +190,7 @@ impl PermissionCollisionChecker {
             let id = PermissionId::from(permission.as_str()).as_u64();
             self.collision_map
                 .entry(id)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(permission.clone());
         }
     }

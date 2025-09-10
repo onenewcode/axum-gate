@@ -140,6 +140,6 @@ where
         req.extensions_mut().insert(jwt.registered_claims.clone());
 
         let inner = self.inner.call(req);
-        Box::pin(async move { inner.await })
+        Box::pin(inner)
     }
 }

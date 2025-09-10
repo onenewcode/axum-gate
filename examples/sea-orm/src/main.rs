@@ -9,7 +9,6 @@ use std::sync::Arc;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
-use dotenv;
 use sea_orm::{ConnectionTrait, DbBackend, DbConn, Schema};
 use sea_query::table::TableCreateStatement;
 use tracing::debug;
@@ -53,7 +52,7 @@ async fn main() {
     // SQLite memory database connection
     let db = sea_orm::Database::connect(DATABASE_URL)
         .await
-        .expect(&format!("Could not connect to {DATABASE_URL} database."));
+        .unwrap_or_else(|_| panic!("Could not connect to {DATABASE_URL} database."));
 
     setup_database_schema(&db).await;
 

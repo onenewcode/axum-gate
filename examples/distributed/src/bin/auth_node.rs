@@ -11,7 +11,6 @@ use std::sync::Arc;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
-use dotenv;
 use tracing::debug;
 
 const ISSUER: &str = "auth-node";

@@ -66,8 +66,7 @@ where
                 operation: AccountOperation::Delete,
                 message: "Secret not found".to_string(),
                 account_id: Some(account_id.to_string()),
-            })
-            .into());
+            }));
         };
         debug!(%user_id, %account_id, "Secret removed for account");
 
@@ -91,8 +90,7 @@ where
                 operation: AccountOperation::Delete,
                 message: "Account deletion failed".to_string(),
                 account_id: Some(account_id.to_string()),
-            })
-            .into());
+            }));
         }
 
         info!(%user_id, %account_id, "Account deletion succeeded");

@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use axum::extract::Extension;
 use axum::routing::{Router, get};
-use dotenv;
 
 const ISSUER: &str = "auth-node";
 

@@ -198,8 +198,7 @@ where
                 operation: AccountOperation::Create,
                 message: "Account repository returned None on insertion".to_string(),
                 account_id: Some(self.user_id.clone()),
-            })
-            .into());
+            }));
         };
         debug!("Stored account in account repository.");
         let id = &account.account_id;
@@ -209,8 +208,7 @@ where
                 operation: AccountOperation::Create,
                 message: "Storing secret in repository returned false".to_string(),
                 account_id: Some(account.account_id.to_string()),
-            })
-            .into())
+            }))
         } else {
             debug!("Stored secret in secret repository.");
             Ok(Some(account))

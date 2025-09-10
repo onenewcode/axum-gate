@@ -11,7 +11,6 @@ use axum::Extension;
 use axum::extract::Json;
 use axum::routing::{Router, get, post};
 use chrono::{TimeDelta, Utc};
-use dotenv;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
