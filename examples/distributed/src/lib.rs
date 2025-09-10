@@ -374,101 +374,6 @@ pub fn demonstrate_zero_sync() {
     println!("  ✓ Easy permission categorization");
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::str::FromStr;
-
-    #[test]
-    fn permission_ids_are_deterministic() {
-        let id1 = PermissionId::from("test:permission");
-        let id2 = PermissionId::from("test:permission");
-        assert_eq!(id1, id2);
-    }
-
-    #[test]
-    fn different_permissions_have_different_ids() {
-        let perm1 = AppPermissions::Repository(RepositoryPermission::Read);
-        let perm2 = AppPermissions::Repository(RepositoryPermission::Write);
-        let id1 = PermissionId::from(perm1.as_str());
-        let id2 = PermissionId::from(perm2.as_str());
-        assert_ne!(id1, id2);
-    }
-
-    #[test]
-    fn permission_validation_works() {
-        // This would panic at compile time if there were collisions
-        validate_permissions![
-            "test:permission:1",
-            "test:permission:2",
-            "test:permission:3"
-        ];
-    }
-
-    #[test]
-    fn helper_functions_work() {
-        let mut permissions = RoaringTreemap::new();
-
-        assert!(!PermissionHelper::can_access_repository(&permissions));
-
-        PermissionHelper::grant_repository_access(&mut permissions);
-        assert!(PermissionHelper::can_access_repository(&permissions));
-        assert!(PermissionHelper::can_modify_repository(&permissions));
-        assert!(!PermissionHelper::can_delete_repository(&permissions));
-
-        assert!(!PermissionHelper::is_admin(&permissions));
-        PermissionHelper::grant_admin_access(&mut permissions);
-        assert!(PermissionHelper::is_admin(&permissions));
-    }
-
-    #[test]
-    fn enum_serialization_works() {
-        let perm = AppPermissions::Repository(RepositoryPermission::Read);
-        let serialized = serde_json::to_string(&perm).unwrap();
-        let deserialized: AppPermissions = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(perm, deserialized);
-    }
-
-    #[test]
-    fn enum_string_conversion_works() {
-        let perm = AppPermissions::Repository(RepositoryPermission::Read);
-        let as_string = perm.to_string();
-        let from_string = AppPermissions::from_str(&as_string).unwrap();
-        assert_eq!(perm, from_string);
-    }
-
-    #[test]
-    fn permission_categories_work() {
-        assert_eq!(AppPermissions::all_repository().len(), 3);
-        assert_eq!(AppPermissions::all_api().len(), 2);
-        assert_eq!(AppPermissions::all_system().len(), 1);
-        assert_eq!(AppPermissions::all().len(), 6);
-    }
-
-    #[test]
-    fn nested_permission_checking_works() {
-        let mut permissions = RoaringTreemap::new();
-
-        // Grant only read repository permission
-        PermissionHelper::grant_permission(
-            &mut permissions,
-            &AppPermissions::Repository(RepositoryPermission::Read),
-        );
-
-        assert!(PermissionHelper::can_access_repository(&permissions));
-        assert!(!PermissionHelper::can_modify_repository(&permissions));
-        assert!(!PermissionHelper::has_all_repository_permissions(
-            &permissions
-        ));
-
-        // Grant full repository access
-        PermissionHelper::grant_full_repository_access(&mut permissions);
-        assert!(PermissionHelper::has_all_repository_permissions(
-            &permissions
-        ));
-    }
-}
-
 /// Main function to run the demonstration.
 ///
 /// Run with: `cargo run --bin demo` from the distributed example directory.
@@ -585,4 +490,99 @@ pub fn main() {
     println!("  ✓ Easy serialization/deserialization");
     println!("  ✓ Organized permission categories");
     println!("  ✓ Iterator support for bulk operations");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn permission_ids_are_deterministic() {
+        let id1 = PermissionId::from("test:permission");
+        let id2 = PermissionId::from("test:permission");
+        assert_eq!(id1, id2);
+    }
+
+    #[test]
+    fn different_permissions_have_different_ids() {
+        let perm1 = AppPermissions::Repository(RepositoryPermission::Read);
+        let perm2 = AppPermissions::Repository(RepositoryPermission::Write);
+        let id1 = PermissionId::from(perm1.as_str());
+        let id2 = PermissionId::from(perm2.as_str());
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn permission_validation_works() {
+        // This would panic at compile time if there were collisions
+        validate_permissions![
+            "test:permission:1",
+            "test:permission:2",
+            "test:permission:3"
+        ];
+    }
+
+    #[test]
+    fn helper_functions_work() {
+        let mut permissions = RoaringTreemap::new();
+
+        assert!(!PermissionHelper::can_access_repository(&permissions));
+
+        PermissionHelper::grant_repository_access(&mut permissions);
+        assert!(PermissionHelper::can_access_repository(&permissions));
+        assert!(PermissionHelper::can_modify_repository(&permissions));
+        assert!(!PermissionHelper::can_delete_repository(&permissions));
+
+        assert!(!PermissionHelper::is_admin(&permissions));
+        PermissionHelper::grant_admin_access(&mut permissions);
+        assert!(PermissionHelper::is_admin(&permissions));
+    }
+
+    #[test]
+    fn enum_serialization_works() {
+        let perm = AppPermissions::Repository(RepositoryPermission::Read);
+        let serialized = serde_json::to_string(&perm).unwrap();
+        let deserialized: AppPermissions = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(perm, deserialized);
+    }
+
+    #[test]
+    fn enum_string_conversion_works() {
+        let perm = AppPermissions::Repository(RepositoryPermission::Read);
+        let as_string = perm.to_string();
+        let from_string = AppPermissions::from_str(&as_string).unwrap();
+        assert_eq!(perm, from_string);
+    }
+
+    #[test]
+    fn permission_categories_work() {
+        assert_eq!(AppPermissions::all_repository().len(), 3);
+        assert_eq!(AppPermissions::all_api().len(), 2);
+        assert_eq!(AppPermissions::all_system().len(), 1);
+        assert_eq!(AppPermissions::all().len(), 6);
+    }
+
+    #[test]
+    fn nested_permission_checking_works() {
+        let mut permissions = RoaringTreemap::new();
+
+        // Grant only read repository permission
+        PermissionHelper::grant_permission(
+            &mut permissions,
+            &AppPermissions::Repository(RepositoryPermission::Read),
+        );
+
+        assert!(PermissionHelper::can_access_repository(&permissions));
+        assert!(!PermissionHelper::can_modify_repository(&permissions));
+        assert!(!PermissionHelper::has_all_repository_permissions(
+            &permissions
+        ));
+
+        // Grant full repository access
+        PermissionHelper::grant_full_repository_access(&mut permissions);
+        assert!(PermissionHelper::has_all_repository_permissions(
+            &permissions
+        ));
+    }
 }
