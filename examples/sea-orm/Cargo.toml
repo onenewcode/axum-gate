@@ -2,12 +2,14 @@
 name = "sea-orm-example"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+
 
 [dependencies]
 axum = "0.8.3"
 axum-gate = { path = "../../crates/axum-gate", features = ["storage-seaorm"] }
 chrono = { version = "0.4" }
-dotenv = "0.15.0"
+dotenvy = "0.15"
 sea-orm = { version = "1", features = ["sqlx-sqlite", "runtime-tokio"] }
 sea-query = { version = "0.32.6", default-features = false, features = [
     "backend-sqlite",

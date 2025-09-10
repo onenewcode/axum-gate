@@ -2,6 +2,7 @@
 name = "distributed"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 [[bin]]
 name = "auth_node"
@@ -15,7 +16,7 @@ path = "src/bin/consumer_node.rs"
 axum = "0.8.3"
 axum-gate = { path = "../../crates/axum-gate" }
 chrono = "0.4.41"
-dotenv = "0.15.0"
+dotenvy = "0.15"
 roaring = "0.10"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

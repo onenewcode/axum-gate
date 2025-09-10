@@ -91,9 +91,9 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    dotenv::dotenv().expect("Could not read .env file.");
+    dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
-        dotenv::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
+        dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(
         JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(JsonWebTokenOptions {
             enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),

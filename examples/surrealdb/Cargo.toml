@@ -2,12 +2,14 @@
 name = "surrealdb-example"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+
 
 [dependencies]
 axum = "0.8.3"
 axum-gate = { path = "../../crates/axum-gate", features = ["storage-surrealdb"] }
 chrono = { version = "0.4" }
-dotenv = "0.15.0"
+dotenvy = "0.15"
 surrealdb = { version = "2", features = ["kv-mem"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1.41"

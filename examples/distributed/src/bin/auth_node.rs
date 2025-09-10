@@ -22,9 +22,9 @@ async fn main() {
         .init();
     debug!("Tracing initialized.");
 
-    dotenv::dotenv().expect("Could not read .env file.");
+    dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
-        dotenv::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
+        dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(JsonWebToken::new_with_options(JsonWebTokenOptions {
         enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
         dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
