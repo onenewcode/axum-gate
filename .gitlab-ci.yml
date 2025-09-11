@@ -24,7 +24,7 @@ stages:
 
 # Base job configuration
 .rust_job: &rust_job
-    image: rust:1.86
+    image: rust:latest
     before_script:
         - rustc --version
         - cargo --version
