@@ -22,9 +22,90 @@ pub enum LoginResult {
     /// Authentication succeeded and contains the issued JWT (already UTF‑8).
     Success(String),
     /// Credentials were invalid (unknown user OR wrong password).
-    InvalidCredentials,
+    InvalidCredentials {
+        /// User-friendly message
+        user_message: String,
+        /// Support reference code
+        support_code: Option<String>,
+    },
     /// An internal / infrastructural error (repository failure, hashing, JWT, etc.).
-    InternalError(String),
+    InternalError {
+        /// User-friendly message
+        user_message: String,
+        /// Technical message for developers
+        technical_message: String,
+        /// Support reference code
+        support_code: Option<String>,
+        /// Whether this error is retryable
+        retryable: bool,
+    },
+}
+
+impl LoginResult {
+    /// Create an invalid credentials result with user-friendly messaging
+    pub fn invalid_credentials(user_message: Option<String>, support_code: Option<String>) -> Self {
+        LoginResult::InvalidCredentials {
+            user_message: user_message.unwrap_or_else(|| {
+                "The username or password you entered is incorrect. Please check your credentials and try again.".to_string()
+            }),
+            support_code,
+        }
+    }
+
+    /// Create an internal error result with comprehensive messaging
+    pub fn internal_error(
+        user_message: impl Into<String>,
+        technical_message: impl Into<String>,
+        support_code: Option<&str>,
+        retryable: bool,
+    ) -> Self {
+        LoginResult::InternalError {
+            user_message: user_message.into(),
+            technical_message: technical_message.into(),
+            support_code: support_code.map(|s| s.to_string()),
+            retryable,
+        }
+    }
+
+    /// Get user-friendly message for any result type
+    pub fn user_message(&self) -> String {
+        match self {
+            LoginResult::Success(_) => "Sign-in successful! Welcome back.".to_string(),
+            LoginResult::InvalidCredentials { user_message, .. } => user_message.clone(),
+            LoginResult::InternalError { user_message, .. } => user_message.clone(),
+        }
+    }
+
+    /// Get support code if available
+    pub fn support_code(&self) -> Option<String> {
+        match self {
+            LoginResult::Success(_) => None,
+            LoginResult::InvalidCredentials { support_code, .. } => support_code.clone(),
+            LoginResult::InternalError { support_code, .. } => support_code.clone(),
+        }
+    }
+
+    /// Get technical details for developers/logs
+    pub fn technical_message(&self) -> Option<String> {
+        match self {
+            LoginResult::Success(_) => None,
+            LoginResult::InvalidCredentials { .. } => {
+                Some("Invalid credentials provided".to_string())
+            }
+            LoginResult::InternalError {
+                technical_message, ..
+            } => Some(technical_message.clone()),
+        }
+    }
+
+    /// Whether this result indicates a retryable error
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            LoginResult::Success(_) => false,
+            LoginResult::InvalidCredentials { .. } => true,
+            LoginResult::InternalError { retryable, .. } => *retryable,
+        }
+    }
 }
 
 /// Stateless service implementing constant‑time, enumeration‑resistant
@@ -119,7 +200,12 @@ where
             };
 
         if let Some(error) = query_error_opt {
-            return LoginResult::InternalError(error.to_string());
+            return LoginResult::internal_error(
+                "We're experiencing technical difficulties. Please try signing in again.",
+                format!("Account repository query failed: {}", error),
+                Some("repository_query"),
+                true,
+            );
         }
 
         let creds_to_verify = Credentials::new(&verification_uuid, &credentials.secret);
@@ -144,7 +230,12 @@ where
             }
             Err(e) => {
                 error!("Error verifying credentials: {}", e);
-                return LoginResult::InternalError(e.to_string());
+                return LoginResult::internal_error(
+                    "We're having trouble with the authentication system. Please try again.",
+                    format!("Credential verification failed: {}", e),
+                    Some("credential_verification"),
+                    true,
+                );
             }
         };
 
@@ -158,25 +249,40 @@ where
                     Ok(token) => token,
                     Err(e) => {
                         error!("Error encoding JWT: {}", e);
-                        return LoginResult::InternalError(e.to_string());
+                        return LoginResult::internal_error(
+                            "We're having trouble completing your sign-in. Please try again.",
+                            format!("JWT encoding failed: {}", e),
+                            Some("jwt_encoding"),
+                            true,
+                        );
                     }
                 };
                 let jwt_string = match String::from_utf8(jwt) {
                     Ok(s) => s,
                     Err(e) => {
                         error!("Error converting JWT to string: {}", e);
-                        return LoginResult::InternalError(e.to_string());
+                        return LoginResult::internal_error(
+                            "We're having trouble completing your sign-in. Please try again.",
+                            format!("JWT string conversion failed: {}", e),
+                            Some("jwt_conversion"),
+                            true,
+                        );
                     }
                 };
                 debug!("Login successful, JWT generated");
                 LoginResult::Success(jwt_string)
             } else {
                 error!("Internal error: login marked successful but no account available");
-                LoginResult::InternalError("Authentication state inconsistency".to_string())
+                LoginResult::internal_error(
+                    "There was an unexpected issue with your authentication. Please try signing in again.",
+                    "Authentication state inconsistency: successful verification but no account data",
+                    Some("auth_state_inconsistency"),
+                    false,
+                )
             }
         } else {
             debug!("Login failed - invalid credentials");
-            LoginResult::InvalidCredentials
+            LoginResult::invalid_credentials(None, None)
         }
     }
 }
@@ -280,7 +386,7 @@ mod tests {
                         jwt_codec.clone(),
                     )
                     .await;
-                assert!(matches!(r, LoginResult::InvalidCredentials));
+                assert!(matches!(r, LoginResult::InvalidCredentials { .. }));
                 nonexistent_times.push(start.elapsed());
 
                 let creds = Credentials::new(&existing_user.to_string(), "wrong_pw");
@@ -294,7 +400,7 @@ mod tests {
                         jwt_codec.clone(),
                     )
                     .await;
-                assert!(matches!(r, LoginResult::InvalidCredentials));
+                assert!(matches!(r, LoginResult::InvalidCredentials { .. }));
                 wrong_times.push(start.elapsed());
             } else {
                 // wrong first
@@ -309,7 +415,7 @@ mod tests {
                         jwt_codec.clone(),
                     )
                     .await;
-                assert!(matches!(r, LoginResult::InvalidCredentials));
+                assert!(matches!(r, LoginResult::InvalidCredentials { .. }));
                 wrong_times.push(start.elapsed());
 
                 let creds = Credentials::new(&"nonexistent@example.com".to_string(), "any_pw");
@@ -323,7 +429,7 @@ mod tests {
                         jwt_codec.clone(),
                     )
                     .await;
-                assert!(matches!(r, LoginResult::InvalidCredentials));
+                assert!(matches!(r, LoginResult::InvalidCredentials { .. }));
                 nonexistent_times.push(start.elapsed());
             }
         }
@@ -425,6 +531,6 @@ mod tests {
             )
             .await;
 
-        assert!(matches!(result, LoginResult::InvalidCredentials));
+        assert!(matches!(result, LoginResult::InvalidCredentials { .. }));
     }
 }

@@ -136,9 +136,38 @@ where
             cookie.set_value(jwt_string);
             Ok(cookie_jar.add(cookie))
         }
-        LoginResult::InvalidCredentials => Err(StatusCode::UNAUTHORIZED),
-        LoginResult::InternalError(msg) => {
-            error!("Login internal error: {}", msg);
+        LoginResult::InvalidCredentials {
+            user_message,
+            support_code,
+        } => {
+            if let Some(code) = support_code {
+                error!(
+                    "Login failed - Invalid credentials [Support Code: {}]",
+                    code
+                );
+            } else {
+                error!("Login failed - Invalid credentials");
+            }
+            Err(StatusCode::UNAUTHORIZED)
+        }
+        LoginResult::InternalError {
+            user_message,
+            technical_message,
+            support_code,
+            retryable,
+        } => {
+            let code_info = support_code
+                .map(|c| format!(" [Support Code: {}]", c))
+                .unwrap_or_default();
+            let retry_info = if retryable {
+                " [Retryable]"
+            } else {
+                " [Non-retryable]"
+            };
+            error!(
+                "Login internal error{}{}: {}",
+                code_info, retry_info, technical_message
+            );
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
