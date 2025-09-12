@@ -189,16 +189,16 @@ examples_sea_orm:
     <<: *rust_job
     stage: examples
     script:
-        - cargo check -p sea-orm-example --features storage-seaorm
-        - cargo test -p sea-orm-example --features storage-seaorm
+        - cargo check -p sea-orm-example
+        - cargo test -p sea-orm-example
     allow_failure: false
 
 examples_surrealdb:
     <<: *rust_job
     stage: examples
     script:
-        - cargo check -p surrealdb-example --features storage-surrealdb
-        - cargo test -p surrealdb-example --features storage-surrealdb
+        - cargo check -p surrealdb-example
+        - cargo test -p surrealdb-example
     allow_failure: false
 
 examples_access_policy:
