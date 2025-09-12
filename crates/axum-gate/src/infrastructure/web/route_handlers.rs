@@ -137,7 +137,7 @@ where
             Ok(cookie_jar.add(cookie))
         }
         LoginResult::InvalidCredentials {
-            user_message,
+            user_message: _,
             support_code,
         } => {
             if let Some(code) = support_code {
@@ -151,7 +151,7 @@ where
             Err(StatusCode::UNAUTHORIZED)
         }
         LoginResult::InternalError {
-            user_message,
+            user_message: _,
             technical_message,
             support_code,
             retryable,

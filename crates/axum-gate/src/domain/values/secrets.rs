@@ -135,6 +135,7 @@ impl Secret {
                 operation: HashingOperation::Hash,
                 message: e.to_string(),
                 algorithm: Some("Argon2".to_string()),
+                expected_format: Some("PHC".to_string()),
             })
         })?;
         Ok(Self {

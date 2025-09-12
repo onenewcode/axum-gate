@@ -265,6 +265,7 @@ impl SecretRepository for MemorySecretRepository {
                 repository: RepositoryType::Secret,
                 message: "AccountID is already present".to_string(),
                 operation: None,
+                context: None,
             }));
         }
 
@@ -276,6 +277,7 @@ impl SecretRepository for MemorySecretRepository {
                 repository: RepositoryType::Secret,
                 message: "This should never occur because it is checked if the key is already present a few lines earlier".to_string(),
                 operation: Some("store".to_string()),
+                context: None,
             }));
         };
         Ok(true)

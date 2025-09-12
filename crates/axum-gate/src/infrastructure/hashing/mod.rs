@@ -271,6 +271,7 @@ impl HashingService for Argon2Hasher {
                     operation: HashingOperation::Hash,
                     message: format!("Could not hash secret: {e}"),
                     algorithm: Some("Argon2id".to_string()),
+                    expected_format: Some("PHC".to_string()),
                 })
             })?
             .to_string())
@@ -282,6 +283,7 @@ impl HashingService for Argon2Hasher {
                 operation: HashingOperation::Verify,
                 message: format!("Could not parse stored hash: {e}"),
                 algorithm: Some("Argon2id".to_string()),
+                expected_format: Some("PHC".to_string()),
             })
         })?;
         Ok(VerificationResult::from(
