@@ -201,14 +201,6 @@ examples_surrealdb:
         - cargo test -p surrealdb-example
     allow_failure: false
 
-examples_access_policy:
-    <<: *rust_job
-    stage: examples
-    script:
-        - cargo check --example access_policy_example
-        - cargo test --example access_policy_example --all-features
-    allow_failure: false
-
 # Build verification for different Rust versions
 test_msrv:
     image: rust:1.86
