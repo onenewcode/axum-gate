@@ -181,6 +181,14 @@ This separation promotes testability & substitution of components without touchi
 - Store the signing secret outside source control (env var / secret manager)
 - Rotate secrets carefully; plan for multi-key verification if you need seamless rotation in future versions
 
+### Security Audit Status
+
+**Note**: The following RUSTSEC advisories are temporarily disabled in our audit process:
+- `RUSTSEC-2023-0071`: Temporarily ignored while evaluating impact and mitigation strategies
+- `RUSTSEC-2024-0436`: Temporarily ignored pending dependency updates
+
+These advisories are being actively monitored and will be addressed in upcoming releases. The decision to temporarily disable them allows for continued development while proper fixes are implemented.
+
 ## Error Handling
 
 Errors implement rich variants enabling mapping to structured HTTP responses. When integrating, convert them to your API error format or reuse provided helpers.
