@@ -144,6 +144,17 @@ cargo_deny:
         - cargo deny check
     allow_failure: false
 
+cargo_semver_checks:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release
+    allow_failure: false
+    only:
+        - merge_requests
+        - main
+
 # Example compilation and basic tests
 examples_simple_usage:
     <<: *rust_job
