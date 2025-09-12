@@ -28,6 +28,7 @@ Report issues or ergonomic improvement ideas via GitHub Issues or Discussions.
 - Strong error typing, easily convertible to axum responses
 - Example-driven documentation: basic usage, distributed setup, rate limiting, SurrealDB, SeaORM, custom roles, permission validation
 - Works with tower middleware layering & standard axum patterns
+- Production-ready observability planned: Prometheus metrics, audit trails, structured logging (v1.1.0)
 
 ## Feature Flags
 
@@ -36,6 +37,8 @@ Report issues or ergonomic improvement ideas via GitHub Issues or Discussions.
 | `storage-surrealdb` | Enables SurrealDB repository implementation |
 | `storage-seaorm` | Enables SeaORM repository implementation |
 | `insecure-fast-hash` | Opt-in (release) / automatic in debug: a reduced Argon2 preset for faster local iteration. Never enable in production. |
+| `metrics-prometheus` | Enables Prometheus metrics integration (planned v1.1.0) |
+| `observability-full` | Enables comprehensive observability features including audit trails (planned v1.1.0) |
 
 ## Installation
 
@@ -253,6 +256,30 @@ Contributions are welcome—tests & documentation are especially helpful. Standa
 4. Open a PR referencing any related issue
 
 See `SECURITY.md` for coordinated security disclosure guidelines.
+
+## Planned Features
+
+The following features are planned for future releases to enhance axum-gate's production readiness:
+
+### Production Observability (v1.1.0)
+- **Structured logging integration**: Comprehensive tracing spans with contextual metadata for all authentication operations
+- **Prometheus metrics**: Built-in counters, histograms, and gauges for login attempts, JWT operations, authorization checks, and system health
+- **Audit trail system**: Pluggable audit recorders for security compliance (file, database, structured logging)
+- **Performance monitoring**: Request duration tracking, storage operation metrics, and system health indicators
+- **Security metrics**: Brute force detection, rate limiting triggers, suspicious activity monitoring
+- **Multiple backend support**: In-memory (development), Prometheus (production), OpenTelemetry (enterprise)
+
+Feature flags: `metrics-prometheus`, `observability-full`
+
+### Authentication Enhancements
+- **Key rotation utilities**: Seamless JWT signing key rotation without global session invalidation
+- **Bearer token Gate**: Header-based authentication for SPA and API clients
+
+### Security & Compliance
+- **Audit hooks**: Unified security event streaming for SIEM integration
+- **IP-based restrictions**: Geographic and network-based access controls
+
+All features will be backward-compatible and opt-in via feature flags. See [SECURITY.md](SECURITY.md) for additional security-focused planned features.
 
 ## Community & Support
 
