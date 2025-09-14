@@ -42,7 +42,7 @@
 //! # Example: Custom Login Endpoint
 //! ```rust
 //! use std::sync::Arc;
-//! use axum_gate::advanced::{LoginService, CredentialsVerifier, AccountRepository, Codec};
+//! use axum_gate::advanced::{LoginService, CredentialsVerifier, AccountRepository, Codec, LoginResult};
 //! use axum_gate::auth::{Credentials, Account, Role, Group};
 //! use axum_gate::jwt::{RegisteredClaims, JwtClaims, JsonWebToken};
 //!
@@ -60,9 +60,9 @@
 //!     let registered = RegisteredClaims::new("my-app", chrono::Utc::now().timestamp() as u64 + 3600);
 //!     let service = LoginService::<Role, Group>::new();
 //!     match service.authenticate(creds, registered, creds_repo, account_repo, codec).await {
-//!         axum_gate::advanced::LoginResult::Success(token) => Ok(token),
-//!         axum_gate::advanced::LoginResult::InvalidCredentials => Err("invalid credentials".into()),
-//!         axum_gate::advanced::LoginResult::InternalError(e) => Err(format!("internal error: {e}"))
+//!         LoginResult::Success(token) => Ok(token),
+//!         LoginResult::InvalidCredentials { .. } => Err("invalid credentials".into()),
+//!         LoginResult::InternalError { user_message, technical_message: _, support_code: _, retryable: _ } => Err(format!("internal error: {user_message}"))
 //!     }
 //! }
 //! ```
