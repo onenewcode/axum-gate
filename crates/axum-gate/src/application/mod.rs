@@ -6,7 +6,7 @@
 //! - Application services that coordinate domain services
 //! - DTOs and data transfer logic
 
-pub mod accounts;
-pub mod auth;
-pub mod errors;
-pub mod permissions;
+pub(crate) mod accounts;
+pub(crate) mod auth;
+pub(crate) mod errors;
+pub(crate) mod permissions;

@@ -4,9 +4,9 @@
 //! between the application layer and external systems. These ports
 //! are implemented by adapters in the infrastructure layer.
 
-pub mod auth;
-pub mod errors;
-pub mod repositories;
+pub(crate) mod auth;
+pub(crate) mod errors;
+pub(crate) mod repositories;
 
 mod codecs;
 

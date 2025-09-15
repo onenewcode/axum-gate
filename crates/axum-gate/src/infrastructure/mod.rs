@@ -5,8 +5,8 @@
 //! - Repositories: Database and persistence implementations
 //! - JWT: JSON Web Token implementation details
 //! - Hashing: Password hashing and cryptographic implementations
-pub mod errors;
-pub mod hashing;
-pub mod jwt;
-pub mod repositories;
-pub mod web;
+pub(crate) mod errors;
+pub(crate) mod hashing;
+pub(crate) mod jwt;
+pub(crate) mod repositories;
+pub(crate) mod web;

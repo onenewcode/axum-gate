@@ -252,11 +252,11 @@
 //! a user exists or not, making timing-based user enumeration attacks infeasible.
 
 pub mod advanced;
-mod application;
-mod domain;
+pub(crate) mod application;
+pub(crate) mod domain;
 pub mod errors;
-mod infrastructure;
-mod ports;
+pub(crate) mod infrastructure;
+pub(crate) mod ports;
 
 /// Common types and functions for quick imports.
 pub mod prelude {

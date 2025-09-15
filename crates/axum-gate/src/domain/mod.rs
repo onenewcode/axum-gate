@@ -6,8 +6,8 @@
 //! - Traits: Domain interfaces and contracts
 //! - Values: Value objects and domain-specific types
 
-pub mod entities;
-pub mod errors;
-pub mod services;
-pub mod traits;
-pub mod values;
+pub(crate) mod entities;
+pub(crate) mod errors;
+pub(crate) mod services;
+pub(crate) mod traits;
+pub(crate) mod values;
