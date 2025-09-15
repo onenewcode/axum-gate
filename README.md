@@ -176,6 +176,11 @@ This separation promotes testability & substitution of components without touchi
 
 - Uses Argon2 for password hashing (strong preset in release builds)
 - Optional fast-hash preset for local dev only (`insecure-fast-hash`)
+- **JWT Secret Management**
+  - Never hardcode secrets in source code
+  - Use high-entropy secrets (≥32 bytes)
+  - Load from environment variables or secret management systems
+  - Different secrets for dev/staging/production environments
 - JWT cookies should be:
   - `HttpOnly`
   - `Secure` (always when using TLS)
