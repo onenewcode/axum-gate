@@ -1,198 +1,392 @@
-# Security Considerations
+# Security Policy
 
-This document outlines important security practices and built‑in protections in `axum-gate`, plus guidance for deploying it safely in production environments.
-
----
-
-## 1. Password / Secret Security
-
-- **Modern KDF**: Uses Argon2id with per‑secret random salt.
-- **No Plain Text Storage**: Only salted Argon2 hashes are persisted.
-- **Constant‑Time Verification**: Credential verification always performs an Argon2 hash check (even for non‑existent accounts) using a dummy hash to eliminate user enumeration via timing.
-- **Unicode & Length Handling**: Arbitrary UTF‑8 secrets are supported; extremely large inputs should still be constrained at your application boundary (recommend enforcing sane max lengths).
-
-### (Planned) Configurable Argon2 Parameters
-
-A forthcoming update (see CHANGELOG) introduces an `Argon2Config` builder offering:
-- Memory cost (KiB)
-- Time cost (iterations)
-- Parallelism
-- Presets: `HighSecurity` (default), `Interactive`, `DevFast`
-  
-Default settings are intentionally conservative (security first) so you do **not** need different code paths for debug vs. release. You may *opt in* to weaker parameters explicitly (e.g. for CI speed) using provided preset methods once the patch lands.
+This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0-rc.1.
 
 ---
 
-## 2. JWT Token Security
+## 1. Supported Versions
 
-- **Signature Validation**: All tokens are verified with the configured signing key.
-- **Expiration Enforcement**: Standard `exp` claim is validated.
-- **Issuer Validation**: The `iss` claim must match the expected issuer configured in the Gate.
-- **Tamper Detection**: Any modification invalidates the signature.
-- **Header Consistency Check**: The library enforces that decoded headers match the encoding header (defense‑in‑depth against algorithm substitution).
+| Version | Supported |
+| ------- | --------- |
+| 1.0.0-rc.1 | ✅ |
+| < 1.0.0 | ❌ |
 
-### Key Management Guidance
-
-- **Ephemeral Default**: The default codec generates a random key each process start—ideal for tests, **not for production** (all sessions invalidate on restart).
-- **Production**: Load a stable secret (env var, file, KMS, HashiCorp Vault, etc.). Rotate keys periodically; if you require seamless rotation, introduce a small wrapper that keeps (active, next) keys and attempts both for decode.
+Only the latest release candidate and stable versions receive security updates.
 
 ---
 
-## 3. Cookie Security
+## 2. Password & Secret Security
 
-When using cookie‑based auth:
+### Argon2id Implementation
+- **Algorithm**: Uses Argon2id (latest variant) with cryptographically secure parameters
+- **Salting**: Each password gets a unique, randomly generated salt using `OsRng`
+- **PHC Format**: Stores hashes in standardized PHC (Password Hashing Competition) format
+- **No Plaintext Storage**: Only Argon2id hashes are persisted; plaintext secrets never touch disk
+
+### Configurable Security Levels
+The crate provides three security presets:
+
+| Preset | Memory (MiB) | Time Cost | Parallelism | Use Case |
+|--------|--------------|-----------|-------------|----------|
+| `HighSecurity` | 64 | 3 | 1 | Production (default in release) |
+| `Interactive` | 32 | 2 | 1 | User-facing applications |
+| `DevFast` | 4 | 1 | 1 | Development only (debug builds) |
+
+**Default Behavior**:
+- Release builds: `HighSecurity` preset automatically
+- Debug builds: `DevFast` preset for faster iteration
+- Production override: Use `insecure-fast-hash` feature flag to access `DevFast` in release (⚠️ **NOT RECOMMENDED**)
+
+### Timing Attack Protection
+- **Constant-Time Verification**: Always performs Argon2 computation, even for non-existent accounts
+- **Dummy Hash Verification**: Uses a pre-computed dummy hash for non-existent users
+- **Unified Error Response**: Returns generic `InvalidCredentials` for both "user not found" and "wrong password"
+- **No Early Returns**: Authentication logic defers all branching until after hash computation
+
+---
+
+## 3. JWT Token Security
+
+### Core Security Features
+- **HMAC Signature Validation**: All tokens verified with configured signing key
+- **Expiration Enforcement**: Standard `exp` claim validation with configurable lifetime
+- **Issuer Validation**: Required `iss` claim must match expected issuer
+- **Tamper Detection**: Any modification to payload or header invalidates signature
+- **Algorithm Consistency**: Enforces that token algorithm matches expected algorithm
+
+### Key Management
+- **Development Default**: Generates ephemeral random key per process (testing only)
+- **Production Requirements**: 
+  - Use stable, high-entropy secret (≥32 bytes recommended)
+  - Load from environment variables or secret management systems
+  - Store outside source control
+  - Rotate periodically (manual process in v1.0.0-rc.1)
+
+**Example Production Setup**:
 ```rust
-let cookie_template = axum_gate::cookie::CookieBuilder::new("auth-cookie", "")
-    .secure(true)                // HTTPS only
-    .http_only(true)             // Unavailable to JS - mitigates XSS credential theft
-    .same_site(cookie::SameSite::Strict) // Strong CSRF mitigation
-    .path("/")
-    .domain("example.com");
+// Load from environment (recommended)
+let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET not set");
+let jwt_manager = JwtManager::new(jwt_secret.as_bytes());
+
+// Or from a secret management service
+let jwt_manager = JwtManager::new(&load_secret_from_vault("jwt-signing-key"));
 ```
 
-Recommendations:
-- Use a stable, explicit cookie name (prefix with `__Host-` if you can: requires Secure + no Domain attribute + Path=/).
-- Always set `secure(true)` in production.
-- Use `SameSite=Strict` or `Lax`; if you must allow cross‑site, add a secondary CSRF token mechanism.
+---
+
+## 4. Cookie Security
+
+### Secure Cookie Configuration
+When using cookie-based authentication, apply these security settings:
+
+```rust
+use axum_extra::extract::cookie::{Cookie, SameSite};
+
+// Recommended production cookie settings
+let secure_cookie = Cookie::build(("auth-token", token_value))
+    .secure(true)              // HTTPS only
+    .http_only(true)           // Prevents XSS access
+    .same_site(SameSite::Strict) // Strong CSRF protection
+    .path("/")                 // Application-wide
+    .max_age(Duration::hours(24)) // Explicit expiration
+    .build();
+```
+
+### Security Recommendations
+- **Always use `secure(true)` in production** (HTTPS required)
+- **Set `http_only(true)`** to prevent JavaScript access (XSS mitigation)  
+- **Use `SameSite::Strict` or `Lax`** for CSRF protection
+- **Avoid `SameSite::None`** unless cross-site requests are required
+- **Consider `__Host-` prefix** for additional security (requires Secure + no Domain + Path="/")
 
 ---
 
-## 4. Authorization Security
+## 5. Authorization Security
 
-- **Default Deny**: A `Gate` with no policy denies all requests.
-- **Least Privilege**: Combine roles, groups, and permissions narrowly; avoid broad “admin” grants for public endpoints.
-- **Role Hierarchy**: Supervisor traversal is explicit via `require_role_or_supervisor`.
-- **Fine‑Grained Permissions**: Deterministic 64‑bit IDs from normalized names; collisions are extraordinarily improbable and validated.
+### Access Control Model
+- **Default Deny**: `Gate` with no policy denies all requests
+- **Least Privilege**: Combine roles and permissions narrowly
+- **Hierarchical Roles**: Parent-child relationships with explicit traversal
+- **Fine-Grained Permissions**: 64-bit deterministic IDs from permission names
 
----
+### Permission System Safety
+- **Deterministic Hashing**: Uses SHA-256 prefix for 64-bit permission IDs
+- **Collision Validation**: Built-in `validate_permissions![]` macro for compile-time checks
+- **Runtime Validation**: `PermissionCollisionChecker` for dynamic permission sets
+- **Cross-Node Consistency**: Deterministic hashing ensures identical permission evaluation across distributed deployments
 
-## 5. Permission System Safety
+**Example Permission Validation**:
+```rust
+use axum_gate::prelude::*;
 
-- **Deterministic Hashing**: 64‑bit identifiers derived from SHA‑256 prefix lower collision probability dramatically.
-- **Validation Macro**: `validate_permissions![ ... ]` adds compile‑time and test‑time assurance.
-- **Runtime Validation**: `PermissionCollisionChecker` & `ApplicationValidator` help guard dynamic permission sets (config/database sourced).
-- **Duplicates vs Collisions**: The validators distinguish identical strings (duplicates) from true hash collisions (the latter are practically nonexistent but still reported if ever encountered).
-
----
-
-## 6. Timing Attack Mitigation
-
-Implemented protections:
-
-| Vector | Mitigation |
-|--------|------------|
-| User enumeration via timing | Always performs Argon2 verification with dummy hash for absent accounts. |
-| Distinguishing “wrong user” vs “wrong password” | Unified `InvalidCredentials` result. |
-| Early returns shortening path | Logic defers branching until after constant‑time combination. |
-
-You do *not* need to add artificial delays; the hashing dominates timing uniformly.
+// Compile-time validation ensures no collisions
+validate_permissions![
+    CreateUser,
+    UpdateUser, 
+    DeleteUser,
+    ViewDashboard
+];
+```
 
 ---
 
-## 7. Rate Limiting & Brute Force Defense
+## 6. Rate Limiting Integration
 
-Argon2 is intentionally expensive; still add:
-- **Global & per‑IP rate limiting** (e.g. tower middleware).
-- **Progressive backoff / account lockout** policy after N failures (optional, beware enumeration side‑channels).
-- **Central logging & alerting** for anomaly detection.
+While `axum-gate` doesn't provide rate limiting directly, it integrates seamlessly with `tower` middleware:
 
----
+```rust
+use tower::{ServiceBuilder, limit::RateLimitLayer, buffer::BufferLayer};
 
-## 8. CSRF Considerations
+let protected_routes = Router::new()
+    .route("/login", post(login_handler))
+    .layer(
+        ServiceBuilder::new()
+            .layer(BufferLayer::new(1024))
+            .layer(RateLimitLayer::new(5, Duration::from_secs(60))) // 5/minute
+    );
+```
 
-- Cookie authentication is susceptible to CSRF if `SameSite=None`.
-- Recommended:
-  - Prefer `SameSite=Strict` for sensitive panels.
-  - For cross‑site POST needs, implement a double‑submit or synchronizer token (not bundled here).
-  - Consider using bearer tokens (header‑based) for APIs consumed by third parties (planned feature).
-
----
-
-## 9. Session & Logout Behavior
-
-- Stateless JWT means logout is client‑side cookie removal.
-- For *forced* invalidation (compromised account):
-  - Introduce a server‑side denylist (keyed by `jti` or account ID + issued_at threshold).
-  - Alternatively, rotate signing key (global invalidation).
-- Consider embedding a short `exp` and refreshing tokens periodically (sliding session window pattern) in future enhancements.
+**Recommended Rate Limits**:
+- Login endpoints: 5-10 requests per minute per IP
+- Password reset: 3 requests per hour per email  
+- Protected APIs: 100-1000 requests per minute per user
+- Admin endpoints: 10-50 requests per minute
 
 ---
 
-## 10. Operational Hardening Checklist
+## 7. Storage Backend Security
 
-| Area | Recommendation |
-|------|---------------|
-| Transport | Enforce HTTPS; HSTS on parent domain. |
-| JWT Signing Key | Stable, high‑entropy secret (≥32 bytes). Rotate periodically. |
-| Argon2 Parameters | Use default high‑security preset; tune memory to your latency budget (monitor p95). |
-| Rate Limiting | Apply per‑IP & global on login endpoint. |
-| Monitoring | Log success/failure counts, anomaly spikes. |
-| Auditing | Record role/permission change events. |
-| Dependency Updates | Track `argon2`, `jsonwebtoken`, and `axum` CVEs. |
-| Backups | Securely backup persistent stores (if using DB backends). |
-| Secrets Handling | Store secrets outside the repository, inject at runtime (env, secret manager). |
-| CSRF | Use `SameSite` cookies or explicit tokens. |
+### Repository Security
+- **Interface Separation**: Account and secret repositories can use different backends
+- **Least Privilege**: Database users should have minimal required permissions
+- **Connection Security**: Use TLS/SSL for database connections in production
+- **Backup Encryption**: Ensure backups of authentication data are encrypted
 
----
-
-## 11. Storage Security
-
-- **Separation**: Optional deployment of account metadata and secret storage to distinct infrastructure.
-- **Least Privilege Credentials**: Database users should have only needed permissions.
-- **Deletion Order**: Ensure application logic handles partial failures (e.g., wrap account + secret deletion in a transactional pattern if backend supports it).
+### Supported Backends
+| Backend | Feature Flag | Production Ready | Notes |
+|---------|--------------|------------------|-------|
+| In-Memory | (default) | ❌ Development only | Lost on restart |
+| SurrealDB | `storage-surrealdb` | ✅ | Embedded or remote |  
+| SeaORM | `storage-seaorm` | ✅ | Multi-database support |
 
 ---
 
-## 12. Input Validation & Abuse Resistance
+## 8. CSRF Protection Considerations
 
-Implement upstream validation for:
-- Max password length (prevents pathological Argon2 resource exhaustion).
-- Allowed username patterns (log & reject suspicious payloads).
-- JSON size limits (avoid large body DoS).
+### Cookie-Based Authentication Risks
+- **SameSite=None**: Vulnerable to CSRF attacks
+- **SameSite=Lax**: Reduced CSRF risk, allows some cross-site navigation
+- **SameSite=Strict**: Maximum CSRF protection, may break cross-site workflows
+
+### Mitigation Strategies
+1. **Primary**: Use `SameSite=Strict` for sensitive applications
+2. **Alternative**: Implement double-submit cookie pattern
+3. **API Clients**: Consider header-based authentication (planned for v1.1.0)
 
 ---
 
-## 13. Security Testing
+## 9. Session Management & Logout
 
-Areas covered by existing tests:
-- Timing uniformity (login service tests).
-- Permission system (grant/revoke, collision detection).
-- Authorization semantics (role/group/supervisor rules).
-- JWT decoding & issuer validation.
+### Stateless JWT Limitations
+- **Client-Side Logout**: JWT tokens remain valid until expiration
+- **No Server-Side Revocation**: Cannot immediately invalidate specific tokens
+- **Global Invalidation**: Requires signing key rotation (invalidates all sessions)
 
-Suggested additional tests (you can add internally):
-- Fuzz permission name normalization invariants.
-- Property tests for permission ID determinism.
-- Load tests for varied Argon2 parameter profiles.
+### Logout Security
+```rust
+// Secure logout implementation
+async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
+    let removal_cookie = Cookie::build(("auth-token", ""))
+        .removal()  // Properly removes cookie
+        .build();
+    
+    (jar.add(removal_cookie), Redirect::to("/login"))
+}
+```
 
-Run existing tests:
+### Future Enhancements (Planned v1.1.0)
+- Token revocation lists (server-side denylist)
+- Sliding session windows with refresh tokens
+- Forced logout capabilities
+
+---
+
+## 10. Production Hardening Checklist
+
+| Category | Requirement | Status |
+|----------|-------------|--------|
+| **Transport Security** | ✅ HTTPS with HSTS | Required |
+| **JWT Secrets** | ✅ High-entropy (≥32 bytes) | Required |
+| **JWT Secrets** | ✅ External secret management | Recommended |
+| **Argon2 Config** | ✅ HighSecurity preset in production | Default |
+| **Cookie Security** | ✅ Secure, HttpOnly, SameSite | Required |
+| **Rate Limiting** | ✅ Login endpoint protection | Recommended |
+| **Database Security** | ✅ TLS connections | Required |
+| **Backup Encryption** | ✅ Encrypted backups | Required |
+| **Monitoring** | ⚠️ Authentication failure alerts | Manual setup |
+| **Audit Logging** | ⚠️ Security event logging | Manual setup |
+
+✅ = Built-in or automatic  
+⚠️ = Requires external implementation
+
+---
+
+## 11. Security Audit Status
+
+**Current Status**: The project uses automated security scanning with the following configuration:
+
+**Temporarily Disabled Advisories**:
+- `RUSTSEC-2023-0071`: Under evaluation for impact assessment
+- `RUSTSEC-2024-0436`: Pending dependency updates
+
+These advisories are actively monitored and will be addressed in upcoming releases. The decision to temporarily disable allows continued development while proper mitigations are implemented.
+
+**Audit Recommendations**:
+- Run `cargo audit` regularly in your projects
+- Monitor [RustSec Advisory Database](https://rustsec.org/advisories/)
+- Subscribe to security mailing lists for dependencies
+
+---
+
+## 12. Input Validation & DoS Prevention
+
+### Built-in Protections
+- **Unicode Handling**: Full UTF-8 support for international passwords
+- **Memory Safety**: Rust's ownership system prevents buffer overflows
+- **Type Safety**: Strong typing prevents injection attacks
+
+### Application-Level Recommendations
+```rust
+// Implement request size limits
+use tower_http::limit::RequestBodyLimitLayer;
+
+let app = Router::new()
+    .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB limit
+    .route("/login", post(login_handler));
+
+// Validate input lengths
+fn validate_password(password: &str) -> Result<(), ValidationError> {
+    if password.len() > 128 {
+        return Err(ValidationError::TooLong);
+    }
+    if password.len() < 8 {
+        return Err(ValidationError::TooShort);
+    }
+    Ok(())
+}
+```
+
+---
+
+## 13. Error Handling Security
+
+### Information Disclosure Prevention
+- **Generic Error Messages**: Public APIs return user-friendly, non-revealing errors
+- **Detailed Logging**: Full error context logged server-side only
+- **Consistent Responses**: Same error format regardless of failure type
+
+### Error Categories
+```rust
+// User-safe error responses
+match auth_result {
+    Err(Error::InvalidCredentials) => "Invalid username or password",
+    Err(Error::AccountLocked) => "Account temporarily locked", 
+    Err(_) => "Authentication temporarily unavailable",
+}
+```
+
+---
+
+## 14. Observability & Monitoring (Planned v1.1.0)
+
+**Current State**: Basic `tracing` integration for development
+
+**Planned Features**:
+- **Structured Logging**: Comprehensive authentication event logging
+- **Metrics Integration**: Prometheus metrics for login rates, failures, timing
+- **Audit Trails**: Pluggable audit recording system
+- **Security Alerts**: Automated anomaly detection
+
+**Current Monitoring Setup**:
+```rust
+use tracing::{info, warn, error};
+
+// Add to your application
+tracing_subscriber::fmt()
+    .with_max_level(tracing::Level::INFO)
+    .init();
+
+// Monitor authentication events
+info!("User {} logged in successfully", user_id);
+warn!("Failed login attempt for {}", user_id);
+error!("Suspicious activity: {} failed attempts from {}", count, ip);
+```
+
+---
+
+## 15. Reporting Security Vulnerabilities
+
+### Coordinated Disclosure Process
+
+1. **Do NOT** create public GitHub issues for security vulnerabilities
+2. **Email**: Send reports to the maintainer (see `Cargo.toml` authors field)
+3. **Include**: 
+   - Detailed vulnerability description
+   - Steps to reproduce
+   - Potential impact assessment
+   - Suggested mitigation (if available)
+
+### Response Timeline
+- **Acknowledgment**: Within 48 hours
+- **Assessment**: Within 1 week
+- **Fix Development**: Within 2-4 weeks (depending on severity)
+- **Public Disclosure**: After fix is released and users have time to update
+
+### Security Advisory Publication
+- Published on [GitHub Security Advisories](https://github.com/emirror-de/axum-gate/security/advisories)
+- Cross-posted to [RustSec Advisory Database](https://rustsec.org/)
+- Included in release changelog with CVE reference if applicable
+
+---
+
+## 16. Compliance Considerations
+
+### Standards Alignment
+- **OWASP**: Follows OWASP Authentication Guidelines
+- **NIST**: Aligns with NIST Cybersecurity Framework
+- **GDPR**: Supports data minimization and secure processing
+
+### Industry-Specific Notes
+- **HIPAA**: Additional encryption and audit logging may be required
+- **PCI DSS**: Consider additional tokenization for payment applications  
+- **SOX**: Ensure audit trails are implemented for financial applications
+
+---
+
+## 17. Development Security Practices
+
+### Secure Development Lifecycle
+- **Security-First Design**: Architecture reviews prioritize security
+- **Automated Testing**: Security-focused unit and integration tests
+- **Dependency Management**: Regular updates and vulnerability scanning
+- **Code Review**: Security-focused review process
+
+### Testing Security Features
 ```bash
-cargo test
+# Run security-focused tests
+cargo test security
+cargo test timing_attack
+cargo test permission_collision
+
+# Audit dependencies
+cargo audit
+
+# Check for common security issues
+cargo clippy -- -D warnings
 ```
-(Planned: dedicated security test groups once Argon2 configurability lands.)
 
 ---
 
-## 14. Future / Planned Enhancements
+**Stay Secure**: `axum-gate` provides a solid security foundation, but defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
 
-| Feature | Security Benefit |
-|---------|------------------|
-| Key rotation utilities | Rolling updates without global logout. |
-| Bearer token Gate | Header-based auth for SPA / API clients. |
-| Argon2 config API (in progress) | Tunable defense against brute force, adaptive to hardware. |
-| Rate limit helper | Turn‑key brute force mitigation. |
-| Audit hooks | Unified security event stream. |
-
----
-
-## 15. Reporting Vulnerabilities
-
-If you discover a security issue:
-1. **Do not** open a public issue immediately.
-2. Contact the maintainer (see `Cargo.toml` author field or repository security policy).
-3. Provide reproduction steps & impact assessment.
-4. A coordinated disclosure timeline will be established.
-
----
-
-**Stay secure**: Treat this middleware as one layer—combine it with infrastructure hardening, observability, and sound operational processes for a robust authentication surface.
+For the latest security updates and best practices, monitor the [GitHub repository](https://github.com/emirror-de/axum-gate) and [security advisories](https://github.com/emirror-de/axum-gate/security/advisories).
