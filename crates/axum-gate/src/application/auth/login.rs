@@ -171,6 +171,13 @@ where
         AccRepo: AccountRepository<R, G>,
         C: Codec<Payload = JwtClaims<Account<R, G>>>,
     {
+        #[cfg(feature = "audit-logging")]
+        let _audit_span =
+            tracing::span!(tracing::Level::INFO, "auth.login", user_id = %credentials.id);
+        #[cfg(feature = "audit-logging")]
+        let _audit_enter = _audit_span.enter();
+        #[cfg(feature = "audit-logging")]
+        tracing::info!(user_id = %credentials.id, "login_attempt");
         let account_query_result = account_repository
             .query_account_by_user_id(&credentials.id)
             .await;

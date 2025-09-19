@@ -7,6 +7,8 @@ use crate::ports::repositories::{AccountRepository, SecretRepository};
 use std::sync::Arc;
 
 use crate::errors::Result;
+#[cfg(feature = "audit-logging")]
+use crate::infrastructure::audit;
 use tracing::{debug, error, info, warn};
 
 /// Removes the given account and its corresponding secret from repositories.
@@ -60,8 +62,12 @@ where
 
         // Remove and cache the secret so it can be restored if account deletion fails.
         info!(%user_id, %account_id, "Starting account deletion");
+        #[cfg(feature = "audit-logging")]
+        audit::account_delete_start(user_id, account_id);
         let Some(secret) = secret_repository.delete_secret(account_id).await? else {
             error!(%user_id, %account_id, "Secret missing for account deletion attempt");
+            #[cfg(feature = "audit-logging")]
+            audit::account_delete_failure(user_id, account_id, None, "secret_missing");
             return Err(Error::Application(ApplicationError::AccountService {
                 operation: AccountOperation::Delete,
                 message: "Secret not found".to_string(),
@@ -77,12 +83,33 @@ where
             match restore_result {
                 Ok(true) => {
                     warn!(%user_id, %account_id, "Secret restored after account deletion failure");
+                    #[cfg(feature = "audit-logging")]
+                    audit::account_delete_failure(
+                        user_id,
+                        account_id,
+                        Some(true),
+                        "account_deletion_failed_secret_restored",
+                    );
                 }
                 Ok(false) => {
                     error!(%user_id, %account_id, "Secret restore reported false after account deletion failure");
+                    #[cfg(feature = "audit-logging")]
+                    audit::account_delete_failure(
+                        user_id,
+                        account_id,
+                        Some(false),
+                        "account_deletion_failed_restore_reported_false",
+                    );
                 }
                 Err(ref e) => {
                     error!(error = %e, %user_id, %account_id, "Secret restore failed after account deletion failure");
+                    #[cfg(feature = "audit-logging")]
+                    audit::account_delete_failure(
+                        user_id,
+                        account_id,
+                        None,
+                        &format!("account_deletion_failed_secret_restore_error: {}", e),
+                    );
                 }
             }
 
@@ -94,6 +121,8 @@ where
         }
 
         info!(%user_id, %account_id, "Account deletion succeeded");
+        #[cfg(feature = "audit-logging")]
+        audit::account_delete_success(user_id, account_id);
         Ok(())
     }
 }

@@ -118,6 +118,15 @@ where
     AccRepo: AccountRepository<R, G>,
     C: Codec<Payload = JwtClaims<Account<R, G>>>,
 {
+    #[cfg(feature = "audit-logging")]
+    let user_id = credentials.id.clone();
+    #[cfg(feature = "audit-logging")]
+    let _audit_span = tracing::span!(tracing::Level::INFO, "auth.login", user_id = %user_id);
+    #[cfg(feature = "audit-logging")]
+    let _audit_enter = _audit_span.enter();
+    #[cfg(feature = "audit-logging")]
+    tracing::info!(user_id = %user_id, "login_attempt");
+
     let login_service = LoginService::<R, G>::new();
 
     let result = login_service
@@ -134,19 +143,35 @@ where
         LoginResult::Success(jwt_string) => {
             let mut cookie = cookie_template.build();
             cookie.set_value(jwt_string);
+            #[cfg(feature = "audit-logging")]
+            tracing::info!(user_id = %user_id, "login_success");
             Ok(cookie_jar.add(cookie))
         }
         LoginResult::InvalidCredentials {
             user_message: _,
             support_code,
         } => {
-            if let Some(code) = support_code {
-                error!(
-                    "Login failed - Invalid credentials [Support Code: {}]",
-                    code
-                );
-            } else {
-                error!("Login failed - Invalid credentials");
+            match support_code.as_deref() {
+                Some(code) => {
+                    error!(
+                        "Login failed - Invalid credentials [Support Code: {}]",
+                        code
+                    );
+                }
+                None => {
+                    error!("Login failed - Invalid credentials");
+                }
+            }
+            #[cfg(feature = "audit-logging")]
+            {
+                match support_code.as_deref() {
+                    Some(code) => {
+                        tracing::warn!(user_id = %user_id, support_code = %code, "login_failed_invalid_credentials")
+                    }
+                    None => {
+                        tracing::warn!(user_id = %user_id, "login_failed_invalid_credentials")
+                    }
+                }
             }
             Err(StatusCode::UNAUTHORIZED)
         }
@@ -157,6 +182,7 @@ where
             retryable,
         } => {
             let code_info = support_code
+                .as_deref()
                 .map(|c| format!(" [Support Code: {}]", c))
                 .unwrap_or_default();
             let retry_info = if retryable {
@@ -168,6 +194,17 @@ where
                 "Login internal error{}{}: {}",
                 code_info, retry_info, technical_message
             );
+            #[cfg(feature = "audit-logging")]
+            {
+                match support_code.as_deref() {
+                    Some(code) => {
+                        tracing::error!(user_id = %user_id, support_code = %code, retryable = retryable, error = %technical_message, "login_internal_error")
+                    }
+                    None => {
+                        tracing::error!(user_id = %user_id, retryable = retryable, error = %technical_message, "login_internal_error")
+                    }
+                }
+            }
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -196,6 +233,13 @@ where
 /// }
 /// ```
 pub async fn logout(cookie_jar: CookieJar, cookie_template: CookieBuilder<'static>) -> CookieJar {
+    #[cfg(feature = "audit-logging")]
+    let _audit_span = tracing::span!(tracing::Level::INFO, "auth.logout");
+    #[cfg(feature = "audit-logging")]
+    let _audit_enter = _audit_span.enter();
+    #[cfg(feature = "audit-logging")]
+    tracing::info!("logout");
+
     let logout_service = LogoutService::new();
     logout_service.logout();
 

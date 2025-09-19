@@ -6,6 +6,8 @@ use crate::errors::{ApplicationError, Error, Result};
 
 use std::sync::Arc;
 
+#[cfg(feature = "audit-logging")]
+use crate::infrastructure::audit;
 use tracing::debug;
 
 /// Service for creating new user accounts with their associated authentication secrets.
@@ -200,6 +202,11 @@ where
                 account_id: Some(self.user_id.clone()),
             }));
         };
+        #[cfg(feature = "audit-logging")]
+        {
+            // Account persisted successfully in repository
+            audit::account_created(&self.user_id, &account.account_id);
+        }
         debug!("Stored account in account repository.");
         let id = &account.account_id;
         let secret = Secret::new(id, &self.secret, Argon2Hasher::default())?;

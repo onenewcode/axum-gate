@@ -11,6 +11,8 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+#[cfg(feature = "audit-logging")]
+use crate::infrastructure::audit;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use cookie::CookieBuilder;
@@ -101,12 +103,26 @@ where
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
 
+        #[cfg(feature = "audit-logging")]
+        let _audit_request_span =
+            audit::request_span(req.method().as_str(), req.uri().path(), None);
+        #[cfg(feature = "audit-logging")]
+        let _audit_request_enter = _audit_request_span.enter();
+
         if self.authorization_service.policy_denies_all_access() {
             debug!("Denying access because roles, groups or permissions are empty.");
+            #[cfg(feature = "audit-logging")]
+            {
+                audit::denied(None, "policy_denies_all");
+            }
             return unauthorized_future;
         }
 
         let Some(auth_cookie) = self.auth_cookie(&req) else {
+            #[cfg(feature = "audit-logging")]
+            {
+                audit::denied(None, "missing_cookie");
+            }
             return unauthorized_future;
         };
         trace!("axum-gate cookie: {auth_cookie:#?}");
@@ -116,6 +132,10 @@ where
             JwtValidationResult::Valid(jwt) => jwt,
             JwtValidationResult::InvalidToken => {
                 debug!("JWT token validation failed");
+                #[cfg(feature = "audit-logging")]
+                {
+                    audit::jwt_invalid_token("validation_failed");
+                }
                 return unauthorized_future;
             }
             JwtValidationResult::InvalidIssuer { expected, actual } => {
@@ -123,17 +143,35 @@ where
                     "JWT issuer validation failed. Expected: '{}', Actual: '{}', Account: {}",
                     expected, actual, "unknown"
                 );
+                #[cfg(feature = "audit-logging")]
+                {
+                    audit::jwt_invalid_issuer(&expected, &actual);
+                }
                 return unauthorized_future;
             }
         };
 
         debug!("Logged in with id: {}", jwt.custom_claims.account_id);
 
+        #[cfg(feature = "audit-logging")]
+        let _authz_span = audit::authorization_span(Some(&jwt.custom_claims.account_id), None);
+        #[cfg(feature = "audit-logging")]
+        let _authz_enter = _authz_span.enter();
+
         let account = &jwt.custom_claims;
         let is_authorized = self.authorization_service.is_authorized(account);
 
         if !is_authorized {
+            #[cfg(feature = "audit-logging")]
+            {
+                audit::denied(Some(&jwt.custom_claims.account_id), "policy_denied");
+            }
             return unauthorized_future;
+        }
+
+        #[cfg(feature = "audit-logging")]
+        {
+            audit::authorized(&jwt.custom_claims.account_id, None);
         }
 
         req.extensions_mut().insert(jwt.custom_claims.clone());

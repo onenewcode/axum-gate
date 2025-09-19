@@ -381,3 +381,7 @@ pub mod utils {
         pub use serde_json;
     }
 }
+
+/// Audit logging utilities (feature: `audit-logging`).
+#[cfg(feature = "audit-logging")]
+pub use crate::infrastructure::audit;
