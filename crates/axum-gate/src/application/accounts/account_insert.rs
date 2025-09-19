@@ -196,6 +196,10 @@ where
             .with_permissions(self.permissions);
         debug!("Created account.");
         let Some(account) = account_repository.store_account(account).await? else {
+            #[cfg(feature = "audit-logging")]
+            {
+                audit::account_insert_failure(&self.user_id, "account_repo_none");
+            }
             return Err(Error::Application(ApplicationError::AccountService {
                 operation: AccountOperation::Create,
                 message: "Account repository returned None on insertion".to_string(),
@@ -211,6 +215,10 @@ where
         let id = &account.account_id;
         let secret = Secret::new(id, &self.secret, Argon2Hasher::default())?;
         if !secret_repository.store_secret(secret).await? {
+            #[cfg(feature = "audit-logging")]
+            {
+                audit::account_insert_failure(&self.user_id, "secret_store_false");
+            }
             Err(Error::Application(ApplicationError::AccountService {
                 operation: AccountOperation::Create,
                 message: "Storing secret in repository returned false".to_string(),

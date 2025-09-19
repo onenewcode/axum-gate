@@ -229,6 +229,26 @@ where
         self.cookie_template = template.validate_and_build();
         self
     }
+
+    /// Enables Prometheus metrics for audit logging.
+    ///
+    /// This is a no-op unless the `prometheus` feature is enabled. It is safe to call
+    /// multiple times; metrics will only be registered once.
+    #[cfg(feature = "prometheus")]
+    pub fn with_prometheus_metrics(self) -> Self {
+        // Attempt to install metrics into the default registry; ignore errors to keep builder infallible.
+        let _ = crate::infrastructure::audit::install_prometheus_metrics();
+        self
+    }
+
+    /// Installs Prometheus metrics for audit logging into the provided registry.
+    ///
+    /// Safe to call multiple times; metrics are only registered once.
+    #[cfg(feature = "prometheus")]
+    pub fn with_prometheus_registry(self, registry: &prometheus::Registry) -> Self {
+        let _ = crate::infrastructure::audit::install_prometheus_metrics_with_registry(registry);
+        self
+    }
 }
 
 impl<S, C, R, G> Layer<S> for CookieGate<C, R, G>

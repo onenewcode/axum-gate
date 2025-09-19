@@ -20,6 +20,40 @@ use uuid::Uuid;
 
 const TARGET: &str = "axum_gate::audit";
 
+#[cfg(feature = "prometheus")]
+use strum::AsRefStr;
+
+#[cfg(feature = "prometheus")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+enum JwtInvalidKind {
+    Issuer,
+    Token,
+}
+
+#[cfg(feature = "prometheus")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+enum AccountDeleteOutcome {
+    Start,
+    Success,
+    Failure,
+}
+
+#[cfg(feature = "prometheus")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+enum SecretRestored {
+    True,
+    False,
+    #[strum(serialize = "none")]
+    None_,
+}
+
+#[cfg(feature = "prometheus")]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+enum AccountInsertOutcome {
+    Success,
+    Failure,
+}
+
 /// Creates a request-scoped span with basic HTTP metadata.
 ///
 /// Fields:
@@ -57,6 +91,11 @@ pub fn authorized(account_id: &Uuid, role: Option<&str>) {
         }
         None => event!(target: TARGET, Level::INFO, account_id = %account_id, "authorized"),
     }
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.authz_authorized.inc();
+    }
 }
 
 /// Records an authorization denial decision with a coarse-grained reason code.
@@ -69,6 +108,11 @@ pub fn denied(account_id: Option<&Uuid>, reason_code: &str) {
         }
         None => event!(target: TARGET, Level::WARN, reason = %reason_code, "denied"),
     }
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.authz_denied.with_label_values(&[reason_code]).inc();
+    }
 }
 
 /// Records that a JWT had an invalid issuer.
@@ -80,11 +124,25 @@ pub fn jwt_invalid_issuer(expected: &str, actual: &str) {
         actual_issuer = %actual,
         "jwt_invalid_issuer"
     );
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.jwt_invalid
+            .with_label_values(&[JwtInvalidKind::Issuer.as_ref()])
+            .inc();
+    }
 }
 
 /// Records that a JWT token was otherwise invalid (expired, signature, etc.).
 pub fn jwt_invalid_token(summary: &str) {
     event!(target: TARGET, Level::WARN, error = %summary, "jwt_invalid_token");
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.jwt_invalid
+            .with_label_values(&[JwtInvalidKind::Token.as_ref()])
+            .inc();
+    }
 }
 
 /// Records the start of an account deletion workflow.
@@ -96,6 +154,16 @@ pub fn account_delete_start(user_id: &str, account_id: &Uuid) {
         account_id = %account_id,
         "account_delete_start"
     );
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.account_delete_outcome
+            .with_label_values(&[
+                AccountDeleteOutcome::Start.as_ref(),
+                SecretRestored::None_.as_ref(),
+            ])
+            .inc();
+    }
 }
 
 /// Records a successful account deletion.
@@ -107,6 +175,16 @@ pub fn account_delete_success(user_id: &str, account_id: &Uuid) {
         account_id = %account_id,
         "account_delete_success"
     );
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.account_delete_outcome
+            .with_label_values(&[
+                AccountDeleteOutcome::Success.as_ref(),
+                SecretRestored::None_.as_ref(),
+            ])
+            .inc();
+    }
 }
 
 /// Records an account deletion failure and the outcome of any compensating action.
@@ -144,6 +222,18 @@ pub fn account_delete_failure(
             "account_delete_failure"
         ),
     }
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        let sr = match secret_restored {
+            Some(true) => SecretRestored::True,
+            Some(false) => SecretRestored::False,
+            None => SecretRestored::None_,
+        };
+        m.account_delete_outcome
+            .with_label_values(&[AccountDeleteOutcome::Failure.as_ref(), sr.as_ref()])
+            .inc();
+    }
 }
 
 /// Records a newly created account.
@@ -155,4 +245,32 @@ pub fn account_created(user_id: &str, account_id: &Uuid) {
         account_id = %account_id,
         "account_created"
     );
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.account_insert_outcome
+            .with_label_values(&[AccountInsertOutcome::Success.as_ref(), "none"])
+            .inc();
+    }
+}
+
+/// Records an account insertion failure with a coarse-grained reason code.
+///
+/// The reason should be a low-cardinality, stable code (e.g., "duplicate_user_id",
+/// "repo_error") to keep Prometheus label cardinality under control.
+pub fn account_insert_failure(user_id: &str, reason_code: &str) {
+    event!(
+        target: TARGET,
+        Level::ERROR,
+        %user_id,
+        reason = %reason_code,
+        "account_insert_failure"
+    );
+
+    #[cfg(feature = "prometheus")]
+    if let Some(m) = metrics() {
+        m.account_insert_outcome
+            .with_label_values(&[AccountInsertOutcome::Failure.as_ref(), reason_code])
+            .inc();
+    }
 }

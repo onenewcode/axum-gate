@@ -89,3 +89,7 @@ pub use crate::infrastructure::hashing::{Argon2Hasher, HashedValue};
 
 // JWT validation for custom middleware
 pub use crate::infrastructure::jwt::{JwtValidationResult, JwtValidationService};
+
+#[cfg(feature = "prometheus")]
+/// Re-export of the prometheus crate when the `prometheus` feature is enabled.
+pub use prometheus;

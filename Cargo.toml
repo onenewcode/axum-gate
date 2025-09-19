@@ -8,6 +8,7 @@ members = [
     "examples/sea-orm",
     "examples/simple-usage",
     "examples/surrealdb",
+    "examples/prometheus",
 ]
 resolver = "2"
 
