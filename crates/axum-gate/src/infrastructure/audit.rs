@@ -20,40 +20,6 @@ use uuid::Uuid;
 
 const TARGET: &str = "axum_gate::audit";
 
-#[cfg(feature = "prometheus")]
-use strum::AsRefStr;
-
-#[cfg(feature = "prometheus")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
-enum JwtInvalidKind {
-    Issuer,
-    Token,
-}
-
-#[cfg(feature = "prometheus")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
-enum AccountDeleteOutcome {
-    Start,
-    Success,
-    Failure,
-}
-
-#[cfg(feature = "prometheus")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
-enum SecretRestored {
-    True,
-    False,
-    #[strum(serialize = "none")]
-    None_,
-}
-
-#[cfg(feature = "prometheus")]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
-enum AccountInsertOutcome {
-    Success,
-    Failure,
-}
-
 /// Creates a request-scoped span with basic HTTP metadata.
 ///
 /// Fields:
@@ -93,7 +59,7 @@ pub fn authorized(account_id: &Uuid, role: Option<&str>) {
     }
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.authz_authorized.inc();
     }
 }
@@ -110,7 +76,7 @@ pub fn denied(account_id: Option<&Uuid>, reason_code: &str) {
     }
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.authz_denied.with_label_values(&[reason_code]).inc();
     }
 }
@@ -126,9 +92,9 @@ pub fn jwt_invalid_issuer(expected: &str, actual: &str) {
     );
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.jwt_invalid
-            .with_label_values(&[JwtInvalidKind::Issuer.as_ref()])
+            .with_label_values(&[prometheus_metrics::JwtInvalidKind::Issuer.as_ref()])
             .inc();
     }
 }
@@ -138,9 +104,9 @@ pub fn jwt_invalid_token(summary: &str) {
     event!(target: TARGET, Level::WARN, error = %summary, "jwt_invalid_token");
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.jwt_invalid
-            .with_label_values(&[JwtInvalidKind::Token.as_ref()])
+            .with_label_values(&[prometheus_metrics::JwtInvalidKind::Token.as_ref()])
             .inc();
     }
 }
@@ -156,11 +122,11 @@ pub fn account_delete_start(user_id: &str, account_id: &Uuid) {
     );
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.account_delete_outcome
             .with_label_values(&[
-                AccountDeleteOutcome::Start.as_ref(),
-                SecretRestored::None_.as_ref(),
+                prometheus_metrics::AccountDeleteOutcome::Start.as_ref(),
+                prometheus_metrics::SecretRestored::None_.as_ref(),
             ])
             .inc();
     }
@@ -177,11 +143,11 @@ pub fn account_delete_success(user_id: &str, account_id: &Uuid) {
     );
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.account_delete_outcome
             .with_label_values(&[
-                AccountDeleteOutcome::Success.as_ref(),
-                SecretRestored::None_.as_ref(),
+                prometheus_metrics::AccountDeleteOutcome::Success.as_ref(),
+                prometheus_metrics::SecretRestored::None_.as_ref(),
             ])
             .inc();
     }
@@ -224,7 +190,8 @@ pub fn account_delete_failure(
     }
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
+        use prometheus_metrics::{AccountDeleteOutcome, SecretRestored};
         let sr = match secret_restored {
             Some(true) => SecretRestored::True,
             Some(false) => SecretRestored::False,
@@ -247,9 +214,12 @@ pub fn account_created(user_id: &str, account_id: &Uuid) {
     );
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.account_insert_outcome
-            .with_label_values(&[AccountInsertOutcome::Success.as_ref(), "none"])
+            .with_label_values(&[
+                prometheus_metrics::AccountInsertOutcome::Success.as_ref(),
+                "none",
+            ])
             .inc();
     }
 }
@@ -268,9 +238,181 @@ pub fn account_insert_failure(user_id: &str, reason_code: &str) {
     );
 
     #[cfg(feature = "prometheus")]
-    if let Some(m) = metrics() {
+    if let Some(m) = prometheus_metrics::metrics() {
         m.account_insert_outcome
-            .with_label_values(&[AccountInsertOutcome::Failure.as_ref(), reason_code])
+            .with_label_values(&[
+                prometheus_metrics::AccountInsertOutcome::Failure.as_ref(),
+                reason_code,
+            ])
             .inc();
+    }
+}
+
+#[cfg(feature = "prometheus")]
+/// Prometheus metrics integration for axum-gate authentication events.
+///
+/// This module provides Prometheus metrics collection for monitoring authentication
+/// and authorization events. Metrics include authorization decisions, JWT validation
+/// failures, and account management operations.
+///
+/// # Features
+///
+/// This module is only available when the `prometheus` feature is enabled.
+///
+/// # Usage
+///
+/// ```rust
+/// use axum_gate::audit::prometheus_metrics;
+///
+/// // Install metrics into the default registry
+/// prometheus_metrics::install_prometheus_metrics()?;
+///
+/// // Access metrics for custom instrumentation
+/// if let Some(metrics) = prometheus_metrics::metrics() {
+///     metrics.authz_authorized.inc();
+/// }
+/// ```
+pub mod prometheus_metrics {
+    use prometheus::{Counter, CounterVec, Registry};
+    use std::sync::OnceLock;
+    use strum::AsRefStr;
+
+    /// Categories of JWT validation failures for metrics labeling.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+    pub enum JwtInvalidKind {
+        /// JWT issuer validation failed.
+        Issuer,
+        /// JWT token format or signature validation failed.
+        Token,
+    }
+
+    /// Outcomes of account deletion operations for metrics labeling.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+    pub enum AccountDeleteOutcome {
+        /// Account deletion operation started.
+        Start,
+        /// Account deletion completed successfully.
+        Success,
+        /// Account deletion failed.
+        Failure,
+    }
+
+    /// Whether account secrets were restored during operations for metrics labeling.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+    pub enum SecretRestored {
+        /// Secret was restored during the operation.
+        True,
+        /// Secret was not restored during the operation.
+        False,
+        /// Secret restoration status not applicable or unknown.
+        #[strum(serialize = "none")]
+        None_,
+    }
+
+    /// Outcomes of account insertion operations for metrics labeling.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq, AsRefStr)]
+    pub enum AccountInsertOutcome {
+        /// Account insertion completed successfully.
+        Success,
+        /// Account insertion failed.
+        Failure,
+    }
+
+    /// Collection of Prometheus metrics for axum-gate operations.
+    pub struct Metrics {
+        /// Counter for successful authorization decisions.
+        pub authz_authorized: Counter,
+        /// Counter for denied authorization attempts, labeled by reason.
+        pub authz_denied: CounterVec,
+        /// Counter for invalid JWT tokens, labeled by failure kind.
+        pub jwt_invalid: CounterVec,
+        /// Counter for account deletion operations, labeled by outcome and secret restoration status.
+        pub account_delete_outcome: CounterVec,
+        /// Counter for account insertion operations, labeled by outcome and reason.
+        pub account_insert_outcome: CounterVec,
+    }
+
+    static METRICS: OnceLock<Metrics> = OnceLock::new();
+
+    /// Returns a reference to the installed metrics, if any.
+    ///
+    /// Returns `None` if metrics have not been installed via [`install_prometheus_metrics`]
+    /// or [`install_prometheus_metrics_with_registry`].
+    pub fn metrics() -> Option<&'static Metrics> {
+        METRICS.get()
+    }
+
+    /// Installs Prometheus metrics into the default registry.
+    ///
+    /// Safe to call multiple times; metrics are only registered once.
+    pub fn install_prometheus_metrics() -> Result<(), prometheus::Error> {
+        install_prometheus_metrics_with_registry(&prometheus::default_registry())
+    }
+
+    /// Installs Prometheus metrics into the provided registry.
+    ///
+    /// Safe to call multiple times; metrics are only registered once.
+    pub fn install_prometheus_metrics_with_registry(
+        registry: &Registry,
+    ) -> Result<(), prometheus::Error> {
+        if METRICS.get().is_some() {
+            return Ok(()); // Already installed
+        }
+
+        let authz_authorized = Counter::new(
+            "axum_gate_authz_authorized_total",
+            "Total number of successful authorization decisions",
+        )?;
+
+        let authz_denied = CounterVec::new(
+            prometheus::Opts::new(
+                "axum_gate_authz_denied_total",
+                "Total number of denied authorization attempts",
+            ),
+            &["reason"],
+        )?;
+
+        let jwt_invalid = CounterVec::new(
+            prometheus::Opts::new(
+                "axum_gate_jwt_invalid_total",
+                "Total number of invalid JWT tokens",
+            ),
+            &["kind"],
+        )?;
+
+        let account_delete_outcome = CounterVec::new(
+            prometheus::Opts::new(
+                "axum_gate_account_delete_outcome_total",
+                "Total number of account deletion operations",
+            ),
+            &["outcome", "secret_restored"],
+        )?;
+
+        let account_insert_outcome = CounterVec::new(
+            prometheus::Opts::new(
+                "axum_gate_account_insert_outcome_total",
+                "Total number of account insertion operations",
+            ),
+            &["outcome", "reason"],
+        )?;
+
+        // Register metrics with the provided registry
+        registry.register(Box::new(authz_authorized.clone()))?;
+        registry.register(Box::new(authz_denied.clone()))?;
+        registry.register(Box::new(jwt_invalid.clone()))?;
+        registry.register(Box::new(account_delete_outcome.clone()))?;
+        registry.register(Box::new(account_insert_outcome.clone()))?;
+
+        // Store metrics in static for global access
+        let metrics = Metrics {
+            authz_authorized,
+            authz_denied,
+            jwt_invalid,
+            account_delete_outcome,
+            account_insert_outcome,
+        };
+
+        let _ = METRICS.set(metrics);
+        Ok(())
     }
 }

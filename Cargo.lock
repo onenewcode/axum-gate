@@ -2982,8 +2982,11 @@ name = "prometheus-example"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "axum-extra",
  "axum-gate",
- "cookie",
+ "chrono",
+ "prometheus",
+ "serde",
  "tokio",
  "tracing",
  "tracing-subscriber",
