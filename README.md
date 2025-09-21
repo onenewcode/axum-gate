@@ -234,7 +234,7 @@ cargo run --example surrealdb --features storage-surrealdb
 - **Major (x.0.0)**: breaking changes (accompanied by migration notes)
 
 ### Minimum Supported Rust Version (MSRV)
-**Current MSRV**: Rust 1.85.0
+**Current MSRV**: Rust 1.86.0
 
 **MSRV Policy**:
 - MSRV will only be raised in **minor** or **major** releases, never in patch releases
