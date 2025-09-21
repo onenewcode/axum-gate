@@ -263,7 +263,7 @@ pub fn account_insert_failure(user_id: &str, reason_code: &str) {
 ///
 /// ```rust
 /// use axum_gate::audit::prometheus_metrics;
-///
+/// # fn main() -> Result<(), prometheus::Error> {
 /// // Install metrics into the default registry
 /// prometheus_metrics::install_prometheus_metrics()?;
 ///
@@ -271,6 +271,8 @@ pub fn account_insert_failure(user_id: &str, reason_code: &str) {
 /// if let Some(metrics) = prometheus_metrics::metrics() {
 ///     metrics.authz_authorized.inc();
 /// }
+/// # Ok(())
+/// # }
 /// ```
 pub mod prometheus_metrics {
     use prometheus::{Counter, CounterVec, Registry};
