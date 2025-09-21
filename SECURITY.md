@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0-rc.1.
+This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0.
 
 ---
 
@@ -8,10 +8,11 @@ This document outlines the security practices, built-in protections, and deploym
 
 | Version | Supported |
 | ------- | --------- |
+| 1.0.0 | ✅ |
 | 1.0.0-rc.1 | ✅ |
 | < 1.0.0 | ❌ |
 
-Only the latest release candidate and stable versions receive security updates.
+Only the latest stable release and the most recent release candidate receive security updates.
 
 ---
 
@@ -56,11 +57,11 @@ The crate provides three security presets:
 
 ### Key Management
 - **Development Default**: Generates ephemeral random key per process (testing only)
-- **Production Requirements**: 
+- **Production Requirements**:
   - Use stable, high-entropy secret (≥32 bytes recommended)
   - Load from environment variables or secret management systems
   - Store outside source control
-  - Rotate periodically (manual process in v1.0.0-rc.1)
+  - Rotate periodically (manual process in v1.0.0)
 
 **Example Production Setup**:
 ```rust
@@ -94,7 +95,7 @@ let secure_cookie = Cookie::build(("auth-token", token_value))
 
 ### Security Recommendations
 - **Always use `secure(true)` in production** (HTTPS required)
-- **Set `http_only(true)`** to prevent JavaScript access (XSS mitigation)  
+- **Set `http_only(true)`** to prevent JavaScript access (XSS mitigation)
 - **Use `SameSite::Strict` or `Lax`** for CSRF protection
 - **Avoid `SameSite::None`** unless cross-site requests are required
 - **Consider `__Host-` prefix** for additional security (requires Secure + no Domain + Path="/")
@@ -122,7 +123,7 @@ use axum_gate::prelude::*;
 // Compile-time validation ensures no collisions
 validate_permissions![
     CreateUser,
-    UpdateUser, 
+    UpdateUser,
     DeleteUser,
     ViewDashboard
 ];
@@ -148,7 +149,7 @@ let protected_routes = Router::new()
 
 **Recommended Rate Limits**:
 - Login endpoints: 5-10 requests per minute per IP
-- Password reset: 3 requests per hour per email  
+- Password reset: 3 requests per hour per email
 - Protected APIs: 100-1000 requests per minute per user
 - Admin endpoints: 10-50 requests per minute
 
@@ -166,7 +167,7 @@ let protected_routes = Router::new()
 | Backend | Feature Flag | Production Ready | Notes |
 |---------|--------------|------------------|-------|
 | In-Memory | (default) | ❌ Development only | Lost on restart |
-| SurrealDB | `storage-surrealdb` | ✅ | Embedded or remote |  
+| SurrealDB | `storage-surrealdb` | ✅ | Embedded or remote |
 | SeaORM | `storage-seaorm` | ✅ | Multi-database support |
 
 ---
@@ -181,7 +182,7 @@ let protected_routes = Router::new()
 ### Mitigation Strategies
 1. **Primary**: Use `SameSite=Strict` for sensitive applications
 2. **Alternative**: Implement double-submit cookie pattern
-3. **API Clients**: Consider header-based authentication (planned for v1.1.0)
+3. **API Clients**: Consider header-based authentication (not implemented yet)
 
 ---
 
@@ -199,19 +200,68 @@ async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
     let removal_cookie = Cookie::build(("auth-token", ""))
         .removal()  // Properly removes cookie
         .build();
-    
+
     (jar.add(removal_cookie), Redirect::to("/login"))
 }
 ```
 
-### Future Enhancements (Planned v1.1.0)
-- Token revocation lists (server-side denylist)
-- Sliding session windows with refresh tokens
-- Forced logout capabilities
+---
+
+## 10. Observability & Monitoring
+
+### Current State (v1.0.0)
+- **Structured Logging**: Comprehensive tracing integration with contextual metadata for all authentication operations
+- **Prometheus Metrics**: Built-in counters and labels for authorization decisions, JWT validation failures, and account operations
+- **Audit Trail System**: Complete audit logging system with pluggable recorders via `audit-logging` feature
+- **Security Metrics**: Authorization success/denial tracking, JWT validation monitoring, account lifecycle events
+
+### Prometheus Integration
+Enable with the `prometheus` feature flag:
+
+```rust
+// Metrics are automatically collected and can be exposed
+use axum_gate::prelude::*;
+
+let app = Router::new()
+    .route("/", get(handler).layer(
+        Gate::cookie("app", jwt_codec)
+            .with_policy(policy)
+            .with_prometheus_registry(&registry) // Enable metrics collection
+    ))
+    .route("/metrics", get(metrics_handler));
+```
+
+**Available Metrics**:
+- `axum_gate_authz_authorized_total` - Successful authorization decisions
+- `axum_gate_authz_denied_total` - Denied authorization attempts (by reason)
+- `axum_gate_jwt_invalid_total` - Invalid JWT tokens (by failure type)
+- `axum_gate_account_delete_outcome_total` - Account deletion operations
+- `axum_gate_account_insert_outcome_total` - Account creation operations
+
+### Planned Enhancements (v1.1.0)
+- **Performance Histograms**: Request duration tracking and response time monitoring
+- **Rate Limiting Metrics**: Integration with tower rate limiting middleware
+- **Health Check Endpoints**: Built-in health and readiness endpoints
+- **OpenTelemetry Integration**: Distributed tracing support for microservices
+
+**Current Monitoring Setup**:
+```rust
+use tracing::{info, warn, error};
+
+// Add to your application
+tracing_subscriber::fmt()
+    .with_max_level(tracing::Level::INFO)
+    .init();
+
+// Monitor authentication events
+info!("User {} logged in successfully", user_id);
+warn!("Failed login attempt for {}", user_id);
+error!("Suspicious activity: {} failed attempts from {}", count, ip);
+```
 
 ---
 
-## 10. Production Hardening Checklist
+## 11. Production Hardening Checklist
 
 | Category | Requirement | Status |
 |----------|-------------|--------|
@@ -223,32 +273,32 @@ async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
 | **Rate Limiting** | ✅ Login endpoint protection | Recommended |
 | **Database Security** | ✅ TLS connections | Required |
 | **Backup Encryption** | ✅ Encrypted backups | Required |
-| **Monitoring** | ⚠️ Authentication failure alerts | Manual setup |
-| **Audit Logging** | ⚠️ Security event logging | Manual setup |
+| **Monitoring** | ✅ Prometheus metrics (feature flag) | Available |
+| **Audit Logging** | ✅ Basic audit logging (feature flag) | Available |
 
-✅ = Built-in or automatic  
+✅ = Built-in or available
 ⚠️ = Requires external implementation
 
 ---
 
-## 11. Security Audit Status
+## 12. Security Audit Status
 
 **Current Status**: The project uses automated security scanning with the following configuration:
 
 **Temporarily Disabled Advisories**:
-- `RUSTSEC-2023-0071`: Under evaluation for impact assessment
-- `RUSTSEC-2024-0436`: Pending dependency updates
+- `RUSTSEC-2024-0436`: Transitive dependency via surrealdb; upstream is tracking a fix/replacement for the `paste` crate
 
-These advisories are actively monitored and will be addressed in upcoming releases. The decision to temporarily disable allows continued development while proper mitigations are implemented.
+This advisory is actively monitored and will be addressed when the upstream dependency (surrealdb) provides a solution. The decision to temporarily disable allows continued development while proper mitigations are implemented.
 
 **Audit Recommendations**:
 - Run `cargo audit` regularly in your projects
 - Monitor [RustSec Advisory Database](https://rustsec.org/advisories/)
 - Subscribe to security mailing lists for dependencies
+- Use `cargo deny` for comprehensive dependency policy enforcement
 
 ---
 
-## 12. Input Validation & DoS Prevention
+## 13. Input Validation & DoS Prevention
 
 ### Built-in Protections
 - **Unicode Handling**: Full UTF-8 support for international passwords
@@ -278,7 +328,7 @@ fn validate_password(password: &str) -> Result<(), ValidationError> {
 
 ---
 
-## 13. Error Handling Security
+## 14. Error Handling Security
 
 ### Information Disclosure Prevention
 - **Generic Error Messages**: Public APIs return user-friendly, non-revealing errors
@@ -290,47 +340,47 @@ fn validate_password(password: &str) -> Result<(), ValidationError> {
 // User-safe error responses
 match auth_result {
     Err(Error::InvalidCredentials) => "Invalid username or password",
-    Err(Error::AccountLocked) => "Account temporarily locked", 
+    Err(Error::AccountLocked) => "Account temporarily locked",
     Err(_) => "Authentication temporarily unavailable",
 }
 ```
 
 ---
 
-## 14. Observability & Monitoring (Planned v1.1.0)
+## 15. Feature Flags and Security
 
-**Current State**: Basic `tracing` integration for development
+### Available Feature Flags (v1.0.0)
+| Feature | Security Impact | Recommendation |
+|---------|-----------------|----------------|
+| `insecure-fast-hash` | ⚠️ Weakens password hashing | **NEVER** enable in production |
+| `storage-surrealdb` | ✅ Production-ready storage | Safe for production |
+| `storage-seaorm` | ✅ Production-ready storage | Safe for production |
+| `audit-logging` | ✅ Enhances security monitoring | Recommended for production |
+| `prometheus` | ✅ Enables metrics collection | Recommended for production monitoring |
 
-**Planned Features**:
-- **Structured Logging**: Comprehensive authentication event logging
-- **Metrics Integration**: Prometheus metrics for login rates, failures, timing
-- **Audit Trails**: Pluggable audit recording system
-- **Security Alerts**: Automated anomaly detection
-
-**Current Monitoring Setup**:
+### Security Configuration
 ```rust
-use tracing::{info, warn, error};
+// Production-safe feature configuration
+[dependencies]
+axum-gate = {
+    version = "1.0.0",
+    features = ["storage-surrealdb", "audit-logging", "prometheus"]
+}
 
-// Add to your application
-tracing_subscriber::fmt()
-    .with_max_level(tracing::Level::INFO)
-    .init();
-
-// Monitor authentication events
-info!("User {} logged in successfully", user_id);
-warn!("Failed login attempt for {}", user_id);
-error!("Suspicious activity: {} failed attempts from {}", count, ip);
+// Development configuration (faster hashing automatically enabled in debug builds)
+[dev-dependencies]
+axum-gate = { version = "1.0.0", features = ["storage-surrealdb"] }
 ```
 
 ---
 
-## 15. Reporting Security Vulnerabilities
+## 16. Reporting Security Vulnerabilities
 
 ### Coordinated Disclosure Process
 
 1. **Do NOT** create public GitHub issues for security vulnerabilities
-2. **Email**: Send reports to the maintainer (see `Cargo.toml` authors field)
-3. **Include**: 
+2. **Email**: Send reports to the maintainer (info@emirror.de)
+3. **Include**:
    - Detailed vulnerability description
    - Steps to reproduce
    - Potential impact assessment
@@ -349,7 +399,7 @@ error!("Suspicious activity: {} failed attempts from {}", count, ip);
 
 ---
 
-## 16. Compliance Considerations
+## 17. Compliance Considerations
 
 ### Standards Alignment
 - **OWASP**: Follows OWASP Authentication Guidelines
@@ -358,17 +408,18 @@ error!("Suspicious activity: {} failed attempts from {}", count, ip);
 
 ### Industry-Specific Notes
 - **HIPAA**: Additional encryption and audit logging may be required
-- **PCI DSS**: Consider additional tokenization for payment applications  
+- **PCI DSS**: Consider additional tokenization for payment applications
 - **SOX**: Ensure audit trails are implemented for financial applications
+- **SOC 2**: Built-in audit logging and monitoring features support compliance efforts
 
 ---
 
-## 17. Development Security Practices
+## 18. Development Security Practices
 
 ### Secure Development Lifecycle
 - **Security-First Design**: Architecture reviews prioritize security
 - **Automated Testing**: Security-focused unit and integration tests
-- **Dependency Management**: Regular updates and vulnerability scanning
+- **Dependency Management**: Regular updates and vulnerability scanning with `cargo deny`
 - **Code Review**: Security-focused review process
 
 ### Testing Security Features
@@ -381,12 +432,29 @@ cargo test permission_collision
 # Audit dependencies
 cargo audit
 
+# Check dependency policies
+cargo deny check
+
 # Check for common security issues
 cargo clippy -- -D warnings
 ```
 
 ---
 
-**Stay Secure**: `axum-gate` provides a solid security foundation, but defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
+## 19. Performance vs Security Trade-offs
+
+### Argon2 Configuration
+- **High Security**: Slower but cryptographically stronger (production default)
+- **Interactive**: Balanced security and performance for user-facing apps
+- **DevFast**: Fast but weaker security (development only)
+
+### JWT vs Session Considerations
+- **JWT Pros**: Stateless, scalable, no server-side session storage
+- **JWT Cons**: Cannot revoke tokens before expiration, larger cookie size
+- **Mitigation**: Short token lifetimes, refresh token rotation (planned v1.1.0)
+
+---
+
+**Stay Secure**: `axum-gate` v1.0.0 provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
 
 For the latest security updates and best practices, monitor the [GitHub repository](https://github.com/emirror-de/axum-gate) and [security advisories](https://github.com/emirror-de/axum-gate/security/advisories).
