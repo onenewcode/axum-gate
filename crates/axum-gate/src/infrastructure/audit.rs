@@ -1,18 +1,18 @@
 //! Audit logging utilities for sensitive operations.
-//
+//!
 //! This module is intentionally minimal and only defines functions when the
 //! `audit-logging` feature is enabled. All call sites are also feature-gated,
 //! so there is no need for separate enabled/disabled submodules or no-op
 //! fallbacks here.
-//
+//!
 //! Security notes:
 //! - Never log secrets, passwords, raw tokens, or JWT contents.
 //! - Prefer stable identifiers (UUID/user_id), reason codes, and support codes.
 //! - Keep spans/events coarse and avoid leaking internal state.
-//
+//!
 //! Enable via Cargo features (in the depending crate):
 //! - `axum-gate = { version = "...", features = ["audit-logging"] }`
-//
+//!
 //! Environment and subscriber configuration are left to the application.
 
 use tracing::{Level, Span, event, span};
@@ -346,7 +346,7 @@ pub mod prometheus_metrics {
     ///
     /// Safe to call multiple times; metrics are only registered once.
     pub fn install_prometheus_metrics() -> Result<(), prometheus::Error> {
-        install_prometheus_metrics_with_registry(&prometheus::default_registry())
+        install_prometheus_metrics_with_registry(prometheus::default_registry())
     }
 
     /// Installs Prometheus metrics into the provided registry.
