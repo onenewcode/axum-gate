@@ -9,7 +9,7 @@ axum = "0.8.3"
 axum-extra = { version = "0.10", features = ["cookie"] }
 axum-gate = { path = "../../crates/axum-gate", features = ["prometheus"] }
 chrono = { version = "0.4" }
-prometheus = "0.13"
+prometheus = "0.14"
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1.41"
