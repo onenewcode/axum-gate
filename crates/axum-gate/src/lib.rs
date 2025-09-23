@@ -86,6 +86,19 @@
 //! let policy = AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"));
 //! ```
 //!
+//! ### Convenient Login Check
+//! ```rust
+//! use axum_gate::prelude::*;
+//! use axum_gate::{jwt, auth};
+//! use std::sync::Arc;
+//!
+//! # let jwt_codec = Arc::new(jwt::JsonWebToken::<jwt::JwtClaims<auth::Account<auth::Role, auth::Group>>>::default());
+//! // Allow any authenticated user (equivalent to all roles: User, Reporter, Moderator, Admin)
+//! let gate = Gate::cookie("my-app", jwt_codec)
+//!     .require_login()  // Convenience method for any logged-in user
+//!     .configure_cookie_template(|tpl| tpl.name("auth-token"));
+//! ```
+//!
 //! ### Nested Enum Permissions
 //! ```rust
 //! use axum_gate::advanced::AsPermissionName;

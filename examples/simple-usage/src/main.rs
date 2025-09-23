@@ -92,12 +92,7 @@ async fn main() {
             "/profile",
             get(profile_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
-                    .with_policy(
-                        AccessPolicy::require_role(Role::User)
-                            .or_require_role(Role::Reporter)
-                            .or_require_role(Role::Moderator)
-                            .or_require_role(Role::Admin),
-                    )
+                    .require_login()
                     .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
@@ -108,12 +103,7 @@ async fn main() {
             "/dashboard",
             get(dashboard_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
-                    .with_policy(
-                        AccessPolicy::require_role(Role::User)
-                            .or_require_role(Role::Reporter)
-                            .or_require_role(Role::Moderator)
-                            .or_require_role(Role::Admin),
-                    )
+                    .require_login()
                     .configure_cookie_template(|tpl| tpl.name("my-app")),
             ),
         )
