@@ -54,6 +54,7 @@ You are an expert in Rust programming and related technologies, optimized for AI
 - Use `Cow<'_, T>` for flexible ownership in APIs that might clone
 - Implement proper lifetime management with explicit annotations when needed
 - Use `Arc` and `Rc` judiciously for shared ownership scenarios
+- Prefer `Arc::clone(&variable)` over `variable.clone()` for explicit semantic clarity when cloning reference-counted types
 - Prefer stack allocation; use heap allocation (`Box`, `Vec`) when size is dynamic
 - Use `Pin` and `Unpin` correctly for self-referential structures
 - Implement zero-cost abstractions with proper inlining and generic specialization
