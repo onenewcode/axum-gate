@@ -110,6 +110,8 @@ pub enum RepositoryType {
     Session,
     /// Permission repository
     Permission,
+    /// Permission mapping repository
+    PermissionMapping,
     /// Audit log repository
     AuditLog,
 }
@@ -121,6 +123,7 @@ impl fmt::Display for RepositoryType {
             RepositoryType::Secret => write!(f, "secret"),
             RepositoryType::Session => write!(f, "session"),
             RepositoryType::Permission => write!(f, "permission"),
+            RepositoryType::PermissionMapping => write!(f, "permission_mapping"),
             RepositoryType::AuditLog => write!(f, "audit_log"),
         }
     }
@@ -479,6 +482,7 @@ impl UserFriendlyError for PortError {
                     RepositoryType::Session => "Your session information couldn't be processed. Please sign in again to continue.".to_string(),
                     RepositoryType::Permission => "We're having trouble verifying your permissions. Please try again or contact your administrator.".to_string(),
                     RepositoryType::AuditLog => "There's an issue with the activity logging system. Your action may not have been recorded, but it was likely completed successfully.".to_string(),
+                    RepositoryType::PermissionMapping => "We're having trouble with the permission system. Your permissions are still active, but some features might not display correctly.".to_string(),
                 }
             }
             PortError::Codec { operation, .. } => {
@@ -661,6 +665,7 @@ impl UserFriendlyError for PortError {
                 RepositoryType::Account | RepositoryType::Secret => ErrorSeverity::Critical,
                 RepositoryType::Session => ErrorSeverity::Error,
                 RepositoryType::Permission => ErrorSeverity::Error,
+                RepositoryType::PermissionMapping => ErrorSeverity::Warning,
                 RepositoryType::AuditLog => ErrorSeverity::Warning,
             },
             PortError::Codec { operation, .. } => match operation {
@@ -718,6 +723,12 @@ impl UserFriendlyError for PortError {
                     "This affects activity logging, not core functionality".to_string(),
                     "Continue with your work normally".to_string(),
                     "Report to support if audit trails are critical for compliance".to_string(),
+                ],
+                RepositoryType::PermissionMapping => vec![
+                    "This affects permission name display, not actual permissions".to_string(),
+                    "Your access rights remain unchanged and functional".to_string(),
+                    "Continue using the system normally".to_string(),
+                    "Contact support if permission names are not displaying correctly".to_string(),
                 ],
             },
             PortError::Codec { operation, .. } => match operation {
@@ -822,6 +833,7 @@ impl UserFriendlyError for PortError {
                 RepositoryType::Account | RepositoryType::Session => true, // User can re-auth
                 RepositoryType::Secret => false, // Critical security issue
                 RepositoryType::Permission => false, // Permission issues need admin
+                RepositoryType::PermissionMapping => true, // Non-blocking, affects display only
                 RepositoryType::AuditLog => true, // Non-blocking
             },
             PortError::Codec { operation, .. } => match operation {

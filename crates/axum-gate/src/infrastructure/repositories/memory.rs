@@ -16,13 +16,14 @@
 //! ```rust
 //! use axum_gate::auth::{Account, Role, Group};
 //! use axum_gate::advanced::{Secret, Argon2Hasher, AccountRepository, SecretRepository};
-//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
+//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository};
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {
 //! // Create repositories
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 //! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let mapping_repo = Arc::new(MemoryPermissionMappingRepository::default());
 //!
 //! // Create an account
 //! let account = Account::new("user@example.com", &[Role::User], &[Group::new("staff")]);
@@ -57,13 +58,15 @@
 //! ```
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::{Secret, VerificationResult};
+use crate::domain::values::{PermissionId, PermissionMapping, Secret, VerificationResult};
 use crate::errors::{Error, PortError, Result};
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::CredentialsVerifier;
 use crate::ports::auth::HashingService;
 use crate::ports::errors::RepositoryType;
-use crate::ports::repositories::{AccountRepository, SecretRepository};
+use crate::ports::repositories::{
+    AccountRepository, PermissionMappingRepository, SecretRepository,
+};
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -336,4 +339,205 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
 
         Ok(final_result)
     }
+}
+
+/// In-memory implementation of [`PermissionMappingRepository`] for development and testing.
+///
+/// This repository stores permission mappings in memory using thread-safe data structures.
+/// It's ideal for development, testing, and small applications that don't require
+/// persistent storage of permission mappings.
+///
+/// # Thread Safety
+///
+/// This implementation uses `Arc<RwLock<HashMap>>` for thread-safe access to the
+/// stored mappings. Multiple readers can access the data concurrently, while
+/// writers have exclusive access.
+///
+/// # Storage Strategy
+///
+/// Mappings are stored in two hash maps for efficient lookup:
+/// - By permission ID for reverse lookup (primary use case)
+/// - By normalized string for string-based queries
+///
+/// # Example
+///
+/// ```rust
+/// use axum_gate::auth::{PermissionMapping, PermissionId};
+/// use axum_gate::storage::MemoryPermissionMappingRepository;
+/// use axum_gate::advanced::PermissionMappingRepository;
+/// use std::sync::Arc;
+///
+/// # tokio_test::block_on(async {
+/// let repo = Arc::new(MemoryPermissionMappingRepository::default());
+///
+/// // Store a mapping
+/// let mapping = PermissionMapping::from_string("read:api");
+/// let stored = repo.store_mapping(mapping.clone()).await.unwrap();
+/// assert!(stored.is_some());
+///
+/// // Query by ID
+/// let found = repo.query_mapping_by_id(mapping.permission_id()).await.unwrap();
+/// assert!(found.is_some());
+/// # });
+/// ```
+#[derive(Debug)]
+pub struct MemoryPermissionMappingRepository {
+    /// Storage by permission ID for efficient reverse lookup
+    by_id: Arc<RwLock<HashMap<u64, PermissionMapping>>>,
+    /// Storage by normalized string for efficient string-based queries
+    by_string: Arc<RwLock<HashMap<String, PermissionMapping>>>,
+}
+
+impl Default for MemoryPermissionMappingRepository {
+    fn default() -> Self {
+        Self {
+            by_id: Arc::new(RwLock::new(HashMap::new())),
+            by_string: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+}
+
+impl From<Vec<PermissionMapping>> for MemoryPermissionMappingRepository {
+    fn from(mappings: Vec<PermissionMapping>) -> Self {
+        let mut by_id = HashMap::new();
+        let mut by_string = HashMap::new();
+
+        for mapping in mappings {
+            // Validate the mapping before storing
+            if let Err(e) = mapping.validate() {
+                tracing::warn!("Skipping invalid permission mapping: {}", e);
+                continue;
+            }
+
+            let id = mapping.permission_id().as_u64();
+            let normalized = mapping.normalized_string().to_string();
+
+            by_id.insert(id, mapping.clone());
+            by_string.insert(normalized, mapping);
+        }
+
+        Self {
+            by_id: Arc::new(RwLock::new(by_id)),
+            by_string: Arc::new(RwLock::new(by_string)),
+        }
+    }
+}
+
+impl PermissionMappingRepository for MemoryPermissionMappingRepository {
+    async fn store_mapping(&self, mapping: PermissionMapping) -> Result<Option<PermissionMapping>> {
+        // Validate the mapping first
+        if let Err(e) = mapping.validate() {
+            return Err(Error::Port(PortError::Repository {
+                repository: RepositoryType::PermissionMapping,
+                message: format!("Invalid permission mapping: {}", e),
+                operation: Some("store".to_string()),
+                context: None,
+            }));
+        }
+
+        let id = mapping.permission_id().as_u64();
+        let normalized = mapping.normalized_string().to_string();
+
+        // Check if mapping already exists (by ID or normalized string)
+        {
+            let id_read = self.by_id.read().await;
+            let string_read = self.by_string.read().await;
+
+            if id_read.contains_key(&id) || string_read.contains_key(&normalized) {
+                return Ok(None); // Mapping already exists
+            }
+        }
+
+        // Store in both maps
+        {
+            let mut id_write = self.by_id.write().await;
+            let mut string_write = self.by_string.write().await;
+
+            id_write.insert(id, mapping.clone());
+            string_write.insert(normalized, mapping.clone());
+        }
+
+        Ok(Some(mapping))
+    }
+
+    async fn remove_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
+        let id_u64 = id.as_u64();
+
+        // Get the mapping first to know what normalized string to remove
+        let mapping = {
+            let id_read = self.by_id.read().await;
+            id_read.get(&id_u64).cloned()
+        };
+
+        if let Some(mapping) = mapping {
+            let normalized = mapping.normalized_string().to_string();
+
+            // Remove from both maps
+            {
+                let mut id_write = self.by_id.write().await;
+                let mut string_write = self.by_string.write().await;
+
+                id_write.remove(&id_u64);
+                string_write.remove(&normalized);
+            }
+
+            Ok(Some(mapping))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn remove_mapping_by_string(
+        &self,
+        permission: &str,
+    ) -> Result<Option<PermissionMapping>> {
+        let normalized = normalize_permission(permission);
+
+        // Get the mapping first to know what ID to remove
+        let mapping = {
+            let string_read = self.by_string.read().await;
+            string_read.get(&normalized).cloned()
+        };
+
+        if let Some(mapping) = mapping {
+            let id = mapping.permission_id().as_u64();
+
+            // Remove from both maps
+            {
+                let mut id_write = self.by_id.write().await;
+                let mut string_write = self.by_string.write().await;
+
+                id_write.remove(&id);
+                string_write.remove(&normalized);
+            }
+
+            Ok(Some(mapping))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn query_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
+        let id_read = self.by_id.read().await;
+        Ok(id_read.get(&id.as_u64()).cloned())
+    }
+
+    async fn query_mapping_by_string(&self, permission: &str) -> Result<Option<PermissionMapping>> {
+        let normalized = normalize_permission(permission);
+        let string_read = self.by_string.read().await;
+        Ok(string_read.get(&normalized).cloned())
+    }
+
+    async fn list_all_mappings(&self) -> Result<Vec<PermissionMapping>> {
+        let id_read = self.by_id.read().await;
+        Ok(id_read.values().cloned().collect())
+    }
+}
+
+/// Normalize a permission name (trim + lowercase).
+///
+/// This function implements the same normalization logic used in
+/// the PermissionId implementation to ensure consistency.
+fn normalize_permission(input: &str) -> String {
+    input.trim().to_lowercase()
 }

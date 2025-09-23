@@ -73,7 +73,10 @@ pub use crate::domain::traits::{AccessHierarchy, AsPermissionName};
 // Core extension traits & integration points
 pub use crate::ports::Codec;
 pub use crate::ports::auth::{CredentialsVerifier, HashingService};
-pub use crate::ports::repositories::{AccountRepository, SecretRepository};
+pub use crate::ports::repositories::{
+    AccountRepository, PermissionMappingRepository, PermissionMappingRepositoryBulk,
+    SecretRepository,
+};
 
 // Authentication workflow (service + result)
 pub use crate::application::auth::{LoginResult, LoginService};

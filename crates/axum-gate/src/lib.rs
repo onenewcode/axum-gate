@@ -284,7 +284,9 @@ pub mod auth {
 
     pub use crate::domain::entities::{Account, Credentials, Group, Role};
     pub use crate::domain::services::access_policy::AccessPolicy;
-    pub use crate::domain::values::{PermissionId, Permissions};
+    pub use crate::domain::values::{
+        PermissionId, PermissionMapping, PermissionMappingError, Permissions,
+    };
 
     // Account creation and management.
     pub use crate::application::accounts::{AccountDeleteService, AccountInsertService};
@@ -361,7 +363,7 @@ pub mod http {
 /// Security: Every backend performs constant-time credential verification (dummy hash for non‑existent users) to reduce timing side channel risk.
 pub mod storage {
     pub use crate::infrastructure::repositories::memory::{
-        MemoryAccountRepository, MemorySecretRepository,
+        MemoryAccountRepository, MemoryPermissionMappingRepository, MemorySecretRepository,
     };
 
     #[cfg(feature = "storage-surrealdb")]

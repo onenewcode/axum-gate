@@ -5,12 +5,14 @@
 
 mod access_scope;
 mod permission_id;
+mod permission_mapping;
 mod permissions;
 mod secrets;
 mod verification;
 
 pub use access_scope::AccessScope;
 pub use permission_id::PermissionId;
+pub use permission_mapping::{PermissionMapping, PermissionMappingError};
 pub use permissions::Permissions;
 pub use secrets::Secret;
 pub use verification::VerificationResult;
