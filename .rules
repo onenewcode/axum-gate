@@ -676,7 +676,7 @@ This document provides principles and patterns for building robust, secure, and 
 
 # CI and Quality Rules
 
-These rules are globally applicable and model-agnostic. They set expectations for formatting, linting, testing, dependency/security hygiene, and contribution workflow. They are intended to be enforced both locally and in CI.
+These rules are globally applicable and model-agnostic. They set expectations for formatting, linting, testing, dependency/security hygiene, and contribution workflow that apply to any programming language or framework.
 
 ## Goals
 
@@ -695,91 +695,74 @@ These rules are globally applicable and model-agnostic. They set expectations fo
   - For regressions, add a failing test first, then fix.
 - When ambiguity exists, propose a minimal plan, implement in small steps, and include tests per step.
 
-Recommended commands:
-```
-cargo test --all --all-targets
-# (Optional) Faster test runner:
-# cargo nextest run --all
-```
+Test execution should be:
+- Fast and deterministic
+- Isolated from external dependencies where possible
+- Covering edge cases and error conditions
+- Runnable locally and in CI
 
 ---
 
 ## Formatting and Linting
 
-### Rust
+### General Principles
 
-- rustfmt is mandatory for all Rust code.
-- clippy must pass with no warnings in CI.
-- Prefer stable toolchain; pin via `rust-toolchain.toml` to ensure reproducibility.
+- Use consistent code formatting across the entire codebase.
+- Automate formatting to eliminate style debates and inconsistencies.
+- Configure linting rules that catch common errors and enforce best practices.
+- Treat linting warnings as errors in CI to maintain code quality.
 
-Local commands:
-```
-cargo fmt --all
-cargo clippy --all-targets --all-features -D warnings
-```
+### Implementation Guidelines
 
-CI commands (non-fixing):
-```
-cargo fmt --all -- --check
-cargo clippy --all-targets --all-features -D warnings
-```
+- Use language-specific formatters (e.g., language built-in formatters, Prettier, Black).
+- Configure linters to catch bugs, enforce conventions, and improve readability.
+- Pin tool versions to ensure reproducible formatting and linting across environments.
+- Fail CI builds on formatting violations or linting errors.
 
-Clippy policy:
-- Treat all warnings as errors in CI (`-D warnings`).
-- If you must allow a lint, scope it narrowly and document the rationale:
-  - Prefer line-level `#[allow(lint_name)]` with a comment.
-  - Avoid crate-wide `allow` unless there’s a documented standard.
+Local workflow:
+1. Format code automatically before committing
+2. Run linter and fix violations
+3. Ensure tests pass
 
-Optional stricter profile (opt-in per crate):
-```
-cargo clippy --all-targets --all-features -D warnings -W clippy::nursery -W clippy::pedantic
-```
+CI workflow:
+1. Check formatting (non-fixing mode)
+2. Run linter with error-level enforcement
+3. Fail build on any violations
 
-### Markdown/Docs
+### Linting Policy
 
-- Keep README and internal docs consistent with the current codebase.
-- Use concise, task-focused prose; include command examples where helpful.
-
-### CSS/SCSS (if present)
-
-- Enforce a style linter (Stylelint) and formatting (Prettier) if configured.
-- Keep class naming and tokens consistent with the Style guide.
+- Treat all linting warnings as errors in CI.
+- If you must disable a rule, scope it narrowly and document the rationale.
+- Prefer line-level or function-level suppressions over global disables.
+- Regularly review and update linting rules as the codebase evolves.
 
 ---
 
 ## Dependency and Security Hygiene
 
-- Lockfiles are committed and reviewed.
-- Audit advisories regularly; CI must fail on unignored advisories.
-- Track license and ban rules; CI must fail on violations.
-- Keep dependencies reasonably up to date; avoid needless churn.
+- Keep dependency manifests (package.json, requirements.txt, Cargo.toml, etc.) and lockfiles committed and reviewed.
+- Audit dependencies regularly for known vulnerabilities; CI must fail on unaddressed security issues.
+- Track licenses and enforce organizational policies; CI must fail on violations.
+- Keep dependencies reasonably up to date; avoid needless churn but address critical updates.
 
-Commands:
-```
-# Audit for known vulnerabilities
-cargo audit
-
-# Policy checks: advisories, bans, licenses, sources
-cargo deny check advisories
-cargo deny check bans
-cargo deny check licenses
-cargo deny check sources
-
-# Identify outdated dependencies
-cargo outdated -R
-```
+Security scanning should include:
+- Known vulnerability detection
+- License compliance checking
+- Dependency policy enforcement (banned packages, source restrictions)
+- Outdated dependency identification
 
 Notes:
-- If an advisory cannot be addressed immediately, document a temporary allowlist entry with justification, scope, and an expiration/revisit date.
-- Prefer minimal dependency graphs; remove unused crates.
+- If a security advisory cannot be addressed immediately, document a temporary exception with justification, scope, and an expiration/revisit date.
+- Prefer minimal dependency graphs; remove unused dependencies.
+- Use dependency pinning and lockfiles to ensure reproducible builds.
 
 ---
 
-## Minimal GitHub Actions Example (Rust)
+## Generic CI Pipeline Structure
 
-This is a reference you can adapt (paths/flags may differ per repo):
+This template can be adapted for any language/framework:
 
-```
+```yaml
 name: CI
 
 on:
@@ -793,61 +776,57 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Pin stable toolchain; add rustfmt + clippy components
-      - uses: dtolnay/rust-toolchain@stable
+      # Install language runtime and tools
+      - name: Setup runtime
+        uses: # language-specific setup action
+
+      # Cache dependencies and build artifacts
+      - name: Cache dependencies
+        uses: actions/cache@v3
         with:
-          components: rustfmt, clippy
+          path: # language-specific cache paths
+          key: # language-specific cache key
 
-      # Cache build artifacts
-      - uses: Swatinem/rust-cache@v2
+      - name: Install dependencies
+        run: # language-specific install command
 
-      - name: Format (check)
-        run: cargo fmt --all -- --check
+      - name: Format check
+        run: # language-specific format check command
 
-      - name: Lint (clippy)
-        run: cargo clippy --all-targets --all-features -D warnings
+      - name: Lint
+        run: # language-specific linting command
 
       - name: Test
-        run: cargo test --all --all-targets --no-fail-fast
+        run: # language-specific test command
 
-      # Optional: install extra tools for scanning
-      - name: Install security tools
-        run: |
-          cargo install cargo-audit || true
-          cargo install cargo-deny || true
-          cargo install cargo-outdated || true
+      - name: Security audit
+        run: # language-specific security audit command
 
-      - name: Audit (vulnerabilities)
-        run: cargo audit
-
-      - name: Deny (policies)
-        run: |
-          cargo deny check advisories
-          cargo deny check bans
-          cargo deny check licenses
-          cargo deny check sources
-
-      - name: Outdated (report only)
-        run: cargo outdated -R || true
+      - name: Build
+        run: # language-specific build command
 ```
 
 Tips:
-- Make CI fail on format/lint/test/audit/deny; keep “outdated” informational.
-- For monorepos/workspaces, prefer `--workspace` flags if appropriate.
+- Make CI fail on format/lint/test/security violations.
+- Keep build times reasonable with appropriate caching.
+- Run tests in parallel when possible.
+- Generate test coverage reports for tracking.
 
 ---
 
-## Pre-commit (Optional but Encouraged)
+## Pre-commit Hooks (Recommended)
 
 Add a lightweight local workflow so obvious issues never reach CI:
-```
-cargo fmt --all
-cargo clippy --all-targets --all-features -D warnings
-cargo test --all --all-targets
-```
-You can wire this via:
-- git hooks (e.g., pre-commit framework), or
-- a task runner (Justfile/Makefile) and an internal convention (“run just check before pushing”).
+1. Format code automatically
+2. Run linter and fix auto-fixable issues
+3. Run relevant subset of tests
+4. Check for common security issues
+
+This can be implemented via:
+- Git hooks (pre-commit framework)
+- Task runners (Make, Just, npm scripts)
+- IDE/editor integration
+- Language-specific tooling
 
 ---
 
@@ -858,28 +837,27 @@ You can wire this via:
 - Use clear, imperative subject lines (max ~72 chars).
 - Keep commits focused and logically atomic.
 - Reference issues when relevant.
-- Conventional Commits are encouraged:
+- Conventional Commits are encouraged for automated tooling.
 
 Examples:
 - feat(api): add pagination to list endpoint
-- fix(db): handle unique constraint violation
-- refactor(domain): extract validation into new module
-- test(axum): add error-path tests for auth middleware
-- docs(readme): clarify local setup instructions
-- chore(ci): enable cargo-deny bans and licenses checks
+- fix(db): handle connection timeout gracefully
+- refactor(auth): extract validation logic into separate module
+- test(api): add error-path tests for authentication
+- docs(readme): clarify local development setup
+- chore(ci): enable security scanning in pipeline
 
 ### Pull Requests
 
-- Keep PRs small and focused. If large:
-  - Propose a plan, split into reviewable steps.
+- Keep PRs small and focused. If large, propose a plan and split into reviewable steps.
 - PR Checklist (include in description):
   - Summary of change and rationale
-  - Affected modules/crates
+  - Affected components/modules
   - Tests added/updated (success + error paths)
   - Any migration steps or breaking changes
-  - Security considerations (input validation, secrets, PII)
+  - Security considerations (input validation, data handling)
   - Performance considerations (if applicable)
-- Screenshots or logs for UX/behavioral changes (where helpful)
+- Include screenshots or examples for UI/behavioral changes
 - Link to related issues, designs, or discussions
 
 ---
@@ -887,38 +865,59 @@ Examples:
 ## AI Assistant Requirements (Model-agnostic)
 
 - When proposing code changes:
-  - Include the exact commands to validate (format, lint, test, audit, deny).
-  - Generate or update tests; call out new files and why they’re needed.
+  - Include the exact commands to validate (format, lint, test, security scan).
+  - Generate or update tests; call out new files and why they're needed.
   - If a change is large, outline a plan and implement iteratively.
-- Never introduce `unwrap()`/`expect()` in runtime code; use typed errors and proper propagation.
-- Avoid leaking secrets/PII in logs, diffs, or examples; redact when necessary.
+- Use proper error handling patterns appropriate for the language (no unsafe operations in production code).
+- Avoid exposing sensitive information in logs, errors, or examples; redact when necessary.
 - Prefer minimal diffs; for broad refactors, coordinate via plan + staged PRs.
+- Follow language-specific best practices for error handling, resource management, and concurrency.
 
 ---
 
-## Configuration Artifacts (Recommended to Check In)
+## Configuration Artifacts (Recommended)
 
-- rust-toolchain.toml specifying stable channel and components (rustfmt, clippy).
-- rustfmt.toml for project formatting preferences (if you need non-defaults).
-- Clippy configuration comments at module/crate level only when justified.
-- cargo-deny config (bans, licenses) aligned with org policy.
-- Optional: EditorConfig, Stylelint, Prettier for non-Rust files.
+Language-agnostic configuration files to maintain in the repository:
+- Tool version specifications (e.g., .tool-versions, .nvmrc, runtime configuration)
+- Formatter configuration files with project-specific preferences
+- Linter configuration with rule customizations and justifications
+- Dependency policy configuration (license allowlists, security exceptions)
+- Editor configuration (.editorconfig) for consistent editing experience
+- CI/CD pipeline definitions with clear stages and requirements
+
+---
+
+## Quality Metrics and Monitoring
+
+Track and monitor:
+- Test coverage percentages and trends
+- Build success rates and duration
+- Dependency vulnerability counts
+- Code quality metrics (complexity, duplication)
+- Review cycle times and feedback quality
+
+Set up alerts for:
+- New security vulnerabilities in dependencies
+- Significant drops in test coverage
+- Build failure rate increases
+- Long-running or frequently failing tests
 
 ---
 
 ## Recap Checklist
 
 - [ ] Tests added/updated for all non-trivial changes
-- [ ] cargo fmt passes (CI uses --check)
-- [ ] cargo clippy passes with -D warnings
-- [ ] cargo test passes (or cargo nextest)
-- [ ] cargo audit has no unaddressed advisories
-- [ ] cargo deny checks pass (advisories/bans/licenses/sources)
-- [ ] Commit messages are clear (prefer Conventional Commits)
-- [ ] PR description includes rationale, tests, and considerations
-- [ ] No secrets/PII leaked in code, logs, or diffs
+- [ ] Code formatting is consistent and passes checks
+- [ ] Linting passes with no warnings/errors
+- [ ] All tests pass locally and in CI
+- [ ] Security scanning shows no new vulnerabilities
+- [ ] Dependency policies are satisfied
+- [ ] Commit messages are clear and follow conventions
+- [ ] PR description includes rationale, testing approach, and considerations
+- [ ] No secrets or sensitive information exposed in code or logs
+- [ ] Performance impact has been considered for critical paths
 
-Adopting these rules ensures consistent, high-quality changes and smooth collaboration, whether changes are authored manually or assisted by Claude Sonnet 4 or GPT‑5.
+Adopting these rules ensures consistent, high-quality changes and smooth collaboration across any technology stack, whether changes are authored manually or assisted by AI models.
 
 
 ## Source: global/global.md
@@ -926,7 +925,7 @@ Adopting these rules ensures consistent, high-quality changes and smooth collabo
 
 # Global AI Rules for This Workspace
 
-These rules are model-agnostic and apply equally when using Claude Sonnet 4 or GPT‑5 in Zed. They define how to structure assistance, keep changes safe, and maximize developer productivity.
+These rules are model-agnostic and apply equally when using Claude Sonnet 4 or GPT‑5 in Zed. They define how to structure assistance, keep changes safe, and maximize developer productivity across any programming language or framework.
 
 ## Purpose
 - Provide consistent, high-quality assistance across languages and stacks in this workspace.
@@ -988,9 +987,9 @@ These rules are model-agnostic and apply equally when using Claude Sonnet 4 or G
 ## Code Quality Defaults
 - Include all necessary imports and module declarations.
 - Use explicit types for public APIs and complex expressions.
-- Handle errors explicitly; avoid unwrap/expect in runtime paths.
-- Add doc comments for public APIs, constraints, and examples.
-- Follow language-idiomatic style and recommended linters/formatters (e.g., rustfmt/clippy, ESLint/Prettier, Stylelint).
+- Handle errors explicitly; avoid unsafe operations or error suppression in production code.
+- Add documentation comments for public APIs, constraints, and examples.
+- Follow language-idiomatic style and recommended linters/formatters.
 
 ## Security Expectations
 - Validate inputs at system boundaries; sanitize before use or display.
@@ -1005,7 +1004,7 @@ These rules are model-agnostic and apply equally when using Claude Sonnet 4 or G
 - Suggest health checks and basic metrics for new services or endpoints.
 
 ## Documentation & Comments
-- Explain “why”, not just “what”. Call out assumptions, trade-offs, and limitations.
+- Explain "why", not just "what". Call out assumptions, trade-offs, and limitations.
 - Include usage examples for public functions/components.
 - Update or create README snippets when adding meaningful features or workflows.
 
@@ -1030,7 +1029,7 @@ These rules are model-agnostic and apply equally when using Claude Sonnet 4 or G
 ## Review Checklist (Quick)
 - [ ] Small, incremental change with a clear plan
 - [ ] Tests added/updated (success + failure paths)
-- [ ] Explicit error handling; no unwrap/expect in runtime code
+- [ ] Explicit error handling; no unsafe operations in production code
 - [ ] Security/privacy respected; no secrets leaked
 - [ ] Minimal, complete diffs with necessary imports and docs
 - [ ] Observability notes (logging/metrics) when relevant
@@ -1072,7 +1071,7 @@ This document makes the ruleset work interchangeably with Claude Sonnet 4 and GP
 Both models should perform well with these rules. If you have a choice, consider:
 
 - Architecture and multi-file planning
-  - Use a deliberate “analyze → plan → implement” loop for refactors, layering, domain design, or interface contracts.
+  - Use a deliberate "analyze → plan → implement" loop for refactors, layering, domain design, or interface contracts.
 - Focused code generation and transformations
   - Use for implementing a concrete function, producing minimal diffs, bulk transformations, or mechanical refactors with precise constraints.
 - Mixed tasks
@@ -1087,7 +1086,7 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 ### 1) Plan → Implement Loop
 - Analyze the current state and constraints.
 - Propose a short plan with:
-  - The files to change (paths), the type of changes, and the test updates you’ll make.
+  - The files to change (paths), the type of changes, and the test updates you'll make.
   - Any risky or breaking steps explicitly called out.
 - Await confirmation for multi-file or risky changes; otherwise proceed with the first step.
 - Implement incrementally; after each step:
@@ -1102,28 +1101,26 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 - Prefer minimal diffs over full-file rewrites; when a full file is required (e.g., new files or fragmented context), make that explicit.
 
 ### 3) Diff vs Full-File Policy
-- Default: minimal, self-contained edits that compile.
+- Default: minimal, self-contained edits that compile/run successfully.
 - Full-file only when:
   - The file is new.
-  - The change is sweeping and safer to present as a full, complete file.
+  - The change is sweeping and safer to present as a complete file.
   - The editor/workflow explicitly requires full file content.
 
 ### 4) Tests With Changes
 - For any non-trivial code, include/update tests in the same iteration:
-  - Unit tests for pure logic.
-  - Integration tests for API boundaries, error cases, and concurrency.
+  - Unit tests for pure logic and individual components.
+  - Integration tests for API boundaries, error cases, and system interactions.
 - State how to run tests (commands) without executing them.
 
 ### 5) Error Handling and Safety Baselines
-- Rust/Axum:
-  - No `unwrap`/`expect` in runtime code.
-  - Typed errors; map external errors; never leak internals in HTTP responses.
-  - Timeouts, limits, input validation at boundaries; structured logging with correlation IDs.
-- Leptos:
-  - Use `<ErrorBoundary>` and `<Suspense>`; handle loading and error states explicitly.
-  - Avoid update loops; use selectors, keyed lists, and modern APIs consistently.
-- CSS/SCSS:
-  - Use design tokens, accessibility-friendly defaults, and reduced-motion fallbacks.
+- Use language-appropriate error handling patterns:
+  - Typed errors and proper error propagation.
+  - Graceful degradation and fallback mechanisms.
+  - Timeouts, limits, and input validation at system boundaries.
+  - Structured logging with correlation IDs for traceability.
+- Never expose internal system details in user-facing error messages.
+- Validate all inputs at trust boundaries and sanitize before processing.
 
 ### 6) Privacy and Redaction
 - Never include secrets or raw environment variables in prompts or outputs.
@@ -1135,14 +1132,14 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 - If still uncertain after a response, propose a conservative default and proceed.
 
 ### 8) Deterministic Outputs
-- Keep import ordering consistent (std → external → internal).
+- Keep import ordering consistent (standard library → external dependencies → internal modules).
 - Use stable wording for headings and checklists.
-- Prefer explicit types, explicit trait bounds, and explicit error variants.
+- Prefer explicit types, clear interfaces, and well-defined contracts.
 
 ## Zed-Oriented Tips (Model-Neutral)
 
 - Respect ruleset scoping via globs; keep changes within the current file set unless asked otherwise.
-- Include complete module context (imports, feature flags, Cargo.toml updates when relevant).
+- Include complete module context (imports, dependencies, configuration updates when relevant).
 - Reference developer commands (formatting, lint, test) but do not run them; provide the exact CLI incantations.
 - Default to concise responses; expand details or reasoning upon request.
 - Use incremental edits that are easy to navigate with Go-to-Definition and Find References.
@@ -1159,14 +1156,14 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 1) Propose a plan: files to add/change, interfaces, tests.
 2) Implement in small steps (one submodule or layer at a time).
 3) Add/update tests for each step; ensure error handling is consistent.
-4) Summarize next steps; pause for confirmation if crossing boundaries (API, DB, build config).
+4) Summarize next steps; pause for confirmation if crossing boundaries (API, database, build config).
 
 ### Refactor Flow
 1) Inventory public APIs and call sites.
 2) Propose a migration path:
    - Deprecate old API, introduce new API, create adapters if needed.
 3) Apply changes incrementally with tests and clear deprecation notes.
-4) Validate with lint/tests; ensure minimal churn to consumers.
+4) Validate with lint/tests; ensure minimal impact to consumers.
 
 ### Incident/Bug Triage Flow
 1) Reproduce and isolate the failing path.
@@ -1190,19 +1187,45 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 
 - Overlong responses → Split into steps; implement the smallest valuable subset.
 - Ambiguous requirements → Ask one clarifying question; propose a safe default.
-- Partial edits that don’t compile → Include all necessary imports/types and adjust signatures.
-- Leaking sensitive data → Redact early; share only what’s essential.
+- Partial edits that don't compile/run → Include all necessary imports/types and adjust signatures.
+- Leaking sensitive data → Redact early; share only what's essential.
 - Hidden breaking changes → Call out risk; propose adapters/deprecations; add tests.
 
 ## Versioning and Upgrades
 
-- Respect the project’s current versions and edition settings.
+- Respect the project's current versions and dependency management approach.
 - Propose upgrades explicitly with a short risk assessment and a test/rollback plan.
-- Keep feature flags and Cargo.toml updates localized and documented.
+- Keep feature flags and dependency updates localized and documented.
+
+## Universal Patterns for Quality Code
+
+### Error Handling
+- Use language-appropriate error handling mechanisms (exceptions, error returns, result types).
+- Provide meaningful error messages that help users understand what went wrong.
+- Log errors with sufficient context for debugging without exposing sensitive information.
+- Implement proper cleanup and resource management in error scenarios.
+
+### Resource Management
+- Follow language-specific patterns for managing memory, file handles, network connections.
+- Implement proper cleanup procedures (finally blocks, defer statements, destructors).
+- Use connection pooling and resource reuse where appropriate.
+- Set appropriate timeouts and limits to prevent resource exhaustion.
+
+### Concurrency and Threading
+- Use language-appropriate concurrency primitives and patterns.
+- Protect shared resources with proper synchronization mechanisms.
+- Avoid deadlocks through consistent ordering and timeout usage.
+- Design for graceful shutdown and cancellation.
+
+### API Design
+- Follow RESTful principles for web APIs or language-specific conventions for libraries.
+- Use consistent naming patterns and parameter ordering.
+- Provide clear documentation and examples for public interfaces.
+- Version APIs appropriately to maintain backward compatibility.
 
 ---
 
-With these rules, Claude Sonnet 4 and GPT-5 can be used interchangeably in Zed. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers.
+With these rules, Claude Sonnet 4 and GPT-5 can be used interchangeably in Zed. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers and programming languages.
 
 
 ## Source: global/security-ai.md
@@ -1223,27 +1246,27 @@ Model-agnostic rules to keep code, data, and credentials safe while collaboratin
 ## Definitions
 
 - Secrets: API keys, tokens, passwords, private keys, client secrets, credentials, connection strings, session cookies, JWTs, cloud access keys, SSH keys, encryption keys.
-- PII: Any data that can identify a person (name, email, phone, address, identifiers, IPs when tied to identity, device IDs). Treat “quasi-identifiers” as PII when combined (e.g., ZIP + birth date).
+- PII: Any data that can identify a person (name, email, phone, address, identifiers, IPs when tied to identity, device IDs). Treat "quasi-identifiers" as PII when combined (e.g., ZIP + birth date).
 - Sensitive business data: Proprietary code, unreleased features, financial, legal, or security configurations.
-- Safety-critical code: Authentication, authorization, crypto, payment processing, personal/medical data handlers.
+- Safety-critical code: Authentication, authorization, cryptography, payment processing, personal/medical data handlers.
 
 ## Default assistant behavior
 
 - Minimize shared content: summarize large logs/configs; share only the essential lines and structure.
-- Prefer references over raw values (e.g., "uses env var DB_PASSWORD" instead of actual value).
+- Prefer references over raw values (e.g., "uses environment variable DATABASE_PASSWORD" instead of actual value).
 - Redact with explicit, typed placeholders:
   - "<REDACTED:API_KEY>", "<REDACTED:JWT>", "<REDACTED:ACCESS_TOKEN>", "<REDACTED:EMAIL>", "<REDACTED:PHONE>"
 - Truncate long values (e.g., "sk_live_…<TRUNCATED>") after first 6–8 visible chars when context is necessary.
-- Avoid echoing environment variables, .env contents, config files, or credentials. If absolutely necessary, include only variable names and sample placeholders.
+- Avoid echoing environment variables, configuration file contents, or credentials. If absolutely necessary, include only variable names and sample placeholders.
 - If uncertain whether data is sensitive, treat it as sensitive and ask one clarifying question.
 
 ## Secrets and credential hygiene
 
 - Do not generate real credentials. Use placeholders and provide guidance to create and store secrets securely.
-- Suggest maintaining ".env.example" with placeholders and ensuring ".env" is ignored by VCS.
+- Suggest maintaining sample configuration files with placeholders and ensuring actual configuration files are ignored by version control.
 - Never print secrets in logs, errors, or test output. Use masked forms or placeholders.
 - Recommend rotation if a secret appears in code, history, logs, or discussion.
-- Avoid embedding credentials in URLs or source; use environment variables or secret managers.
+- Avoid embedding credentials in URLs or source code; use environment variables or secret managers.
 - For token-like strings, always redact before quoting or copying.
 
 ## PII handling
@@ -1259,7 +1282,7 @@ Model-agnostic rules to keep code, data, and credentials safe while collaboratin
 - Prefer structured, minimal logs: event name, correlation/request ID, high-level error category.
 - Avoid logging secrets, tokens, full headers, or entire request/response bodies.
 - Cap log sizes, fields, and arrays; omit or hash large or sensitive fields.
-- Return safe error responses to clients (no internal stack traces or config details).
+- Return safe error responses to clients (no internal stack traces or configuration details).
 - Use correlation IDs for tracing instead of duplicating user or sensitive identifiers.
 
 ## External calls, uploads, and tooling
@@ -1279,14 +1302,14 @@ Model-agnostic rules to keep code, data, and credentials safe while collaboratin
 
 - GDPR/CCPA: minimize personal data; provide deletion/anonymization paths; log only what is necessary.
 - HIPAA: treat PHI as highly restricted; avoid sharing; use de-identified data for examples.
-- PCI-DSS: never handle raw PAN/CVV in logs or code snippets; use tokenization.
+- PCI-DSS: never handle raw payment card data in logs or code snippets; use tokenization.
 - SOC 2: prefer least-privilege, auditing, change control; avoid uncontrolled data egress.
 - If a change could impact compliance, flag it and recommend review by security/privacy stakeholders.
 
 ## Source code and licensing
 
 - Avoid pasting large third-party code blocks; link, summarize, or cite instead.
-- Respect licenses; avoid incorporating incompatible-licensed code into proprietary repos.
+- Respect licenses; avoid incorporating incompatible-licensed code into proprietary repositories.
 - Recommend license and vulnerability checks for dependencies; keep audit findings out of public contexts.
 
 ## Data classification defaults
@@ -1317,9 +1340,9 @@ Model-agnostic rules to keep code, data, and credentials safe while collaboratin
 
 ## Safe example patterns (non-executable)
 
-- Environment variables: show names only (e.g., "DB_USER", "DB_PASSWORD") with placeholder values.
-- Credentials in URLs: never include; show pattern "postgres://<USER>:<REDACTED:PASSWORD>@host/db".
-- JWTs, session cookies: show as "<REDACTED:JWT>" or "sid=…<TRUNCATED>".
+- Environment variables: show names only (e.g., "DATABASE_USER", "DATABASE_PASSWORD") with placeholder values.
+- Credentials in URLs: never include; show pattern "database://USER:PASSWORD@host/dbname" with clear placeholders.
+- JWTs, session cookies: show as "<REDACTED:JWT>" or "sessionid=…<TRUNCATED>".
 - Logs: log event codes and correlation IDs; omit payloads unless strictly necessary and sanitized.
 
 ## Opt-in templates
@@ -1338,6 +1361,17 @@ Use these templates to align requests/responses with safe practices.
 - Prefer a plan-first approach for large contexts or ambiguous requirements.
 - Stop and flag to stakeholders if continuing might cause data exposure.
 
+## Language-agnostic security patterns
+
+- Input validation: Validate all inputs at trust boundaries using allow-lists rather than deny-lists.
+- Output encoding: Properly encode data based on the output context (HTML, SQL, shell commands).
+- Authentication: Use strong authentication mechanisms and multi-factor authentication where possible.
+- Authorization: Implement least-privilege access controls and regularly review permissions.
+- Cryptography: Use well-established libraries and algorithms; never implement custom crypto.
+- Session management: Use secure session handling with proper timeout and invalidation.
+- Error handling: Fail securely; don't leak sensitive information in error messages.
+- Logging: Log security events for monitoring but never log sensitive data.
+
 ---
-By following these rules, assistants and contributors maintain strong security posture across models and workflows while enabling effective, privacy-preserving collaboration in Zed.
+By following these rules, assistants and contributors maintain strong security posture across models and workflows while enabling effective, privacy-preserving collaboration in Zed regardless of the programming language or technology stack being used.
 
