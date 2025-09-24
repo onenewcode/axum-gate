@@ -16,10 +16,10 @@
 use axum_gate::{
     auth::{AccountInsertService, Credentials, login, logout},
     http::CookieJar,
+    integrations::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
     jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
     prelude::{AccessPolicy, Account, CookieTemplateBuilder, Gate, Group, Role},
     storage::{MemoryAccountRepository, MemorySecretRepository},
-    utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
 };
 
 use std::sync::Arc;

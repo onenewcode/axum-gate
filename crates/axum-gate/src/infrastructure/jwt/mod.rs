@@ -2,8 +2,8 @@
 //!
 use crate::errors::{Error, InfrastructureError, Result};
 use crate::infrastructure::errors::JwtOperation;
+use crate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use crate::ports::Codec;
-use crate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 
 use std::collections::HashSet;
 use std::marker::PhantomData;

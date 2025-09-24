@@ -29,7 +29,7 @@
 //!     let secret_repo = Arc::new(storage::MemorySecretRepository::default());
 //!
 //!     // Create JWT codec with persistent key for production
-//!     use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey};
+//!     use axum_gate::integrations::jsonwebtoken::{DecodingKey, EncodingKey};
 //!     let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-key".to_string());
 //!     let options = jwt::JsonWebTokenOptions {
 //!         enc_key: EncodingKey::from_secret(secret.as_bytes()),
@@ -385,16 +385,11 @@ pub mod storage {
     pub use crate::infrastructure::repositories::TableNames;
 }
 
-/// Common utilities, helper types and external crate re-exports.
-pub mod utils {
-
+/// External crate re-exports, convenient access to commonly used external types.
+pub mod integrations {
+    pub use jsonwebtoken;
+    pub use serde_json;
     pub use uuid::Uuid;
-
-    /// External crate re-exports, convenient access to commonly used external types.
-    pub mod external {
-        pub use jsonwebtoken;
-        pub use serde_json;
-    }
 }
 
 /// Audit logging utilities (feature: `audit-logging`).

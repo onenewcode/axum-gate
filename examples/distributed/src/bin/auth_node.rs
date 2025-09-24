@@ -1,10 +1,10 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
 use axum_gate::auth::AccountInsertService;
+use axum_gate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::prelude::{Credentials, Group, Role};
 use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
-use axum_gate::utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 
 use std::sync::Arc;
 

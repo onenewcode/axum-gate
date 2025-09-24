@@ -371,7 +371,7 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
 /// let repo = Arc::new(MemoryPermissionMappingRepository::default());
 ///
 /// // Store a mapping
-/// let mapping = PermissionMapping::from_string("read:api");
+/// let mapping = PermissionMapping::from("read:api");
 /// let stored = repo.store_mapping(mapping.clone()).await.unwrap();
 /// assert!(stored.is_some());
 ///

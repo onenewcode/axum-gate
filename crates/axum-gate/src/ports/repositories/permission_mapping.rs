@@ -23,28 +23,27 @@ use std::future::Future;
 /// This repository is intended to be used optionally alongside the existing
 /// `Permissions` struct. When permission strings need to be recoverable:
 ///
-/// ```rust,ignore
+/// ```rust
+/// # use axum_gate::auth::{PermissionMapping, Permissions};
+/// # use axum_gate::advanced::PermissionMappingRepository;
+/// # use axum_gate::storage::MemoryPermissionMappingRepository;
+///
+/// // In-memory repository
+/// let repo = MemoryPermissionMappingRepository::default();
+///
 /// // Store the mapping when granting permissions
-/// let mapping = PermissionMapping::from_string("read:api");
-/// permissions.grant(&mapping.normalized_string());
-/// repo.store_mapping(mapping).await?;
+/// let mapping = PermissionMapping::from("read:api");
+/// let mut permissions = Permissions::new();
+/// permissions.grant(mapping.normalized_string());
 ///
-/// // Later, retrieve the original string
-/// if let Some(mapping) = repo.query_mapping_by_id(permission_id).await? {
-///     println!("Permission: {}", mapping.original_string());
-/// }
+/// // Persist mapping for reverse lookup
+/// let stored = tokio_test::block_on(repo.store_mapping(mapping.clone())).unwrap();
+/// assert!(stored.is_some());
+///
+/// // Later, retrieve the original string via PermissionId
+/// let fetched = tokio_test::block_on(repo.query_mapping_by_id(mapping.permission_id())).unwrap();
+/// assert!(matches!(fetched, Some(m) if m.original_string() == "read:api"));
 /// ```
-///
-/// # Semantics
-///
-/// | Method                    | Success (`Ok`) Return Value                 | Typical `None` Meaning                    | Error (`Err`) Meaning                      |
-/// |---------------------------|---------------------------------------------|-------------------------------------------|--------------------------------------------|
-/// | `store_mapping`           | `Some(PermissionMapping)` if stored        | `None` if mapping already exists (no-op) | Persistence / connectivity failure         |
-/// | `remove_mapping_by_id`    | `Some(PermissionMapping)` = removed        | `None` = no mapping with that ID         | Backend / IO failure                       |
-/// | `remove_mapping_by_string`| `Some(PermissionMapping)` = removed        | `None` = no mapping with that string     | Backend / IO failure                       |
-/// | `query_mapping_by_id`     | `Some(PermissionMapping)` = found          | `None` = not found                        | Backend / IO failure                       |
-/// | `query_mapping_by_string` | `Some(PermissionMapping)` = found          | `None` = not found                        | Backend / IO failure                       |
-/// | `list_all_mappings`       | `Vec<PermissionMapping>` (may be empty)    | N/A (empty vec for no mappings)          | Backend / IO failure                       |
 ///
 /// # Consistency Guarantees
 ///

@@ -51,10 +51,10 @@ async fn demo_basic_registry_operations(
 
     // Create some permission mappings
     let mappings = vec![
-        PermissionMapping::from_string("read:api"),
-        PermissionMapping::from_string("write:api"),
-        PermissionMapping::from_string("admin:users"),
-        PermissionMapping::from_string("  DELETE:Files  "), // Test normalization
+        PermissionMapping::from("read:api"),
+        PermissionMapping::from("write:api"),
+        PermissionMapping::from("admin:users"),
+        PermissionMapping::from("  DELETE:Files  "), // Test normalization
     ];
 
     // Store the mappings
@@ -136,7 +136,7 @@ async fn demo_permissions_integration(
     info!("Granting permissions and storing mappings:");
     for perm_str in &permission_strings {
         // Create mapping
-        let mapping = PermissionMapping::from_string(*perm_str);
+        let mapping = PermissionMapping::from(*perm_str);
 
         // Grant the permission (this uses the normalized string)
         permissions.grant(mapping.normalized_string());
@@ -199,7 +199,7 @@ async fn demo_account_with_registry(
 
     info!("Granting admin permissions:");
     for (perm_name, description) in admin_permissions {
-        let mapping = PermissionMapping::from_string(perm_name);
+        let mapping = PermissionMapping::from(perm_name);
 
         // Grant to account
         account.grant_permission(mapping.normalized_string());
@@ -209,7 +209,7 @@ async fn demo_account_with_registry(
 
         // Store mapping with description in a comment-like format for documentation
         let documented_mapping =
-            PermissionMapping::from_string(&format!("{} // {}", perm_name, description));
+            PermissionMapping::from(format!("{} // {}", perm_name, description));
         repo.store_mapping(documented_mapping).await?;
 
         info!("  {} - {}", perm_name, description);
@@ -282,7 +282,7 @@ async fn _demo_error_handling(repo: &Arc<MemoryPermissionMappingRepository>) -> 
 
     // Try to create an invalid mapping (this would be caught at compile time
     // with the current API, but demonstrates validation)
-    let mapping = PermissionMapping::from_string("test:permission");
+    let mapping = PermissionMapping::from("test:permission");
 
     // This should succeed
     match repo.store_mapping(mapping.clone()).await? {

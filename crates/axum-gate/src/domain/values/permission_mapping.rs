@@ -39,14 +39,14 @@ use std::fmt;
 /// use axum_gate::auth::{PermissionMapping, PermissionId};
 ///
 /// // Create from a permission string
-/// let mapping = PermissionMapping::from_string("Read:API");
+/// let mapping = PermissionMapping::from("Read:API");
 /// assert_eq!(mapping.original_string(), "Read:API");
 /// assert_eq!(mapping.normalized_string(), "read:api");
 /// assert_eq!(mapping.permission_id(), PermissionId::from("Read:API"));
 ///
 /// // Create from components (useful for deserialization)
 /// let id = PermissionId::from("write:file");
-/// let mapping = PermissionMapping::new("Write:File", "write:file", id)?;
+/// let mapping = PermissionMapping::new("Write:File", "write:file", id).unwrap();
 /// ```
 ///
 /// # Validation
@@ -86,7 +86,7 @@ impl PermissionMapping {
     /// use axum_gate::auth::{PermissionMapping, PermissionId};
     ///
     /// let id = PermissionId::from("read:api");
-    /// let mapping = PermissionMapping::new("Read:API", "read:api", id)?;
+    /// let mapping = PermissionMapping::new("Read:API", "read:api", id).unwrap();
     /// assert_eq!(mapping.original_string(), "Read:API");
     /// ```
     pub fn new(
@@ -112,36 +112,6 @@ impl PermissionMapping {
             normalized_string,
             permission_id: id,
         })
-    }
-
-    /// Creates a permission mapping from a permission string.
-    ///
-    /// This is the most common way to create a mapping, automatically
-    /// computing the normalized form and permission ID.
-    ///
-    /// # Arguments
-    ///
-    /// * `permission` - The permission string to create a mapping for
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use axum_gate::auth::PermissionMapping;
-    ///
-    /// let mapping = PermissionMapping::from_string("  Read:API  ");
-    /// assert_eq!(mapping.original_string(), "  Read:API  ");
-    /// assert_eq!(mapping.normalized_string(), "read:api");
-    /// ```
-    pub fn from_string(permission: impl Into<String>) -> Self {
-        let original_string = permission.into();
-        let normalized_string = normalize_permission(&original_string);
-        let permission_id = PermissionId::from(normalized_string.as_str());
-
-        Self {
-            original_string,
-            normalized_string,
-            permission_id,
-        }
     }
 
     /// Returns the original permission string as provided by the user.
@@ -185,7 +155,7 @@ impl PermissionMapping {
     /// ```rust
     /// use axum_gate::auth::PermissionMapping;
     ///
-    /// let mapping = PermissionMapping::from_string("read:api");
+    /// let mapping = PermissionMapping::from("read:api");
     /// assert!(mapping.matches_string("READ:API"));
     /// assert!(mapping.matches_string("  read:api  "));
     /// assert!(!mapping.matches_string("write:api"));
@@ -202,7 +172,7 @@ impl PermissionMapping {
     /// ```rust
     /// use axum_gate::auth::{PermissionMapping, PermissionId};
     ///
-    /// let mapping = PermissionMapping::from_string("read:api");
+    /// let mapping = PermissionMapping::from("read:api");
     /// let id = PermissionId::from("read:api");
     /// assert!(mapping.matches_id(id));
     /// ```
@@ -244,13 +214,21 @@ impl fmt::Display for PermissionMapping {
 
 impl From<&str> for PermissionMapping {
     fn from(permission: &str) -> Self {
-        Self::from_string(permission)
+        Self::from(permission.to_string())
     }
 }
 
 impl From<String> for PermissionMapping {
     fn from(permission: String) -> Self {
-        Self::from_string(permission)
+        let original_string = permission;
+        let normalized_string = normalize_permission(&original_string);
+        let permission_id = PermissionId::from(normalized_string.as_str());
+
+        Self {
+            original_string,
+            normalized_string,
+            permission_id,
+        }
     }
 }
 
@@ -303,7 +281,7 @@ mod tests {
 
     #[test]
     fn from_string_creates_valid_mapping() {
-        let mapping = PermissionMapping::from_string("Read:API");
+        let mapping = PermissionMapping::from("Read:API");
         assert_eq!(mapping.original_string(), "Read:API");
         assert_eq!(mapping.normalized_string(), "read:api");
         assert_eq!(mapping.permission_id(), PermissionId::from("read:api"));
@@ -311,7 +289,7 @@ mod tests {
 
     #[test]
     fn from_string_handles_whitespace() {
-        let mapping = PermissionMapping::from_string("  Write:File  ");
+        let mapping = PermissionMapping::from("  Write:File  ");
         assert_eq!(mapping.original_string(), "  Write:File  ");
         assert_eq!(mapping.normalized_string(), "write:file");
     }
@@ -343,7 +321,7 @@ mod tests {
 
     #[test]
     fn matches_string_works_with_normalization() {
-        let mapping = PermissionMapping::from_string("read:api");
+        let mapping = PermissionMapping::from("read:api");
         assert!(mapping.matches_string("READ:API"));
         assert!(mapping.matches_string("  read:api  "));
         assert!(mapping.matches_string("Read:Api"));
@@ -352,7 +330,7 @@ mod tests {
 
     #[test]
     fn matches_id_works_correctly() {
-        let mapping = PermissionMapping::from_string("read:api");
+        let mapping = PermissionMapping::from("read:api");
         let matching_id = PermissionId::from("read:api");
         let different_id = PermissionId::from("write:api");
 
@@ -362,7 +340,7 @@ mod tests {
 
     #[test]
     fn validate_passes_for_consistent_mapping() {
-        let mapping = PermissionMapping::from_string("read:api");
+        let mapping = PermissionMapping::from("read:api");
         assert!(mapping.validate().is_ok());
     }
 
@@ -378,7 +356,7 @@ mod tests {
 
     #[test]
     fn display_shows_all_components() {
-        let mapping = PermissionMapping::from_string("Read:API");
+        let mapping = PermissionMapping::from("Read:API");
         let display = format!("{}", mapping);
 
         assert!(display.contains("Read:API"));
@@ -388,8 +366,8 @@ mod tests {
 
     #[test]
     fn mapping_equality_works() {
-        let mapping1 = PermissionMapping::from_string("read:api");
-        let mapping2 = PermissionMapping::from_string("READ:API");
+        let mapping1 = PermissionMapping::from("read:api");
+        let mapping2 = PermissionMapping::from("READ:API");
 
         // These should be equal because they have the same normalized form
         assert_eq!(mapping1.normalized_string(), mapping2.normalized_string());
@@ -401,16 +379,16 @@ mod tests {
 
     #[test]
     fn id_as_u64_convenience_method() {
-        let mapping = PermissionMapping::from_string("read:api");
+        let mapping = PermissionMapping::from("read:api");
         assert_eq!(mapping.id_as_u64(), mapping.permission_id().as_u64());
     }
 
     #[test]
     fn from_traits_work() {
         let from_str: PermissionMapping = "read:api".into();
-        let from_string: PermissionMapping = "read:api".to_string().into();
+        let from: PermissionMapping = "read:api".to_string().into();
 
         assert_eq!(from_str.normalized_string(), "read:api");
-        assert_eq!(from_string.normalized_string(), "read:api");
+        assert_eq!(from.normalized_string(), "read:api");
     }
 }
