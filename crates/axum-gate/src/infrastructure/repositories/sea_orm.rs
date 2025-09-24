@@ -15,6 +15,7 @@ use crate::infrastructure::errors::DatabaseOperation;
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::infrastructure::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,
+    permission_mapping as seaorm_permission_mapping,
 };
 use crate::ports::auth::{CredentialsVerifier, HashingService};
 use crate::ports::repositories::{AccountRepository, SecretRepository};
@@ -334,5 +335,265 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
         };
 
         Ok(final_result)
+    }
+}
+
+impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepository {
+    async fn store_mapping(
+        &self,
+        mapping: crate::domain::values::PermissionMapping,
+    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        use crate::errors::{Error, InfrastructureError};
+        use crate::infrastructure::errors::DatabaseOperation;
+
+        // Validate mapping consistency first
+        if let Err(e) = mapping.validate() {
+            return Err(Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Insert,
+                message: format!("Invalid permission mapping: {}", e),
+                table: Some("axum-gate-permission-mappings".to_string()),
+                record_id: None,
+            }));
+        }
+
+        // Insert mapping; rely on DB unique constraints
+        let stored = match seaorm_permission_mapping::ActiveModel::from(mapping.clone())
+            .insert(&self.db)
+            .await
+        {
+            Ok(model) => {
+                crate::domain::values::PermissionMapping::try_from(model).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Insert,
+                        message: format!("Failed to convert stored permission mapping: {}", e),
+                        table: Some("axum-gate-permission-mappings".to_string()),
+                        record_id: None,
+                    })
+                })?
+            }
+            Err(e) => {
+                let msg = e.to_string().to_lowercase();
+                if msg.contains("unique") && msg.contains("constraint") {
+                    // Treat unique constraint violation as "already exists"
+                    return Ok(None);
+                }
+                return Err(Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Insert,
+                    message: format!("Failed to store permission mapping: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: None,
+                }));
+            }
+        };
+        Ok(Some(stored))
+    }
+
+    async fn remove_mapping_by_id(
+        &self,
+        id: crate::domain::values::PermissionId,
+    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        use crate::errors::{Error, InfrastructureError};
+        use crate::infrastructure::errors::DatabaseOperation;
+
+        let id_str = id.as_u64().to_string();
+
+        // Fetch existing to return it
+        let Some(model) = seaorm_permission_mapping::Entity::find()
+            .filter(seaorm_permission_mapping::Column::PermissionId.eq(id_str.clone()))
+            .one(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query permission mapping by id: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: Some(id_str.clone()),
+                })
+            })?
+        else {
+            return Ok(None);
+        };
+
+        // Delete it
+        seaorm_permission_mapping::Entity::delete_by_id(model.id)
+            .exec(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Delete,
+                    message: format!("Failed to delete permission mapping by id: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: Some(id_str),
+                })
+            })?;
+
+        let domain = crate::domain::values::PermissionMapping::try_from(model).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Delete,
+                message: format!("Failed to convert deleted permission mapping: {}", e),
+                table: Some("axum-gate-permission-mappings".to_string()),
+                record_id: None,
+            })
+        })?;
+        Ok(Some(domain))
+    }
+
+    async fn remove_mapping_by_string(
+        &self,
+        permission: &str,
+    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        use crate::errors::{Error, InfrastructureError};
+        use crate::infrastructure::errors::DatabaseOperation;
+
+        let normalized = crate::domain::values::PermissionMapping::from(permission)
+            .normalized_string()
+            .to_string();
+
+        // Fetch existing to return it
+        let Some(model) = seaorm_permission_mapping::Entity::find()
+            .filter(seaorm_permission_mapping::Column::NormalizedString.eq(normalized.clone()))
+            .one(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query permission mapping by string: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: None,
+                })
+            })?
+        else {
+            return Ok(None);
+        };
+
+        // Delete it
+        seaorm_permission_mapping::Entity::delete_by_id(model.id)
+            .exec(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Delete,
+                    message: format!("Failed to delete permission mapping by string: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: None,
+                })
+            })?;
+
+        let domain = crate::domain::values::PermissionMapping::try_from(model).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Delete,
+                message: format!("Failed to convert deleted permission mapping: {}", e),
+                table: Some("axum-gate-permission-mappings".to_string()),
+                record_id: None,
+            })
+        })?;
+        Ok(Some(domain))
+    }
+
+    async fn query_mapping_by_id(
+        &self,
+        id: crate::domain::values::PermissionId,
+    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        use crate::errors::{Error, InfrastructureError};
+        use crate::infrastructure::errors::DatabaseOperation;
+
+        let id_str = id.as_u64().to_string();
+        let model_opt = seaorm_permission_mapping::Entity::find()
+            .filter(seaorm_permission_mapping::Column::PermissionId.eq(id_str.clone()))
+            .one(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query permission mapping by id: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: Some(id_str),
+                })
+            })?;
+
+        Ok(model_opt
+            .map(|m| {
+                crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Query,
+                        message: format!("Failed to convert permission mapping: {}", e),
+                        table: Some("axum-gate-permission-mappings".to_string()),
+                        record_id: None,
+                    })
+                })
+            })
+            .transpose()?)
+    }
+
+    async fn query_mapping_by_string(
+        &self,
+        permission: &str,
+    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        use crate::errors::{Error, InfrastructureError};
+        use crate::infrastructure::errors::DatabaseOperation;
+
+        let normalized = crate::domain::values::PermissionMapping::from(permission)
+            .normalized_string()
+            .to_string();
+
+        let model_opt = seaorm_permission_mapping::Entity::find()
+            .filter(seaorm_permission_mapping::Column::NormalizedString.eq(normalized))
+            .one(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query permission mapping by string: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: None,
+                })
+            })?;
+
+        Ok(model_opt
+            .map(|m| {
+                crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Query,
+                        message: format!("Failed to convert permission mapping: {}", e),
+                        table: Some("axum-gate-permission-mappings".to_string()),
+                        record_id: None,
+                    })
+                })
+            })
+            .transpose()?)
+    }
+
+    async fn list_all_mappings(
+        &self,
+    ) -> crate::errors::Result<Vec<crate::domain::values::PermissionMapping>> {
+        use crate::errors::{Error, InfrastructureError};
+        use crate::infrastructure::errors::DatabaseOperation;
+
+        let models = seaorm_permission_mapping::Entity::find()
+            .all(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to list permission mappings: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: None,
+                })
+            })?;
+
+        let mut out = Vec::with_capacity(models.len());
+        for m in models {
+            let dom = crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to convert permission mapping: {}", e),
+                    table: Some("axum-gate-permission-mappings".to_string()),
+                    record_id: None,
+                })
+            })?;
+            out.push(dom);
+        }
+
+        Ok(out)
     }
 }

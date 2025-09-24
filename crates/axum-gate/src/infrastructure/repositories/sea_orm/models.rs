@@ -11,3 +11,4 @@
 
 pub mod account;
 pub mod credentials;
+pub mod permission_mapping;
