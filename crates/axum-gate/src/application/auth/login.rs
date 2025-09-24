@@ -109,7 +109,9 @@ impl LoginResult {
 }
 
 /// Stateless service implementing constant‑time, enumeration‑resistant
-/// authentication logic. It always performs:
+/// authentication logic.
+///
+/// It always performs:
 /// 1. Account lookup by user identifier.
 /// 2. Credential verification against either the real account UUID or a
 ///    fixed dummy UUID when the account is absent.
