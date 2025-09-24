@@ -13,6 +13,7 @@ use crate::domain::values::{Secret, VerificationResult};
 use crate::errors::{Error, InfrastructureError, Result};
 use crate::infrastructure::errors::DatabaseOperation;
 use crate::infrastructure::hashing::Argon2Hasher;
+use crate::infrastructure::repositories::TableName;
 use crate::infrastructure::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,
     permission_mapping as seaorm_permission_mapping,
@@ -115,7 +116,7 @@ where
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query account by user_id: {}", e),
-                    table: Some("accounts".to_string()),
+                    table: Some(TableName::AxumGateAccounts.to_string()),
                     record_id: Some(user_id.to_string()),
                 })
             })?
@@ -127,7 +128,7 @@ where
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Query,
                 message: format!("Failed to convert database model to Account: {}", e),
-                table: Some("accounts".to_string()),
+                table: Some(TableName::AxumGateAccounts.to_string()),
                 record_id: Some(user_id.to_string()),
             })
         })?))
@@ -140,7 +141,7 @@ where
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Insert,
                 message: format!("Failed to insert account: {}", e),
-                table: Some("accounts".to_string()),
+                table: Some(TableName::AxumGateAccounts.to_string()),
                 record_id: None,
             })
         })?;
@@ -148,7 +149,7 @@ where
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Insert,
                 message: format!("Failed to convert inserted model to Account: {}", e),
-                table: Some("accounts".to_string()),
+                table: Some(TableName::AxumGateAccounts.to_string()),
                 record_id: None,
             })
         })?))
@@ -163,7 +164,7 @@ where
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query account for deletion: {}", e),
-                    table: Some("accounts".to_string()),
+                    table: Some(TableName::AxumGateAccounts.to_string()),
                     record_id: Some(user_id.to_string()),
                 })
             })?
@@ -178,7 +179,7 @@ where
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Delete,
                     message: format!("Failed to delete account: {}", e),
-                    table: Some("accounts".to_string()),
+                    table: Some(TableName::AxumGateAccounts.to_string()),
                     record_id: Some(user_id.to_string()),
                 })
             })?;
@@ -187,7 +188,7 @@ where
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to convert deleted model to Account: {}", e),
-                table: Some("accounts".to_string()),
+                table: Some(TableName::AxumGateAccounts.to_string()),
                 record_id: Some(user_id.to_string()),
             })
         })?))
@@ -209,7 +210,7 @@ where
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Update,
                 message: format!("Failed to update account: {}", e),
-                table: Some("accounts".to_string()),
+                table: Some(TableName::AxumGateAccounts.to_string()),
                 record_id: Some(user_id.clone()),
             })
         })?;
@@ -217,7 +218,7 @@ where
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Update,
                 message: format!("Failed to convert updated model to Account: {}", e),
-                table: Some("accounts".to_string()),
+                table: Some(TableName::AxumGateAccounts.to_string()),
                 record_id: Some(user_id),
             })
         })?))
@@ -232,7 +233,7 @@ impl SecretRepository for SeaOrmRepository {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Insert,
                 message: format!("Failed to store secret: {}", e),
-                table: Some("credentials".to_string()),
+                table: Some(TableName::AxumGateCredentials.to_string()),
                 record_id: Some(account_id.to_string()),
             })
         })?;
@@ -249,7 +250,7 @@ impl SecretRepository for SeaOrmRepository {
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query secret for deletion: {}", e),
-                    table: Some("credentials".to_string()),
+                    table: Some(TableName::AxumGateCredentials.to_string()),
                     record_id: Some(account_id.to_string()),
                 })
             })?
@@ -264,7 +265,7 @@ impl SecretRepository for SeaOrmRepository {
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Delete,
                     message: format!("Failed to delete secret: {}", e),
-                    table: Some("credentials".to_string()),
+                    table: Some(TableName::AxumGateCredentials.to_string()),
                     record_id: Some(account_id.to_string()),
                 })
             })?;
@@ -282,7 +283,7 @@ impl SecretRepository for SeaOrmRepository {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Update,
                 message: format!("Failed to update secret: {}", e),
-                table: Some("credentials".to_string()),
+                table: Some(TableName::AxumGateCredentials.to_string()),
                 record_id: Some(account_id.to_string()),
             })
         })?;
@@ -305,7 +306,7 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query credentials for verification: {}", e),
-                    table: Some("credentials".to_string()),
+                    table: Some(TableName::AxumGateCredentials.to_string()),
                     record_id: Some(credentials.id.to_string()),
                 })
             })?;
@@ -351,7 +352,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
             return Err(Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Insert,
                 message: format!("Invalid permission mapping: {}", e),
-                table: Some("axum-gate-permission-mappings".to_string()),
+                table: Some(TableName::AxumGatePermissionMappings.to_string()),
                 record_id: None,
             }));
         }
@@ -366,7 +367,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                     Error::Infrastructure(InfrastructureError::Database {
                         operation: DatabaseOperation::Insert,
                         message: format!("Failed to convert stored permission mapping: {}", e),
-                        table: Some("axum-gate-permission-mappings".to_string()),
+                        table: Some(TableName::AxumGatePermissionMappings.to_string()),
                         record_id: None,
                     })
                 })?
@@ -380,7 +381,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 return Err(Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Insert,
                     message: format!("Failed to store permission mapping: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: None,
                 }));
             }
@@ -406,7 +407,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query permission mapping by id: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: Some(id_str.clone()),
                 })
             })?
@@ -422,7 +423,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Delete,
                     message: format!("Failed to delete permission mapping by id: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: Some(id_str),
                 })
             })?;
@@ -431,7 +432,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to convert deleted permission mapping: {}", e),
-                table: Some("axum-gate-permission-mappings".to_string()),
+                table: Some(TableName::AxumGatePermissionMappings.to_string()),
                 record_id: None,
             })
         })?;
@@ -458,7 +459,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query permission mapping by string: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: None,
                 })
             })?
@@ -474,7 +475,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Delete,
                     message: format!("Failed to delete permission mapping by string: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: None,
                 })
             })?;
@@ -483,7 +484,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to convert deleted permission mapping: {}", e),
-                table: Some("axum-gate-permission-mappings".to_string()),
+                table: Some(TableName::AxumGatePermissionMappings.to_string()),
                 record_id: None,
             })
         })?;
@@ -506,7 +507,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query permission mapping by id: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: Some(id_str),
                 })
             })?;
@@ -517,7 +518,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                     Error::Infrastructure(InfrastructureError::Database {
                         operation: DatabaseOperation::Query,
                         message: format!("Failed to convert permission mapping: {}", e),
-                        table: Some("axum-gate-permission-mappings".to_string()),
+                        table: Some(TableName::AxumGatePermissionMappings.to_string()),
                         record_id: None,
                     })
                 })
@@ -544,7 +545,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to query permission mapping by string: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: None,
                 })
             })?;
@@ -555,7 +556,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                     Error::Infrastructure(InfrastructureError::Database {
                         operation: DatabaseOperation::Query,
                         message: format!("Failed to convert permission mapping: {}", e),
-                        table: Some("axum-gate-permission-mappings".to_string()),
+                        table: Some(TableName::AxumGatePermissionMappings.to_string()),
                         record_id: None,
                     })
                 })
@@ -576,7 +577,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to list permission mappings: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: None,
                 })
             })?;
@@ -587,7 +588,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to convert permission mapping: {}", e),
-                    table: Some("axum-gate-permission-mappings".to_string()),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
                     record_id: None,
                 })
             })?;

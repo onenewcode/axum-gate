@@ -6,28 +6,14 @@ pub mod sea_orm;
 #[cfg(feature = "storage-surrealdb")]
 pub mod surrealdb;
 
-/// Configurable table names used by the storage backends.
-///
-/// Most users can rely on `TableNames::default()`. Override only if your existing
-/// database schema uses different table names.
-#[cfg(feature = "storage-surrealdb")]
-#[derive(Clone, Debug)]
-pub struct TableNames {
-    /// Accounts table (stores user id, groups, roles).
-    pub accounts: String,
-    /// Credentials table (stores hashed secrets).
-    pub credentials: String,
-    /// Permission mappings table (stores normalized string <-> id mapping).
-    pub permission_mappings: String,
-}
-
-#[cfg(feature = "storage-surrealdb")]
-impl Default for TableNames {
-    fn default() -> Self {
-        Self {
-            accounts: "axumGateAccounts".to_string(),
-            credentials: "axumGateCredentials".to_string(),
-            permission_mappings: "axumGatePermissionMappings".to_string(),
-        }
-    }
+/// Table names used by the storage backends.
+#[derive(strum::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[strum(serialize_all = "snake_case")]
+pub enum TableName {
+    /// Account storage table name.
+    AxumGateAccounts,
+    /// Credentials storage table name.
+    AxumGateCredentials,
+    /// Permission mappings storage table name.
+    AxumGatePermissionMappings,
 }

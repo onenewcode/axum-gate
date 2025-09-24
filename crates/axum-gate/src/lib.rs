@@ -169,7 +169,6 @@
 //! # #[cfg(feature="storage-surrealdb")]
 //! # {
 //! use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
-//! use axum_gate::storage::TableNames;
 //! use std::sync::Arc;
 //!
 //! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
@@ -333,10 +332,12 @@ pub mod http {
 /// # #[cfg(feature="storage-surrealdb")]
 /// # {
 /// use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
-/// use axum_gate::storage::TableNames;
+/// use axum_gate::storage::TableName;
 /// # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!(); // In real code: surrealdb::Surreal::new(...).await
 /// let scope = DatabaseScope {
-///     table_names: TableNames::default(), // override if you want different table names
+///     accounts: TableName::AxumGateAccounts.to_string(),
+///     credentials: TableName::AxumGateCredentials.to_string(),
+///     permission_mappings: TableName::AxumGatePermissionMappings.to_string(),
 ///     namespace: "axum-gate".into(),
 ///     database: "axum-gate".into(),
 /// };
@@ -381,8 +382,8 @@ pub mod storage {
     }
 
     // Re-export for SurrealDB table / namespace customization and (optionally) other DB backends.
-    #[cfg(feature = "storage-surrealdb")]
-    pub use crate::infrastructure::repositories::TableNames;
+    #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
+    pub use crate::infrastructure::repositories::TableName;
 }
 
 /// External crate re-exports, convenient access to commonly used external types.
