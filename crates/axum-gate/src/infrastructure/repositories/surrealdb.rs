@@ -37,8 +37,8 @@ impl Default for DatabaseScope {
     fn default() -> Self {
         Self {
             table_names: TableNames::default(),
-            namespace: "axum-gate".to_string(),
-            database: "axum-gate".to_string(),
+            namespace: "axumGate".to_string(),
+            database: "axumGate".to_string(),
         }
     }
 }
