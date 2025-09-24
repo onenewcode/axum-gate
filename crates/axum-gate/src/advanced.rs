@@ -14,7 +14,7 @@
 //! - [`AsPermissionName`]: Implement on enums / structured permission types to map to canonical strings
 //!
 //! ## 2. Storage & Hashing Abstractions
-//! - [`AccountRepository`], [`SecretRepository`]
+//! - [`AccountRepository`], [`SecretRepository`], [`PermissionMappingRepository`], [`PermissionMappingRepositoryBulk`]
 //! - [`CredentialsVerifier`], [`HashingService`]
 //! - [`Argon2Hasher`], [`HashedValue`]
 //!
