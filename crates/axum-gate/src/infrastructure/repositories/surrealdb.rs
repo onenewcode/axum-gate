@@ -14,8 +14,8 @@ use crate::ports::repositories::{
 
 use std::default::Default;
 
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use surrealdb::{Connection, RecordId, RecordIdKey, Surreal};
 use uuid::Uuid;
 
@@ -329,6 +329,49 @@ where
     }
 }
 
+/// Adapter for persisting `PermissionMapping` in SurrealDB.
+///
+/// SurrealDB can deserialize numeric fields as signed 64-bit integers (i64),
+/// while our permission IDs are computed 64-bit values that may exceed the
+/// positive i63 range. Persisting `permission_id` as a `String` avoids
+/// signedness/width pitfalls across different SurrealDB backends and ensures
+/// stable round‑trips regardless of how numbers are represented internally.
+///
+/// This type is strictly an infrastructure-layer adapter. We convert between
+/// this storage representation and the domain `PermissionMapping` at the
+/// repository boundary to keep the domain model clean and independent of
+/// backend-specific quirks.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct SurrealPermissionMapping {
+    normalized_string: String,
+    permission_id: String,
+}
+
+impl From<PermissionMapping> for SurrealPermissionMapping {
+    fn from(m: PermissionMapping) -> Self {
+        Self {
+            normalized_string: m.normalized_string().to_string(),
+            permission_id: m.permission_id().as_u64().to_string(),
+        }
+    }
+}
+
+impl std::convert::TryFrom<SurrealPermissionMapping> for PermissionMapping {
+    type Error = String;
+
+    fn try_from(value: SurrealPermissionMapping) -> std::result::Result<Self, Self::Error> {
+        let id_u64 = value.permission_id.parse::<u64>().map_err(|e| {
+            format!(
+                "invalid permission_id string '{}': {}",
+                value.permission_id, e
+            )
+        })?;
+        let id = PermissionId::from_u64(id_u64);
+        PermissionMapping::new(value.normalized_string.clone(), id)
+            .map_err(|e| format!("failed to construct PermissionMapping: {}", e))
+    }
+}
+
 impl<S> PermissionMappingRepository for SurrealDbRepository<S>
 where
     S: Connection,
@@ -356,7 +399,7 @@ where
                 "table",
                 self.scope_settings.table_names.permission_mappings.clone(),
             ))
-            .bind(("pid", mapping.permission_id().as_u64()))
+            .bind(("pid", mapping.permission_id().as_u64().to_string()))
             .await
             .map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {
@@ -366,7 +409,7 @@ where
                     record_id: Some(mapping.permission_id().as_u64().to_string()),
                 })
             })?;
-        let exists_by_id: Vec<PermissionMapping> = res_id.take(0).map_err(|e| {
+        let exists_by_id: Vec<SurrealPermissionMapping> = res_id.take(0).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Query,
                 message: format!("Failed to extract existing mapping by id: {}", e),
@@ -383,7 +426,7 @@ where
             &self.scope_settings.table_names.permission_mappings,
             mapping.normalized_string(),
         );
-        let exists_by_string: Option<PermissionMapping> =
+        let exists_by_string: Option<SurrealPermissionMapping> =
             self.db.select(&record_id).await.map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
@@ -397,19 +440,34 @@ where
         }
 
         // Insert mapping using normalized string as the record key
-        let stored: Option<PermissionMapping> = self
+        let stored_spm: Option<SurrealPermissionMapping> = self
             .db
             .insert(&record_id)
-            .content(mapping)
+            .content(SurrealPermissionMapping::from(mapping))
             .await
             .map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Insert,
-                message: format!("Failed to store permission mapping: {}", e),
-                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
-                record_id: None,
-            })
-        })?;
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Insert,
+                    message: format!("Failed to store permission mapping: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
+
+        let stored = match stored_spm {
+            Some(spm) => {
+                let dom = PermissionMapping::try_from(spm).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Insert,
+                        message: format!("Failed to convert stored permission mapping: {}", e),
+                        table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                        record_id: None,
+                    })
+                })?;
+                Some(dom)
+            }
+            None => None,
+        };
 
         Ok(stored)
     }
@@ -426,7 +484,7 @@ where
                 "table",
                 self.scope_settings.table_names.permission_mappings.clone(),
             ))
-            .bind(("pid", id.as_u64()))
+            .bind(("pid", id.as_u64().to_string()))
             .await
             .map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {
@@ -437,7 +495,7 @@ where
                 })
             })?;
 
-        let removed: Vec<PermissionMapping> = res.take(0).map_err(|e| {
+        let removed: Vec<SurrealPermissionMapping> = res.take(0).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to extract deleted permission mapping: {}", e),
@@ -446,7 +504,20 @@ where
             })
         })?;
 
-        Ok(removed.into_iter().next())
+        Ok(removed
+            .into_iter()
+            .next()
+            .map(|spm| {
+                PermissionMapping::try_from(spm).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Delete,
+                        message: format!("Failed to convert deleted permission mapping: {}", e),
+                        table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                        record_id: Some(id.as_u64().to_string()),
+                    })
+                })
+            })
+            .transpose()?)
     }
 
     async fn remove_mapping_by_string(
@@ -480,7 +551,7 @@ where
                 })
             })?;
 
-        let removed: Vec<PermissionMapping> = res.take(0).map_err(|e| {
+        let removed: Vec<SurrealPermissionMapping> = res.take(0).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to extract deleted permission mapping: {}", e),
@@ -489,7 +560,20 @@ where
             })
         })?;
 
-        Ok(removed.into_iter().next())
+        Ok(removed
+            .into_iter()
+            .next()
+            .map(|spm| {
+                PermissionMapping::try_from(spm).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Delete,
+                        message: format!("Failed to convert deleted permission mapping: {}", e),
+                        table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                        record_id: None,
+                    })
+                })
+            })
+            .transpose()?)
     }
 
     async fn query_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
@@ -504,7 +588,7 @@ where
                 "table",
                 self.scope_settings.table_names.permission_mappings.clone(),
             ))
-            .bind(("pid", id.as_u64()))
+            .bind(("pid", id.as_u64().to_string()))
             .await
             .map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {
@@ -515,7 +599,7 @@ where
                 })
             })?;
 
-        let found: Vec<PermissionMapping> = res.take(0).map_err(|e| {
+        let found: Vec<SurrealPermissionMapping> = res.take(0).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Query,
                 message: format!("Failed to extract permission mapping by id: {}", e),
@@ -524,7 +608,20 @@ where
             })
         })?;
 
-        Ok(found.into_iter().next())
+        Ok(found
+            .into_iter()
+            .next()
+            .map(|spm| {
+                PermissionMapping::try_from(spm).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Query,
+                        message: format!("Failed to convert permission mapping: {}", e),
+                        table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                        record_id: Some(id.as_u64().to_string()),
+                    })
+                })
+            })
+            .transpose()?)
     }
 
     async fn query_mapping_by_string(&self, permission: &str) -> Result<Option<PermissionMapping>> {
@@ -540,22 +637,34 @@ where
             normalized.clone(),
         );
 
-        let mapping: Option<PermissionMapping> = self.db.select(record_id).await.map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Query,
-                message: format!("Failed to query permission mapping by string: {}", e),
-                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
-                record_id: None,
-            })
-        })?;
+        let mapping_spm: Option<SurrealPermissionMapping> =
+            self.db.select(record_id).await.map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query permission mapping by string: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
 
-        Ok(mapping)
+        Ok(mapping_spm
+            .map(|spm| {
+                PermissionMapping::try_from(spm).map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Database {
+                        operation: DatabaseOperation::Query,
+                        message: format!("Failed to convert permission mapping: {}", e),
+                        table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                        record_id: None,
+                    })
+                })
+            })
+            .transpose()?)
     }
 
     async fn list_all_mappings(&self) -> Result<Vec<PermissionMapping>> {
         self.use_ns_db().await?;
 
-        let all: Vec<PermissionMapping> = self
+        let all_spm: Vec<SurrealPermissionMapping> = self
             .db
             .select(&self.scope_settings.table_names.permission_mappings)
             .await
@@ -568,7 +677,19 @@ where
                 })
             })?;
 
-        Ok(all)
+        let mut out = Vec::with_capacity(all_spm.len());
+        for spm in all_spm {
+            let dom = PermissionMapping::try_from(spm).map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to convert permission mapping: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
+            out.push(dom);
+        }
+        Ok(out)
     }
 }
 
