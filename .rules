@@ -1002,6 +1002,7 @@ pub async fn process_user_data(
 ```
 
 ### Maintenance Patterns
+- Place attributes directly above the item they modify. The canonical order is: Documentation (`///`), Attributes (`#[...]`), then the Definition. Apply consistently for structs, enums, traits, functions, and methods.
 - Do not change crate-level attributes (e.g., `#![deny(missing_docs)]`, `clippy::all`, or other `warn`/`allow`/`deny` settings) without explicit confirmation. By default, changes are prohibited. If a change is explicitly approved, use the narrowest possible `#[allow(...)]` with a clear justification, and prefer scoping to test-only code via `#[cfg(test)]`.
 - Use `#[deprecated]` attributes with migration guidance for API changes
 - Implement feature flags with `cfg` attributes for experimental features
