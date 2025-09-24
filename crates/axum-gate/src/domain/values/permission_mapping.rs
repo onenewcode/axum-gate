@@ -13,14 +13,13 @@ use std::fmt;
 /// Domain value representing a mapping between permission strings and their IDs.
 ///
 /// This type encapsulates the relationship between:
-/// - The original permission string as provided by the user
 /// - The normalized permission string (trimmed and lowercased)
 /// - The computed 64-bit permission ID used in the bitmap storage
 ///
 /// # Purpose
 ///
 /// This mapping enables reverse lookup from permission IDs back to their
-/// original string representations, which is useful for:
+/// normalized string representations, which is useful for:
 /// - Debugging and logging
 /// - Administrative interfaces
 /// - Audit trails
@@ -29,9 +28,9 @@ use std::fmt;
 /// # Design Principles
 ///
 /// - Immutable once created (use builder pattern for modifications)
-/// - Contains all necessary information for bidirectional mapping
+/// - Contains normalized string and computed ID
 /// - Validates consistency between string and ID during construction
-/// - Provides safe access to both original and normalized forms
+/// - Provides safe access to the normalized form and computed ID
 ///
 /// # Examples
 ///
@@ -40,7 +39,6 @@ use std::fmt;
 ///
 /// // Create from a permission string
 /// let mapping = PermissionMapping::from("Read:API");
-/// assert_eq!(mapping.original_string(), "Read:API");
 /// assert_eq!(mapping.normalized_string(), "read:api");
 /// assert_eq!(mapping.permission_id(), PermissionId::from("Read:API"));
 ///
@@ -55,8 +53,6 @@ use std::fmt;
 /// to the normalized string to prevent inconsistent state.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PermissionMapping {
-    /// The original permission string as provided by the user
-    original_string: String,
     /// The normalized permission string (trimmed and lowercased)
     normalized_string: String,
     /// The computed 64-bit permission ID
@@ -87,7 +83,6 @@ impl PermissionMapping {
     ///
     /// let id = PermissionId::from("read:api");
     /// let mapping = PermissionMapping::new("Read:API", id).unwrap();
-    /// assert_eq!(mapping.original_string(), "Read:API");
     /// ```
     pub fn new(
         original: impl Into<String>,
@@ -107,18 +102,9 @@ impl PermissionMapping {
         }
 
         Ok(Self {
-            original_string,
             normalized_string,
             permission_id: id,
         })
-    }
-
-    /// Returns the original permission string as provided by the user.
-    ///
-    /// This preserves the exact formatting, case, and whitespace of the
-    /// original input, which can be useful for display purposes.
-    pub fn original_string(&self) -> &str {
-        &self.original_string
     }
 
     /// Returns the normalized permission string.
@@ -211,8 +197,7 @@ impl fmt::Display for PermissionMapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "PermissionMapping(original: '{}', normalized: '{}', id: {})",
-            self.original_string,
+            "PermissionMapping(normalized: '{}', id: {})",
             self.normalized_string,
             self.permission_id.as_u64()
         )
@@ -227,12 +212,10 @@ impl From<&str> for PermissionMapping {
 
 impl From<String> for PermissionMapping {
     fn from(permission: String) -> Self {
-        let original_string = permission;
-        let normalized_string = Self::normalize_permission(&original_string);
+        let normalized_string = Self::normalize_permission(&permission);
         let permission_id = PermissionId::from(normalized_string.as_str());
 
         Self {
-            original_string,
             normalized_string,
             permission_id,
         }
@@ -241,16 +224,11 @@ impl From<String> for PermissionMapping {
 
 impl From<PermissionId> for PermissionMapping {
     fn from(id: PermissionId) -> Self {
-        // Note: We can't recover the original string from just the ID,
-        // so we use a placeholder that indicates this limitation
-        let placeholder = format!("<unknown-original:{}>", id.as_u64());
-
-        // We also can't recover the exact normalized string, but we can
+        // We can't recover the exact normalized string, but we can
         // indicate that this mapping was created from an ID
         let normalized_placeholder = format!("<id-only:{}>", id.as_u64());
 
         Self {
-            original_string: placeholder,
             normalized_string: normalized_placeholder,
             permission_id: id,
         }
@@ -281,7 +259,6 @@ mod tests {
     #[test]
     fn from_string_creates_valid_mapping() {
         let mapping = PermissionMapping::from("Read:API");
-        assert_eq!(mapping.original_string(), "Read:API");
         assert_eq!(mapping.normalized_string(), "read:api");
         assert_eq!(mapping.permission_id(), PermissionId::from("read:api"));
     }
@@ -289,7 +266,6 @@ mod tests {
     #[test]
     fn from_string_handles_whitespace() {
         let mapping = PermissionMapping::from("  Write:File  ");
-        assert_eq!(mapping.original_string(), "  Write:File  ");
         assert_eq!(mapping.normalized_string(), "write:file");
     }
 
@@ -348,7 +324,6 @@ mod tests {
         let id = PermissionId::from("test:permission");
         let mapping = PermissionMapping::from(id);
 
-        assert!(mapping.original_string().contains("unknown-original"));
         assert!(mapping.normalized_string().contains("id-only"));
         assert_eq!(mapping.permission_id(), id);
     }
@@ -358,7 +333,6 @@ mod tests {
         let mapping = PermissionMapping::from("Read:API");
         let display = format!("{}", mapping);
 
-        assert!(display.contains("Read:API"));
         assert!(display.contains("read:api"));
         assert!(display.contains(&mapping.id_as_u64().to_string()));
     }
@@ -372,8 +346,8 @@ mod tests {
         assert_eq!(mapping1.normalized_string(), mapping2.normalized_string());
         assert_eq!(mapping1.permission_id(), mapping2.permission_id());
 
-        // But they're not equal as mappings because the original strings differ
-        assert_ne!(mapping1, mapping2);
+        // And they are equal as mappings since only normalized form and ID are stored
+        assert_eq!(mapping1, mapping2);
     }
 
     #[test]

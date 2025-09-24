@@ -62,10 +62,10 @@ async fn demo_basic_registry_operations(
         match repo.store_mapping(mapping.clone()).await? {
             Some(stored) => info!(
                 "Stored mapping: '{}' -> ID {}",
-                stored.original_string(),
+                stored.normalized_string(),
                 stored.id_as_u64()
             ),
-            None => warn!("Mapping already exists: '{}'", mapping.original_string()),
+            None => warn!("Mapping already exists: '{}'", mapping.normalized_string()),
         }
     }
 
@@ -75,9 +75,8 @@ async fn demo_basic_registry_operations(
         let id = mapping.permission_id();
         if let Some(found) = repo.query_mapping_by_id(id).await? {
             info!(
-                "ID {} -> Original: '{}', Normalized: '{}'",
+                "ID {} -> Normalized: '{}'",
                 id.as_u64(),
-                found.original_string(),
                 found.normalized_string()
             );
         }
@@ -98,7 +97,7 @@ async fn demo_basic_registry_operations(
             Some(found) => info!(
                 "Query '{}' -> Found: '{}' (ID: {})",
                 test_string,
-                found.original_string(),
+                found.normalized_string(),
                 found.id_as_u64()
             ),
             None => info!("Query '{}' -> Not found", test_string),
@@ -146,7 +145,7 @@ async fn demo_permissions_integration(
 
         info!(
             "  Granted '{}' (ID: {})",
-            mapping.original_string(),
+            mapping.normalized_string(),
             mapping.id_as_u64()
         );
     }
@@ -163,7 +162,7 @@ async fn demo_permissions_integration(
             info!(
                 "Permission ID {} = '{}'",
                 permission_id,
-                mapping.original_string()
+                mapping.normalized_string()
             );
         } else {
             warn!("No mapping found for permission ID {}", permission_id);
@@ -226,7 +225,7 @@ async fn demo_account_with_registry(
         let id = PermissionId::from_u64(permission_id);
         match repo.query_mapping_by_id(id).await? {
             Some(mapping) => {
-                let original = mapping.original_string();
+                let original = mapping.normalized_string();
                 if original.contains("//") {
                     let parts: Vec<&str> = original.split("//").collect();
                     info!("  {} - {}", parts[0].trim(), parts[1].trim());
@@ -253,7 +252,7 @@ async fn demo_bulk_operations(repo: &Arc<MemoryPermissionMappingRepository>) -> 
         match repo.remove_mapping_by_string(perm_str).await? {
             Some(removed) => info!(
                 "  Removed: '{}' (ID: {})",
-                removed.original_string(),
+                removed.normalized_string(),
                 removed.id_as_u64()
             ),
             None => info!("  Not found: '{}'", perm_str),

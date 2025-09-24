@@ -1,6 +1,6 @@
 # Permission Mapping Registry Example
 
-This example demonstrates the optional **permission mapping registry pattern** in axum-gate, which enables reverse lookup from permission IDs back to their original string representations.
+This example demonstrates the optional **permission mapping registry pattern** in axum-gate, which enables reverse lookup from permission IDs back to their normalized string representations.
 
 ## Overview
 
@@ -8,7 +8,7 @@ The axum-gate permission system uses a high-performance bitmap-based storage app
 
 The permission mapping registry provides an optional solution that allows you to:
 
-- Store mappings between permission IDs and their original strings
+- Store mappings between permission IDs and their normalized strings
 - Perform reverse lookups for debugging and logging
 - Build administrative interfaces with human-readable permission names
 - Generate audit trails with meaningful permission descriptions
@@ -66,10 +66,9 @@ The domain value object that represents a mapping:
 use axum_gate::auth::PermissionMapping;
 
 // Create from string (most common)
-let mapping = PermissionMapping::from_string("read:api");
+let mapping = PermissionMapping::from("read:api");
 
 // Access components
-println!("Original: {}", mapping.original_string());    // "read:api"
 println!("Normalized: {}", mapping.normalized_string()); // "read:api"
 println!("ID: {}", mapping.id_as_u64());               // 4432869890453236604
 ```
@@ -85,7 +84,7 @@ use axum_gate::storage::MemoryPermissionMappingRepository;
 let repo = MemoryPermissionMappingRepository::default();
 
 // Store a mapping
-let mapping = PermissionMapping::from_string("write:file");
+let mapping = PermissionMapping::from("write:file");
 repo.store_mapping(mapping.clone()).await?;
 
 // Query by ID
@@ -108,7 +107,7 @@ async fn grant_permission_with_registry<R>(
 where
     R: PermissionMappingRepository,
 {
-    let mapping = PermissionMapping::from_string(permission_str);
+    let mapping = PermissionMapping::from(permission_str);
 
     // Grant the permission (primary operation)
     permissions.grant(mapping.normalized_string());
@@ -131,7 +130,7 @@ for permission_id in account.permissions.iter() {
     let id = PermissionId::from_u64(permission_id);
     match registry.query_mapping_by_id(id).await {
         Ok(Some(mapping)) => {
-            info!("User has permission: {}", mapping.original_string());
+            info!("User has permission: {}", mapping.normalized_string());
         }
         Ok(None) => {
             warn!("Unknown permission ID: {}", permission_id);

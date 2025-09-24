@@ -6,7 +6,7 @@ use std::future::Future;
 /// Repository abstraction for persisting and retrieving [`PermissionMapping`] entities.
 ///
 /// This trait enables the optional registry pattern for permission string mappings,
-/// allowing reverse lookup from permission IDs back to their original string
+/// allowing reverse lookup from permission IDs back to their normalized string
 /// representations. This is implemented alongside the existing bitmap-based
 /// permission system without replacing it.
 ///
@@ -40,9 +40,9 @@ use std::future::Future;
 /// let stored = tokio_test::block_on(repo.store_mapping(mapping.clone())).unwrap();
 /// assert!(stored.is_some());
 ///
-/// // Later, retrieve the original string via PermissionId
+/// // Later, retrieve the normalized string via PermissionId
 /// let fetched = tokio_test::block_on(repo.query_mapping_by_id(mapping.permission_id())).unwrap();
-/// assert!(matches!(fetched, Some(m) if m.original_string() == "read:api"));
+/// assert!(matches!(fetched, Some(m) if m.normalized_string() == "read:api"));
 /// ```
 ///
 /// # Consistency Guarantees
@@ -73,7 +73,6 @@ use std::future::Future;
 /// use axum_gate::advanced::PermissionMappingRepository;
 /// use axum_gate::storage::MemoryPermissionMappingRepository;
 ///
-/// # #[tokio::test]
 /// async fn grant_permission_with_registry(
 ///     permissions: &mut Permissions,
 ///     registry: &MemoryPermissionMappingRepository,
@@ -88,10 +87,13 @@ use std::future::Future;
 /// }
 ///
 /// // Usage
+/// # #[tokio::test]
+/// # async fn usage() {
 /// let repo = MemoryPermissionMappingRepository::default();
 /// let mut permissions = Permissions::new();
-/// grant_permission_with_registry(&mut permissions, &repo, "read:api").unwrap();
+/// grant_permission_with_registry(&mut permissions, &repo, "read:api").await.unwrap();
 /// assert!(permissions.has("read:api"));
+/// # }
 /// ```
 pub trait PermissionMappingRepository {
     /// Store a permission mapping.
