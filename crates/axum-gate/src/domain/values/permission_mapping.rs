@@ -46,7 +46,7 @@ use std::fmt;
 ///
 /// // Create from components (useful for deserialization)
 /// let id = PermissionId::from("write:file");
-/// let mapping = PermissionMapping::new("Write:File", "write:file", id).unwrap();
+/// let mapping = PermissionMapping::new("Write:File", id).unwrap();
 /// ```
 ///
 /// # Validation
@@ -72,9 +72,9 @@ impl PermissionMapping {
     /// # Arguments
     ///
     /// * `original` - The original permission string as provided
-    /// * `normalized` - The normalized permission string (should be trimmed and lowercased)
-    /// * `id` - The permission ID that should correspond to the normalized string
+    /// * `id` - The permission ID that must correspond to the normalized form of `original`
     ///
+    /// Normalization is handled internally from `original` (trim + lowercase)
     /// # Returns
     ///
     /// Returns `Ok(PermissionMapping)` if the ID matches the normalized string,
@@ -86,16 +86,15 @@ impl PermissionMapping {
     /// use axum_gate::auth::{PermissionMapping, PermissionId};
     ///
     /// let id = PermissionId::from("read:api");
-    /// let mapping = PermissionMapping::new("Read:API", "read:api", id).unwrap();
+    /// let mapping = PermissionMapping::new("Read:API", id).unwrap();
     /// assert_eq!(mapping.original_string(), "Read:API");
     /// ```
     pub fn new(
         original: impl Into<String>,
-        normalized: impl Into<String>,
         id: PermissionId,
     ) -> Result<Self, PermissionMappingError> {
         let original_string = original.into();
-        let normalized_string = normalized.into();
+        let normalized_string = Self::normalize_permission(&original_string);
 
         // Validate that the ID corresponds to the normalized string
         let expected_id = PermissionId::from(normalized_string.as_str());
@@ -161,7 +160,7 @@ impl PermissionMapping {
     /// assert!(!mapping.matches_string("write:api"));
     /// ```
     pub fn matches_string(&self, permission: &str) -> bool {
-        let normalized = normalize_permission(permission);
+        let normalized = Self::normalize_permission(permission);
         self.normalized_string == normalized
     }
 
@@ -198,6 +197,14 @@ impl PermissionMapping {
         }
         Ok(())
     }
+
+    /// Normalize a permission name (trim + lowercase).
+    ///
+    /// This function implements the same normalization logic used in
+    /// the PermissionId implementation to ensure consistency.
+    fn normalize_permission(input: &str) -> String {
+        input.trim().to_lowercase()
+    }
 }
 
 impl fmt::Display for PermissionMapping {
@@ -221,7 +228,7 @@ impl From<&str> for PermissionMapping {
 impl From<String> for PermissionMapping {
     fn from(permission: String) -> Self {
         let original_string = permission;
-        let normalized_string = normalize_permission(&original_string);
+        let normalized_string = Self::normalize_permission(&original_string);
         let permission_id = PermissionId::from(normalized_string.as_str());
 
         Self {
@@ -267,14 +274,6 @@ pub enum PermissionMappingError {
     },
 }
 
-/// Normalize a permission name (trim + lowercase).
-///
-/// This function implements the same normalization logic used in
-/// the PermissionId implementation to ensure consistency.
-fn normalize_permission(input: &str) -> String {
-    input.trim().to_lowercase()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -297,14 +296,14 @@ mod tests {
     #[test]
     fn new_validates_consistency() {
         let id = PermissionId::from("read:api");
-        let mapping = PermissionMapping::new("Read:API", "read:api", id);
+        let mapping = PermissionMapping::new("Read:API", id);
         assert!(mapping.is_ok());
     }
 
     #[test]
     fn new_rejects_inconsistent_id() {
         let id = PermissionId::from("write:api");
-        let result = PermissionMapping::new("Read:API", "read:api", id);
+        let result = PermissionMapping::new("Read:API", id);
         assert!(result.is_err());
 
         if let Err(PermissionMappingError::IdMismatch {
