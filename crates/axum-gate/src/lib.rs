@@ -388,6 +388,8 @@ pub mod storage {
 /// External crate re-exports, convenient access to commonly used external types.
 pub mod integrations {
     pub use jsonwebtoken;
+    #[cfg(feature = "prometheus")]
+    pub use prometheus;
     pub use serde_json;
     pub use uuid::Uuid;
 }
