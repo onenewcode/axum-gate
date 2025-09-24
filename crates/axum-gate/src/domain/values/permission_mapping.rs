@@ -93,7 +93,7 @@ impl PermissionMapping {
         original: impl Into<String>,
         id: PermissionId,
     ) -> Result<Self, PermissionMappingError> {
-        let original_string = original.into();
+        let original_string: String = original.into();
         let normalized_string = Self::normalize_permission(&original_string);
 
         // Validate that the ID corresponds to the normalized string
