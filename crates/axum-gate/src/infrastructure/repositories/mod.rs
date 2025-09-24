@@ -17,14 +17,17 @@ pub struct TableNames {
     pub accounts: String,
     /// Credentials table (stores hashed secrets).
     pub credentials: String,
+    /// Permission mappings table (stores normalized string <-> id mapping).
+    pub permission_mappings: String,
 }
 
 #[cfg(feature = "storage-surrealdb")]
 impl Default for TableNames {
     fn default() -> Self {
         Self {
-            accounts: "axum-gate-accounts".to_string(),
-            credentials: "axum-gate-credentials".to_string(),
+            accounts: "axumGateAccounts".to_string(),
+            credentials: "axumGateCredentials".to_string(),
+            permission_mappings: "axumGatePermissionMappings".to_string(),
         }
     }
 }

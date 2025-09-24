@@ -3,12 +3,14 @@
 use super::TableNames;
 use crate::domain::entities::{Account, Credentials};
 use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::{Secret, VerificationResult};
+use crate::domain::values::{PermissionId, PermissionMapping, Secret, VerificationResult};
 use crate::errors::{Error, InfrastructureError, Result};
 use crate::infrastructure::errors::DatabaseOperation;
 use crate::infrastructure::hashing::Argon2Hasher;
 use crate::ports::auth::{CredentialsVerifier, HashingService};
-use crate::ports::repositories::{AccountRepository, SecretRepository};
+use crate::ports::repositories::{
+    AccountRepository, PermissionMappingRepository, SecretRepository,
+};
 
 use std::default::Default;
 
@@ -324,6 +326,249 @@ where
         };
 
         Ok(final_result)
+    }
+}
+
+impl<S> PermissionMappingRepository for SurrealDbRepository<S>
+where
+    S: Connection,
+{
+    async fn store_mapping(&self, mapping: PermissionMapping) -> Result<Option<PermissionMapping>> {
+        // Validate the mapping first
+        if let Err(e) = mapping.validate() {
+            // Treat validation failures as infrastructure-safe errors for this backend
+            return Err(Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Insert,
+                message: format!("Invalid permission mapping: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: None,
+            }));
+        }
+
+        self.use_ns_db().await?;
+
+        // Enforce uniqueness by permission ID (direct WHERE query)
+        let query_id = "SELECT * FROM type::table($table) WHERE permission_id = $pid LIMIT 1";
+        let mut res_id = self
+            .db
+            .query(query_id)
+            .bind((
+                "table",
+                self.scope_settings.table_names.permission_mappings.clone(),
+            ))
+            .bind(("pid", mapping.permission_id().as_u64()))
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to check existing mapping by id: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: Some(mapping.permission_id().as_u64().to_string()),
+                })
+            })?;
+        let exists_by_id: Vec<PermissionMapping> = res_id.take(0).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Query,
+                message: format!("Failed to extract existing mapping by id: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: Some(mapping.permission_id().as_u64().to_string()),
+            })
+        })?;
+        if !exists_by_id.is_empty() {
+            return Ok(None);
+        }
+
+        // Enforce uniqueness by normalized string (record key)
+        let record_id = RecordId::from_table_key(
+            &self.scope_settings.table_names.permission_mappings,
+            mapping.normalized_string(),
+        );
+        let exists_by_string: Option<PermissionMapping> =
+            self.db.select(&record_id).await.map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to check existing mapping by string: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
+        if exists_by_string.is_some() {
+            return Ok(None);
+        }
+
+        // Insert mapping using normalized string as the record key
+        let stored: Option<PermissionMapping> = self
+            .db
+            .insert(&record_id)
+            .content(mapping)
+            .await
+            .map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Insert,
+                message: format!("Failed to store permission mapping: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: None,
+            })
+        })?;
+
+        Ok(stored)
+    }
+
+    async fn remove_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
+        self.use_ns_db().await?;
+
+        // Delete directly by permission_id and return the removed record (if any)
+        let query = "DELETE type::table($table) WHERE permission_id = $pid RETURN BEFORE";
+        let mut res = self
+            .db
+            .query(query)
+            .bind((
+                "table",
+                self.scope_settings.table_names.permission_mappings.clone(),
+            ))
+            .bind(("pid", id.as_u64()))
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Delete,
+                    message: format!("Failed to delete permission mapping by id: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: Some(id.as_u64().to_string()),
+                })
+            })?;
+
+        let removed: Vec<PermissionMapping> = res.take(0).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Delete,
+                message: format!("Failed to extract deleted permission mapping: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: Some(id.as_u64().to_string()),
+            })
+        })?;
+
+        Ok(removed.into_iter().next())
+    }
+
+    async fn remove_mapping_by_string(
+        &self,
+        permission: &str,
+    ) -> Result<Option<PermissionMapping>> {
+        self.use_ns_db().await?;
+
+        // Normalize via domain logic
+        let normalized = PermissionMapping::from(permission)
+            .normalized_string()
+            .to_string();
+
+        // Delete directly by normalized string and return the removed record (if any)
+        let query = "DELETE type::table($table) WHERE normalized_string = $ns RETURN BEFORE";
+        let mut res = self
+            .db
+            .query(query)
+            .bind((
+                "table",
+                self.scope_settings.table_names.permission_mappings.clone(),
+            ))
+            .bind(("ns", normalized))
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Delete,
+                    message: format!("Failed to delete permission mapping by string: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
+
+        let removed: Vec<PermissionMapping> = res.take(0).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Delete,
+                message: format!("Failed to extract deleted permission mapping: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: None,
+            })
+        })?;
+
+        Ok(removed.into_iter().next())
+    }
+
+    async fn query_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
+        self.use_ns_db().await?;
+
+        // Direct WHERE query by permission_id
+        let query = "SELECT * FROM type::table($table) WHERE permission_id = $pid LIMIT 1";
+        let mut res = self
+            .db
+            .query(query)
+            .bind((
+                "table",
+                self.scope_settings.table_names.permission_mappings.clone(),
+            ))
+            .bind(("pid", id.as_u64()))
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to query permission mapping by id: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
+
+        let found: Vec<PermissionMapping> = res.take(0).map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Query,
+                message: format!("Failed to extract permission mapping by id: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: Some(id.as_u64().to_string()),
+            })
+        })?;
+
+        Ok(found.into_iter().next())
+    }
+
+    async fn query_mapping_by_string(&self, permission: &str) -> Result<Option<PermissionMapping>> {
+        self.use_ns_db().await?;
+
+        let normalized = PermissionMapping::from(permission)
+            .normalized_string()
+            .to_string();
+
+        // Direct select by record key (normalized string)
+        let record_id = RecordId::from_table_key(
+            &self.scope_settings.table_names.permission_mappings,
+            normalized.clone(),
+        );
+
+        let mapping: Option<PermissionMapping> = self.db.select(record_id).await.map_err(|e| {
+            Error::Infrastructure(InfrastructureError::Database {
+                operation: DatabaseOperation::Query,
+                message: format!("Failed to query permission mapping by string: {}", e),
+                table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                record_id: None,
+            })
+        })?;
+
+        Ok(mapping)
+    }
+
+    async fn list_all_mappings(&self) -> Result<Vec<PermissionMapping>> {
+        self.use_ns_db().await?;
+
+        let all: Vec<PermissionMapping> = self
+            .db
+            .select(&self.scope_settings.table_names.permission_mappings)
+            .await
+            .map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Query,
+                    message: format!("Failed to list permission mappings: {}", e),
+                    table: Some(self.scope_settings.table_names.permission_mappings.clone()),
+                    record_id: None,
+                })
+            })?;
+
+        Ok(all)
     }
 }
 
