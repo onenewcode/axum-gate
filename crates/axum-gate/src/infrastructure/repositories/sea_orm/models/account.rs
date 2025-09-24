@@ -13,7 +13,7 @@ use sea_orm::entity::prelude::*;
 
 /// SeaORM entity for an account.
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "axum-gate-accounts")]
+#[sea_orm(table_name = "axum_gate_accounts")]
 pub struct Model {
     /// Surrogate primary key (auto‑increment). Not exposed at domain level.
     #[sea_orm(primary_key)]
