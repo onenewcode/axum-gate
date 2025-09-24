@@ -382,25 +382,21 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
 /// ```
 #[derive(Debug)]
 pub struct MemoryPermissionMappingRepository {
-    /// Storage by permission ID for efficient reverse lookup
-    by_id: Arc<RwLock<HashMap<u64, PermissionMapping>>>,
-    /// Storage by normalized string for efficient string-based queries
-    by_string: Arc<RwLock<HashMap<String, PermissionMapping>>>,
+    /// Storage of all mappings. Lookups are performed via iteration.
+    mappings: Arc<RwLock<Vec<PermissionMapping>>>,
 }
 
 impl Default for MemoryPermissionMappingRepository {
     fn default() -> Self {
         Self {
-            by_id: Arc::new(RwLock::new(HashMap::new())),
-            by_string: Arc::new(RwLock::new(HashMap::new())),
+            mappings: Arc::new(RwLock::new(Vec::new())),
         }
     }
 }
 
 impl From<Vec<PermissionMapping>> for MemoryPermissionMappingRepository {
     fn from(mappings: Vec<PermissionMapping>) -> Self {
-        let mut by_id = HashMap::new();
-        let mut by_string = HashMap::new();
+        let mut vec: Vec<PermissionMapping> = Vec::new();
 
         for mapping in mappings {
             // Validate the mapping before storing
@@ -410,15 +406,19 @@ impl From<Vec<PermissionMapping>> for MemoryPermissionMappingRepository {
             }
 
             let id = mapping.permission_id().as_u64();
-            let normalized = mapping.normalized_string().to_string();
+            let normalized = mapping.normalized_string();
 
-            by_id.insert(id, mapping.clone());
-            by_string.insert(normalized, mapping);
+            // avoid duplicates by id or normalized string
+            if !vec
+                .iter()
+                .any(|m| m.permission_id().as_u64() == id || m.normalized_string() == normalized)
+            {
+                vec.push(mapping);
+            }
         }
 
         Self {
-            by_id: Arc::new(RwLock::new(by_id)),
-            by_string: Arc::new(RwLock::new(by_string)),
+            mappings: Arc::new(RwLock::new(vec)),
         }
     }
 }
@@ -436,25 +436,23 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
         }
 
         let id = mapping.permission_id().as_u64();
-        let normalized = mapping.normalized_string().to_string();
+        let normalized = mapping.normalized_string();
 
         // Check if mapping already exists (by ID or normalized string)
         {
-            let id_read = self.by_id.read().await;
-            let string_read = self.by_string.read().await;
-
-            if id_read.contains_key(&id) || string_read.contains_key(&normalized) {
+            let vec_read = self.mappings.read().await;
+            if vec_read
+                .iter()
+                .any(|m| m.permission_id().as_u64() == id || m.normalized_string() == normalized)
+            {
                 return Ok(None); // Mapping already exists
             }
         }
 
-        // Store in both maps
+        // Store in vector
         {
-            let mut id_write = self.by_id.write().await;
-            let mut string_write = self.by_string.write().await;
-
-            id_write.insert(id, mapping.clone());
-            string_write.insert(normalized, mapping.clone());
+            let mut vec_write = self.mappings.write().await;
+            vec_write.push(mapping.clone());
         }
 
         Ok(Some(mapping))
@@ -463,25 +461,13 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
     async fn remove_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
         let id_u64 = id.as_u64();
 
-        // Get the mapping first to know what normalized string to remove
-        let mapping = {
-            let id_read = self.by_id.read().await;
-            id_read.get(&id_u64).cloned()
-        };
-
-        if let Some(mapping) = mapping {
-            let normalized = mapping.normalized_string().to_string();
-
-            // Remove from both maps
-            {
-                let mut id_write = self.by_id.write().await;
-                let mut string_write = self.by_string.write().await;
-
-                id_write.remove(&id_u64);
-                string_write.remove(&normalized);
-            }
-
-            Ok(Some(mapping))
+        let mut vec_write = self.mappings.write().await;
+        if let Some(pos) = vec_write
+            .iter()
+            .position(|m| m.permission_id().as_u64() == id_u64)
+        {
+            let removed = vec_write.swap_remove(pos);
+            Ok(Some(removed))
         } else {
             Ok(None)
         }
@@ -493,44 +479,38 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
     ) -> Result<Option<PermissionMapping>> {
         let normalized = normalize_permission(permission);
 
-        // Get the mapping first to know what ID to remove
-        let mapping = {
-            let string_read = self.by_string.read().await;
-            string_read.get(&normalized).cloned()
-        };
-
-        if let Some(mapping) = mapping {
-            let id = mapping.permission_id().as_u64();
-
-            // Remove from both maps
-            {
-                let mut id_write = self.by_id.write().await;
-                let mut string_write = self.by_string.write().await;
-
-                id_write.remove(&id);
-                string_write.remove(&normalized);
-            }
-
-            Ok(Some(mapping))
+        let mut vec_write = self.mappings.write().await;
+        if let Some(pos) = vec_write
+            .iter()
+            .position(|m| m.normalized_string() == normalized.as_str())
+        {
+            let removed = vec_write.swap_remove(pos);
+            Ok(Some(removed))
         } else {
             Ok(None)
         }
     }
 
     async fn query_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
-        let id_read = self.by_id.read().await;
-        Ok(id_read.get(&id.as_u64()).cloned())
+        let vec_read = self.mappings.read().await;
+        Ok(vec_read
+            .iter()
+            .find(|m| m.permission_id().as_u64() == id.as_u64())
+            .cloned())
     }
 
     async fn query_mapping_by_string(&self, permission: &str) -> Result<Option<PermissionMapping>> {
         let normalized = normalize_permission(permission);
-        let string_read = self.by_string.read().await;
-        Ok(string_read.get(&normalized).cloned())
+        let vec_read = self.mappings.read().await;
+        Ok(vec_read
+            .iter()
+            .find(|m| m.normalized_string() == normalized.as_str())
+            .cloned())
     }
 
     async fn list_all_mappings(&self) -> Result<Vec<PermissionMapping>> {
-        let id_read = self.by_id.read().await;
-        Ok(id_read.values().cloned().collect())
+        let vec_read = self.mappings.read().await;
+        Ok(vec_read.iter().cloned().collect())
     }
 }
 
