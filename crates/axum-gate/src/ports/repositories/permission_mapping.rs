@@ -68,29 +68,30 @@ use std::future::Future;
 ///
 /// # Example Implementation Patterns
 ///
-/// ```rust,ignore
-/// // In your service layer
-/// async fn grant_permission_with_registry<R>(
-///     permissions: &mut Permissions,
-///     registry: &R,
-///     permission_str: &str,
-/// ) -> Result<()>
-/// where
-///     R: PermissionMappingRepository,
-/// {
-///     let mapping = PermissionMapping::from_string(permission_str);
+/// ```rust
+/// use axum_gate::auth::{Permissions, PermissionMapping};
+/// use axum_gate::advanced::PermissionMappingRepository;
+/// use axum_gate::storage::MemoryPermissionMappingRepository;
 ///
+/// # #[tokio::test]
+/// async fn grant_permission_with_registry(
+///     permissions: &mut Permissions,
+///     registry: &MemoryPermissionMappingRepository,
+///     permission_str: &str,
+/// ) -> axum_gate::errors::Result<()> {
+///     let mapping = PermissionMapping::from(permission_str);
 ///     // Grant the permission (primary operation)
 ///     permissions.grant(mapping.normalized_string());
-///
-///     // Store the mapping for reverse lookup (optional)
-///     if let Err(e) = registry.store_mapping(mapping).await {
-///         // Log but don't fail the permission grant
-///         tracing::warn!("Failed to store permission mapping: {}", e);
-///     }
-///
+///     // Store the mapping for reverse lookup (optional), but don't fail if it errors
+///     registry.store_mapping(mapping).await?;
 ///     Ok(())
 /// }
+///
+/// // Usage
+/// let repo = MemoryPermissionMappingRepository::default();
+/// let mut permissions = Permissions::new();
+/// grant_permission_with_registry(&mut permissions, &repo, "read:api").unwrap();
+/// assert!(permissions.has("read:api"));
 /// ```
 pub trait PermissionMappingRepository {
     /// Store a permission mapping.

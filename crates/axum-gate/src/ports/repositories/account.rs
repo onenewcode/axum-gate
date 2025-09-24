@@ -32,24 +32,20 @@ use std::future::Future;
 /// - Whether optimistic locking / versioning is applied
 ///
 /// # Example (generic usage)
-/// ```rust,ignore
-/// async fn load_or_create<R, G, Repo>(
-///     repo: &Repo,
-///     template: Account<R, G>
-/// ) -> Result<Account<R, G>>
-/// where
-///     R: AccessHierarchy + Eq,
-///     G: Eq + Clone,
-///     Repo: AccountRepository<R, G>,
-/// {
+/// ```rust
+/// use axum_gate::auth::{Account, Role, Group};
+/// use axum_gate::advanced::AccountRepository;
+/// use axum_gate::storage::MemoryAccountRepository;
+///
+/// # #[tokio::test]
+/// async fn load_or_create(
+///     repo: &MemoryAccountRepository<Role, Group>,
+///     template: Account<Role, Group>
+/// ) -> axum_gate::errors::Result<Account<Role, Group>> {
 ///     if let Some(existing) = repo.query_account_by_user_id(&template.user_id).await? {
 ///         Ok(existing)
 ///     } else {
-///         // Attempt to store; treat None as unexpected in most implementations
-///         repo.store_account(template).await?
-///             .ok_or_else(|| crate::errors::Error::Infrastructure(
-///                 crate::errors::InfrastructureError::Other("store returned None".into())
-///             ))
+///         Ok(repo.store_account(template).await?.expect("store returned None"))
 ///     }
 /// }
 /// ```

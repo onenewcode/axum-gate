@@ -36,14 +36,24 @@ use uuid::Uuid;
 /// - `Err(..)` strictly for exceptional conditions (I/O, serialization, constraint violation).
 ///
 /// # Example (rotate secret)
-/// ```rust,ignore
-/// async fn rotate_secret<R: SecretRepository>(
-///     repo: &R,
+/// ```rust
+/// use axum_gate::advanced::{SecretRepository, Argon2Hasher, Secret};
+/// use axum_gate::storage::MemorySecretRepository;
+/// use uuid::Uuid;
+///
+/// fn rotate_secret(
+///     repo: &MemorySecretRepository,
 ///     new_secret: Secret
-/// ) -> crate::errors::Result<()> {
-///     // Overwrite existing secret (caller already validated identity)
-///     repo.update_secret(new_secret).await
+/// ) -> axum_gate::errors::Result<()> {
+///     tokio_test::block_on(repo.update_secret(new_secret))
 /// }
+///
+/// // Usage
+/// let repo = MemorySecretRepository::default();
+/// let account_id = Uuid::now_v7();
+/// let hasher = Argon2Hasher::default();
+/// let secret = Secret::new(&account_id, "new_password", hasher).unwrap();
+/// rotate_secret(&repo, secret).unwrap();
 /// ```
 ///
 /// # Security Note
