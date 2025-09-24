@@ -105,6 +105,7 @@ src/
 
 ### Module Design Principles
 - Design modules with clear, single responsibilities
+- Establish a single canonical way to achieve a given goal; avoid multiple equivalent APIs or constructors. For example, provide exactly one clear constructor path for a struct (exceptions: trait-based constructors like `Default`, `From`/`TryFrom`, or `serde::Deserialize`)
 - Create stable public APIs with semantic versioning considerations
 - Use `pub(crate)` for internal APIs that shouldn't be exposed
 - Implement proper module documentation with usage examples
