@@ -422,7 +422,7 @@ where
 
         // Enforce uniqueness by normalized string (record key)
         let record_id = RecordId::from_table_key(
-            &self.scope_settings.permission_mappings.clone(),
+            self.scope_settings.permission_mappings.clone(),
             mapping.normalized_string(),
         );
         let exists_by_string: Option<SurrealPermissionMapping> =
@@ -500,7 +500,7 @@ where
             })
         })?;
 
-        Ok(removed
+        removed
             .into_iter()
             .next()
             .map(|spm| {
@@ -513,7 +513,7 @@ where
                     })
                 })
             })
-            .transpose()?)
+            .transpose()
     }
 
     async fn remove_mapping_by_string(
@@ -553,7 +553,7 @@ where
             })
         })?;
 
-        Ok(removed
+        removed
             .into_iter()
             .next()
             .map(|spm| {
@@ -566,7 +566,7 @@ where
                     })
                 })
             })
-            .transpose()?)
+            .transpose()
     }
 
     async fn query_mapping_by_id(&self, id: PermissionId) -> Result<Option<PermissionMapping>> {
@@ -598,7 +598,7 @@ where
             })
         })?;
 
-        Ok(found
+        found
             .into_iter()
             .next()
             .map(|spm| {
@@ -611,7 +611,7 @@ where
                     })
                 })
             })
-            .transpose()?)
+            .transpose()
     }
 
     async fn query_mapping_by_string(&self, permission: &str) -> Result<Option<PermissionMapping>> {
@@ -623,7 +623,7 @@ where
 
         // Direct select by record key (normalized string)
         let record_id = RecordId::from_table_key(
-            &self.scope_settings.permission_mappings.clone(),
+            self.scope_settings.permission_mappings.clone(),
             normalized.clone(),
         );
 
@@ -637,7 +637,7 @@ where
                 })
             })?;
 
-        Ok(mapping_spm
+        mapping_spm
             .map(|spm| {
                 PermissionMapping::try_from(spm).map_err(|e| {
                     Error::Infrastructure(InfrastructureError::Database {
@@ -648,7 +648,7 @@ where
                     })
                 })
             })
-            .transpose()?)
+            .transpose()
     }
 
     async fn list_all_mappings(&self) -> Result<Vec<PermissionMapping>> {
@@ -656,7 +656,7 @@ where
 
         let all_spm: Vec<SurrealPermissionMapping> = self
             .db
-            .select(&self.scope_settings.permission_mappings.clone())
+            .select(self.scope_settings.permission_mappings.clone())
             .await
             .map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {

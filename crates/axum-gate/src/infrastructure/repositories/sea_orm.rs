@@ -512,7 +512,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 })
             })?;
 
-        Ok(model_opt
+        model_opt
             .map(|m| {
                 crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
                     Error::Infrastructure(InfrastructureError::Database {
@@ -523,7 +523,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                     })
                 })
             })
-            .transpose()?)
+            .transpose()
     }
 
     async fn query_mapping_by_string(
@@ -550,7 +550,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 })
             })?;
 
-        Ok(model_opt
+        model_opt
             .map(|m| {
                 crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
                     Error::Infrastructure(InfrastructureError::Database {
@@ -561,7 +561,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                     })
                 })
             })
-            .transpose()?)
+            .transpose()
     }
 
     async fn list_all_mappings(
