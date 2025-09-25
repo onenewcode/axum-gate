@@ -7,6 +7,7 @@ pub mod sea_orm;
 pub mod surrealdb;
 
 /// Table names used by the storage backends.
+#[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
 #[derive(strum::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[strum(serialize_all = "snake_case")]
 pub enum TableName {
