@@ -91,16 +91,6 @@ impl PermissionMapping {
         let original_string: String = original.into();
         let normalized_string = Self::normalize_permission(&original_string);
 
-        // Validate that the ID corresponds to the normalized string
-        let expected_id = PermissionId::from(normalized_string.as_str());
-        if id != expected_id {
-            return Err(PermissionMappingError::IdMismatch {
-                normalized_string: normalized_string.clone(),
-                provided_id: id.as_u64(),
-                expected_id: expected_id.as_u64(),
-            });
-        }
-
         Ok(Self {
             normalized_string,
             permission_id: id,
