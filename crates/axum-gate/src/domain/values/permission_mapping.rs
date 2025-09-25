@@ -212,19 +212,6 @@ impl From<String> for PermissionMapping {
     }
 }
 
-impl From<PermissionId> for PermissionMapping {
-    fn from(id: PermissionId) -> Self {
-        // We can't recover the exact normalized string, but we can
-        // indicate that this mapping was created from an ID
-        let normalized_placeholder = format!("<id-only:{}>", id.as_u64());
-
-        Self {
-            normalized_string: normalized_placeholder,
-            permission_id: id,
-        }
-    }
-}
-
 /// Errors that can occur when working with permission mappings.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum PermissionMappingError {
@@ -307,15 +294,6 @@ mod tests {
     fn validate_passes_for_consistent_mapping() {
         let mapping = PermissionMapping::from("read:api");
         assert!(mapping.validate().is_ok());
-    }
-
-    #[test]
-    fn from_permission_id_creates_placeholder_mapping() {
-        let id = PermissionId::from("test:permission");
-        let mapping = PermissionMapping::from(id);
-
-        assert!(mapping.normalized_string().contains("id-only"));
-        assert_eq!(mapping.permission_id(), id);
     }
 
     #[test]
