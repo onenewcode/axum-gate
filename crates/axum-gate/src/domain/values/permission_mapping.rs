@@ -27,10 +27,9 @@ use std::fmt;
 ///
 /// # Design Principles
 ///
-/// - Immutable once created (use builder pattern for modifications)
-/// - Contains normalized string and computed ID
-/// - Validates consistency between string and ID during construction
-/// - Provides safe access to the normalized form and computed ID
+/// - Immutable once created; construct via `From<&str>`/`From<String>` or `PermissionMapping::new(original, id)`
+/// - Contains only the normalized string and computed ID (the original input form is not retained)
+/// - Validates consistency between string and ID during construction with `new`; `validate()` can be used to re-check invariants
 ///
 /// # Examples
 ///
@@ -51,6 +50,17 @@ use std::fmt;
 ///
 /// The mapping validates that the provided permission ID actually corresponds
 /// to the normalized string to prevent inconsistent state.
+///
+/// # Construction
+///
+/// Prefer `PermissionMapping::from(<&str|String>)` when you have the permission
+/// in string form. Use `PermissionMapping::new(original, id)` when deserializing
+/// or when both pieces are provided and must be validated.
+///
+/// # Serialization
+///
+/// This type derives `Serialize`/`Deserialize`. The serialized shape contains
+/// `normalized_string` and `permission_id`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PermissionMapping {
     /// The normalized permission string (trimmed and lowercased)
@@ -90,6 +100,16 @@ impl PermissionMapping {
     ) -> Result<Self, PermissionMappingError> {
         let original_string: String = original.into();
         let normalized_string = Self::normalize_permission(&original_string);
+
+        // Validate that the ID corresponds to the normalized string
+        let expected_id = PermissionId::from(normalized_string.as_str());
+        if id != expected_id {
+            return Err(PermissionMappingError::IdMismatch {
+                normalized_string: normalized_string.clone(),
+                provided_id: id.as_u64(),
+                expected_id: expected_id.as_u64(),
+            });
+        }
 
         Ok(Self {
             normalized_string,
@@ -160,6 +180,10 @@ impl PermissionMapping {
     /// This checks that the permission ID actually corresponds to the
     /// normalized string, which should always be true for properly
     /// constructed mappings.
+    ///
+    /// Note: Calling this is typically only necessary when a mapping is created
+    /// via serde deserialization. Constructors from strings (`From<&str>`/`From<String>`)
+    /// and `PermissionMapping::new(original, id)` enforce the invariant at creation time.
     ///
     /// Returns `Ok(())` if consistent, or `Err(PermissionMappingError)` if not.
     pub fn validate(&self) -> Result<(), PermissionMappingError> {
