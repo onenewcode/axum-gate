@@ -133,6 +133,52 @@
 //! ]);
 //! ```
 //!
+//! ### Anonymous Optional User Context
+//!
+//! For routes that should never be blocked by the gate but may take advantage of
+//! authenticated context when present, configure a gate with
+//! [`CookieGate::allow_anonymous_with_optional_user`](crate::prelude::CookieGate::allow_anonymous_with_optional_user).
+//!
+//! Behavior:
+//! - No authentication or authorization policy is enforced (all requests pass through)
+//! - Inserts `Option<Account<R, G>>` and `Option<RegisteredClaims>` into request extensions
+//! - These options are `Some(..)` only if a valid auth cookie / JWT was provided
+//! - Handlers must perform any role / group / permission checks manually
+//!
+//! This mode is ideal for:
+//! - Public pages that personalize when the user is logged in
+//! - Gradual adoption of protected routes
+//! - Soft-auth scenarios (e.g., feature flags for signed-in users)
+//!
+//! ```rust
+//! use axum::{routing::get, Router, extract::Extension};
+//! use axum_gate::prelude::*;
+//! use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
+//! use std::sync::Arc;
+//!
+//! async fn homepage(
+//!     Extension(user_opt): Extension<Option<Account<Role, Group>>>,
+//!     Extension(claims_opt): Extension<Option<RegisteredClaims>>,
+//! ) -> String {
+//!     if let (Some(user), Some(claims)) = (user_opt, claims_opt) {
+//!         format!("Welcome back {} (token expires at {})", user.user_id, claims.expiration_time)
+//!     } else {
+//!         "Welcome anonymous visitor".into()
+//!     }
+//! }
+//!
+//! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let app = Router::<()>::new()
+//!     .route("/", get(homepage))
+//!     .layer(
+//!         Gate::cookie("my-app", jwt_codec)
+//!             .allow_anonymous_with_optional_user()
+//!     );
+//! ```
+//!
+//! **SECURITY**: Do not use this mode for sensitive endpoints; apply a policy
+//! via `with_policy(...)` or use `require_login()` when enforcement is required.
+//!
 //! ## Account Management
 //!
 //! ```rust

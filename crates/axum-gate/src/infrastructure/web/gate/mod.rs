@@ -130,6 +130,7 @@ impl Gate {
             policy: AccessPolicy::deny_all(),
             codec,
             cookie_template: CookieTemplateBuilder::recommended().build(),
+            install_optional_extensions: false,
         }
     }
 }
@@ -150,6 +151,11 @@ where
     policy: AccessPolicy<R, G>,
     codec: Arc<C>,
     cookie_template: CookieBuilder<'static>,
+    // Internal flag set by `allow_anonymous_with_optional_user()`.
+    // When true, the layer installs `Option<Account<R,G>>` and `Option<RegisteredClaims>`
+    // for every request WITHOUT performing any authentication *or* authorization checks.
+    // All requests pass through; handlers are responsible for enforcing policies.
+    install_optional_extensions: bool,
 }
 
 impl<C, R, G> CookieGate<C, R, G>
@@ -200,6 +206,28 @@ where
     /// ```
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
         self.cookie_template = template;
+        self
+    }
+
+    /// Allow anonymous access and install optional user context.
+    ///
+    /// This configures the gate to **SKIP ALL authentication and authorization checks**.
+    /// Every request is forwarded. The middleware will insert two extensions:
+    /// - `Option<Account<R, G>>`
+    /// - `Option<crate::jwt::RegisteredClaims>`
+    ///
+    /// They are `Some(..)` only if a valid authentication cookie with a decodable JWT
+    /// is present; otherwise they are `None`.
+    ///
+    /// SECURITY: Because no access policy is enforced in this mode, you MUST
+    /// perform any required role / group / permission checks inside your handlers.
+    ///
+    /// Typical use cases:
+    /// - Public or marketing pages that can optionally personalize output
+    /// - Gradual migration where routes become protected later
+    /// - Soft-auth endpoints (show extra info when a user is logged in)
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.install_optional_extensions = true;
         self
     }
 
@@ -260,13 +288,22 @@ where
     type Service = CookieGateService<C, R, G, S>;
 
     fn layer(&self, inner: S) -> Self::Service {
-        CookieGateService::new(
-            inner,
-            &self.issuer,
-            self.policy.clone(),
-            Arc::clone(&self.codec),
-            self.cookie_template.clone(),
-        )
+        if self.install_optional_extensions {
+            CookieGateService::new_with_optional_extensions(
+                inner,
+                &self.issuer,
+                Arc::clone(&self.codec),
+                self.cookie_template.clone(),
+            )
+        } else {
+            CookieGateService::new(
+                inner,
+                &self.issuer,
+                self.policy.clone(),
+                Arc::clone(&self.codec),
+                self.cookie_template.clone(),
+            )
+        }
     }
 }
 
