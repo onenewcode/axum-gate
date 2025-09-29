@@ -321,7 +321,7 @@ pub mod prelude {
     pub use crate::auth::{AccessPolicy, Account, Credentials, Group, Role};
     pub use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
     // Authentication middleware and builders.
-    pub use crate::infrastructure::web::gate::{CookieGate, Gate};
+    pub use crate::infrastructure::web::gate::{Gate, cookie::CookieGate};
 }
 
 /// Authentication types, policies, and account management.

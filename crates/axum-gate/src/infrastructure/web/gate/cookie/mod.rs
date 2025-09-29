@@ -1,0 +1,339 @@
+pub(crate) mod cookie_service;
+
+use self::cookie_service::CookieGateService;
+use crate::domain::services::access_policy::AccessPolicy;
+use crate::domain::traits::AccessHierarchy;
+use crate::http::cookie::CookieBuilder;
+use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
+use crate::ports::Codec;
+
+use std::sync::Arc;
+
+use tower::Layer;
+
+/// A configured gate ready to be used as an axum layer.
+///
+/// This struct is created by `Gate::cookie()` and can be customized
+/// with `with_policy()` and `with_cookie_template()` before being applied
+/// as a layer to your routes.
+#[derive(Clone)]
+pub struct CookieGate<C, R, G>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + std::fmt::Display,
+    G: Eq,
+{
+    issuer: String,
+    policy: AccessPolicy<R, G>,
+    codec: Arc<C>,
+    cookie_template: CookieBuilder<'static>,
+    // Internal flag set by `allow_anonymous_with_optional_user()`.
+    // When true, the layer installs `Option<Account<R,G>>` and `Option<RegisteredClaims>`
+    // for every request WITHOUT performing any authentication *or* authorization checks.
+    // All requests pass through; handlers are responsible for enforcing policies.
+    install_optional_extensions: bool,
+}
+
+impl<C, R, G> CookieGate<C, R, G>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + std::fmt::Display,
+    G: Eq,
+{
+    /// Internal creation function.
+    pub(super) fn new_with_codec(issuer: &str, codec: Arc<C>) -> Self {
+        Self {
+            issuer: issuer.to_string(),
+            policy: AccessPolicy::deny_all(),
+            codec,
+            cookie_template: CookieTemplateBuilder::recommended().build(),
+            install_optional_extensions: false,
+        }
+    }
+
+    /// Sets the access policy for this gate.
+    ///
+    /// The access policy defines who has access to the protected routes. Access is granted
+    /// if the authenticated user meets ANY of the policy requirements (OR logic).
+    ///
+    /// # Example
+    /// ```rust
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
+    /// # use std::sync::Arc;
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// let gate = Gate::cookie("my-app", jwt_codec)
+    ///     .with_policy(
+    ///         AccessPolicy::require_role(Role::Admin)
+    ///             .or_require_role(Role::Moderator)
+    ///             .or_require_group(Group::new("emergency-access"))
+    ///     );
+    /// ```
+    pub fn with_policy(mut self, policy: AccessPolicy<R, G>) -> Self {
+        self.policy = policy;
+        self
+    }
+
+    /// Configures the cookie template used for authentication.
+    ///
+    /// The cookie template defines how authentication cookies are created, including
+    /// their name, security settings, and expiration. For production use, ensure
+    /// cookies are configured securely.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
+    /// # use std::sync::Arc;
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// let gate = Gate::cookie("my-app", jwt_codec)
+    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all());
+    /// ```
+    pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
+        self.cookie_template = template;
+        self
+    }
+
+    /// Allow anonymous access and install optional user context.
+    ///
+    /// This configures the gate to **SKIP ALL authentication and authorization checks**.
+    /// Every request is forwarded. The middleware will insert two extensions:
+    /// - `Option<Account<R, G>>`
+    /// - `Option<crate::jwt::RegisteredClaims>`
+    ///
+    /// They are `Some(..)` only if a valid authentication cookie with a decodable JWT
+    /// is present; otherwise they are `None`.
+    ///
+    /// SECURITY: Because no access policy is enforced in this mode, you MUST
+    /// perform any required role / group / permission checks inside your handlers.
+    ///
+    /// Typical use cases:
+    /// - Public or marketing pages that can optionally personalize output
+    /// - Gradual migration where routes become protected later
+    /// - Soft-auth endpoints (show extra info when a user is logged in)
+    pub fn allow_anonymous_with_optional_user(mut self) -> Self {
+        self.install_optional_extensions = true;
+        self
+    }
+
+    /// Convenience: configure the secure cookie template via a closure using the high-level `CookieTemplateBuilder`.
+    /// Starts from [`CookieTemplateBuilder::recommended()`] each time.
+    /// Invalid configurations (e.g. SameSite=None without Secure) will panic to surface misconfiguration early.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
+    /// # use std::sync::Arc;
+    /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// let gate = Gate::cookie("my-app", jwt_codec)
+    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
+    ///     .configure_cookie_template(|tpl| {
+    ///         tpl.name("auth-token")
+    ///            .persistent(cookie::time::Duration::hours(12))
+    ///     });
+    /// ```
+    pub fn configure_cookie_template<F>(mut self, f: F) -> Self
+    where
+        F: FnOnce(CookieTemplateBuilder) -> CookieTemplateBuilder,
+    {
+        let template = f(CookieTemplateBuilder::recommended());
+        self.cookie_template = template.validate_and_build();
+        self
+    }
+
+    /// Enables Prometheus metrics for audit logging.
+    ///
+    /// This is a no-op unless the `prometheus` feature is enabled. It is safe to call
+    /// multiple times; metrics will only be registered once.
+    #[cfg(feature = "prometheus")]
+    pub fn with_prometheus_metrics(self) -> Self {
+        // Attempt to install metrics into the default registry; ignore errors to keep builder infallible.
+        let _ = crate::infrastructure::audit::prometheus_metrics::install_prometheus_metrics();
+        self
+    }
+
+    /// Installs Prometheus metrics for audit logging into the provided registry.
+    ///
+    /// Safe to call multiple times; metrics are only registered once.
+    #[cfg(feature = "prometheus")]
+    pub fn with_prometheus_registry(self, registry: &prometheus::Registry) -> Self {
+        let _ = crate::infrastructure::audit::prometheus_metrics::install_prometheus_metrics_with_registry(registry);
+        self
+    }
+}
+
+impl<S, C, R, G> Layer<S> for CookieGate<C, R, G>
+where
+    C: Codec,
+    R: AccessHierarchy + Eq + std::fmt::Display,
+    G: Eq + Clone,
+{
+    type Service = CookieGateService<C, R, G, S>;
+
+    fn layer(&self, inner: S) -> Self::Service {
+        if self.install_optional_extensions {
+            CookieGateService::new_with_optional_extensions(
+                inner,
+                &self.issuer,
+                Arc::clone(&self.codec),
+                self.cookie_template.clone(),
+            )
+        } else {
+            CookieGateService::new(
+                inner,
+                &self.issuer,
+                self.policy.clone(),
+                Arc::clone(&self.codec),
+                self.cookie_template.clone(),
+            )
+        }
+    }
+}
+
+impl<C> CookieGate<C, crate::auth::Role, crate::auth::Group>
+where
+    C: Codec,
+{
+    /// Convenience method to configure this gate to allow any logged-in user.
+    ///
+    /// This sets the access policy to allow any user with a valid authentication token,
+    /// regardless of their specific role or group membership. It uses the role hierarchy
+    /// to grant access to the lowest role (User) and all supervisor roles, effectively
+    /// allowing any authenticated user.
+    ///
+    /// This method is only available for gates using the default Role and Group types.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use axum_gate::auth::{Role, Group, Account};
+    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::Gate;
+    /// # use std::sync::Arc;
+    /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    ///
+    /// // This allows any authenticated user (User, Reporter, Moderator, Admin roles)
+    /// let gate = Gate::cookie("my-app", jwt_codec)
+    ///     .require_login()
+    ///     .configure_cookie_template(|tpl| tpl.name("auth-token"));
+    /// ```
+    pub fn require_login(mut self) -> Self {
+        use crate::auth::Role;
+        self.policy = AccessPolicy::require_role_or_supervisor(Role::User);
+        self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{super::*, *};
+    use crate::auth::{Account, Group, Role};
+
+    use crate::http::cookie::{self, CookieBuilder};
+    use crate::jwt::{JsonWebToken, JwtClaims};
+    use std::sync::Arc;
+
+    #[test]
+    fn cookie_creates_gate_with_deny_all_policy() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec);
+
+        assert_eq!(gate.issuer, "test-app");
+        assert!(gate.policy.denies_all());
+    }
+
+    #[test]
+    fn require_login_creates_gate_with_user_or_supervisor_policy() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec).require_login();
+
+        assert_eq!(gate.issuer, "test-app");
+        assert!(!gate.policy.denies_all());
+        assert!(gate.policy.has_requirements());
+
+        // Should have one role requirement for User with supervisor access
+        let role_requirements = gate.policy.role_requirements();
+        assert_eq!(role_requirements.len(), 1);
+        assert_eq!(role_requirements[0].role, Role::User);
+        assert!(role_requirements[0].allow_supervisor_access);
+
+        // Should not have any group or permission requirements
+        assert!(gate.policy.group_requirements().is_empty());
+        assert!(gate.policy.permission_requirements().is_empty());
+    }
+
+    #[test]
+    fn with_policy_updates_access_policy() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let custom_policy: AccessPolicy<Role, Group> = AccessPolicy::require_role(Role::Admin);
+
+        let gate: CookieGate<_, Role, Group> =
+            Gate::cookie("test-app", jwt_codec).with_policy(custom_policy);
+
+        assert!(!gate.policy.denies_all());
+        let role_requirements = gate.policy.role_requirements();
+        assert_eq!(role_requirements.len(), 1);
+        assert_eq!(role_requirements[0].role, Role::Admin);
+        assert!(!role_requirements[0].allow_supervisor_access);
+    }
+
+    #[test]
+    fn with_cookie_template_updates_cookie_configuration() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let custom_template = CookieBuilder::new("custom-cookie", "");
+
+        let _gate: CookieGate<_, Role, Group> =
+            Gate::cookie("test-app", jwt_codec).with_cookie_template(custom_template);
+
+        // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
+        // The test verifies the method compiles and runs without error
+    }
+
+    #[test]
+    fn configure_cookie_template_uses_closure() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+
+        let _gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec)
+            .configure_cookie_template(|tpl| {
+                tpl.name("configured-cookie")
+                    .persistent(cookie::time::Duration::hours(2))
+            });
+
+        // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
+        // The test verifies the method compiles and runs without error
+    }
+
+    #[test]
+    fn require_login_allows_all_role_hierarchy() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec).require_login();
+
+        // The policy should allow User role with supervisor access, which means
+        // it should allow User, Reporter, Moderator, and Admin roles
+        let (role_requirements, _, _) = gate.policy.into_components();
+        assert_eq!(role_requirements.len(), 1);
+
+        let requirement = &role_requirements[0];
+        assert_eq!(requirement.role, Role::User);
+        assert!(requirement.allow_supervisor_access);
+
+        // This effectively allows all roles in the hierarchy since User is the lowest
+        // and allow_supervisor_access is true
+    }
+
+    #[test]
+    fn require_login_can_be_chained_with_other_methods() {
+        let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+        let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec)
+            .require_login()
+            .configure_cookie_template(|tpl| tpl.name("custom-auth"));
+
+        // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
+        // The test verifies the method compiles and runs without error
+        assert!(!gate.policy.denies_all());
+        assert!(gate.policy.has_requirements());
+    }
+}
