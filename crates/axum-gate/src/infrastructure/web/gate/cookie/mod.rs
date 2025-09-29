@@ -40,7 +40,7 @@ where
     R: AccessHierarchy + Eq + std::fmt::Display,
     G: Eq,
 {
-    /// Internal creation function.
+    /// Creates a new instance with default values and the given parameter.
     pub(super) fn new_with_codec(issuer: &str, codec: Arc<C>) -> Self {
         Self {
             issuer: issuer.to_string(),
