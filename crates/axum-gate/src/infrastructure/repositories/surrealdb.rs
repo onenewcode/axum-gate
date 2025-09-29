@@ -338,11 +338,6 @@ where
 /// positive i63 range. Persisting `permission_id` as a `String` avoids
 /// signedness/width pitfalls across different SurrealDB backends and ensures
 /// stable round‑trips regardless of how numbers are represented internally.
-///
-/// This type is strictly an infrastructure-layer adapter. We convert between
-/// this storage representation and the domain `PermissionMapping` at the
-/// repository boundary to keep the domain model clean and independent of
-/// backend-specific quirks.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct SurrealPermissionMapping {
     normalized_string: String,
