@@ -330,7 +330,7 @@ pub mod auth {
     pub use crate::domain::entities::{Account, Credentials, Group, Role};
     pub use crate::domain::services::access_policy::AccessPolicy;
     pub use crate::domain::values::{
-        PermissionId, PermissionMapping, PermissionMappingError, Permissions,
+        PermissionId, PermissionMapping, PermissionMappingError, Permissions, StaticTokenAuthorized,
     };
 
     // Account creation and management.

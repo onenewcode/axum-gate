@@ -82,6 +82,7 @@ use cookie::CookieGate;
 
 use std::sync::Arc;
 
+pub mod bearer;
 pub mod cookie;
 
 /// Main entry point for creating authentication gates.
@@ -121,5 +122,32 @@ impl Gate {
         G: Eq,
     {
         CookieGate::new_with_codec(issuer, codec)
+    }
+
+    /// Creates a new bearer-header based gate that denies all access by default.
+    ///
+    /// This variant protects routes by expecting an `Authorization: Bearer <token>`
+    /// header. Missing or invalid bearer tokens result in `401 Unauthorized`.
+    ///
+    /// Like the cookie-based gate, it will support (once implemented) an
+    /// `allow_anonymous_with_optional_user()` (or similarly named) configuration
+    /// method to install `Option<Account<R,G>>` / `Option<RegisteredClaims>` in
+    /// request extensions without enforcing authorization (mirroring the cookie
+    /// gate's anonymous optional mode).
+    ///
+    /// # Arguments
+    /// * `issuer` - The JWT issuer identifier for your application
+    /// * `codec` - JWT codec for encoding/decoding tokens
+    pub fn bearer<C, R, G>(
+        issuer: &str,
+        codec: Arc<C>,
+    ) -> bearer::BearerGate<C, R, G, bearer::JwtConfig<R, G>>
+    where
+        C: Codec,
+        R: AccessHierarchy + Eq + std::fmt::Display,
+        G: Eq + Clone,
+    {
+        // Delegates to the BearerGate builder (to be implemented in bearer module).
+        bearer::BearerGate::new_with_codec(issuer, codec)
     }
 }
