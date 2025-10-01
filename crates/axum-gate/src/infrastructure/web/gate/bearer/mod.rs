@@ -16,13 +16,13 @@
 //!
 //! Optional Mode Semantics:
 //!   - JWT optional: always forwards; inserts:
-//!       * Option<Account<R,G>>
-//!       * Option<RegisteredClaims>
+//!       * `Option<Account<R,G>>`
+//!       * `Option<RegisteredClaims>`
 //!   - Static token optional: always forwards; inserts:
 //!       * StaticTokenAuthorized(bool)
 //!
 //! Strict Mode Semantics:
-//!   - JWT strict: validates Authorization: Bearer <jwt>, enforces AccessPolicy
+//!   - JWT strict: validates Authorization: Bearer `<jwt>`, enforces AccessPolicy
 //!                 inserts Account<R,G> & RegisteredClaims on success, 401 otherwise
 //!   - Static token strict: requires Authorization: Bearer <exact_token>, inserts
 //!                 StaticTokenAuthorized(true) on success, 401 otherwise
