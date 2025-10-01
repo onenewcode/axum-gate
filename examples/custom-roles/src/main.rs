@@ -1,4 +1,5 @@
 use axum_gate::advanced::AccessHierarchy;
+// AccessHierarchy marker auto-implemented via Ord; explicit import removed.
 use axum_gate::auth::AccountInsertService;
 use axum_gate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
@@ -17,21 +18,27 @@ use tracing::debug;
 pub const ISSUER: &str = "auth-node";
 
 /// A custom role definition.
-#[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug, strum::Display)]
+#[derive(
+    Default,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Copy,
+    Clone,
+    Serialize,
+    Deserialize,
+    Debug,
+    strum::Display,
+)]
 pub enum CustomRoleDefinition {
+    #[default]
     Novice,
     Experienced,
     Expert,
 }
 
-impl AccessHierarchy for CustomRoleDefinition {
-    fn supervisor(&self) -> Option<Self> {
-        None
-    }
-    fn subordinate(&self) -> Option<Self> {
-        None
-    }
-}
+impl AccessHierarchy for CustomRoleDefinition {}
 
 /// A custom group definition.
 #[derive(Eq, PartialEq, Copy, Clone, Serialize, Deserialize, Debug)]

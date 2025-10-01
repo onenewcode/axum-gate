@@ -94,7 +94,7 @@
 //!
 //! # let jwt_codec = Arc::new(jwt::JsonWebToken::<jwt::JwtClaims<auth::Account<auth::Role, auth::Group>>>::default());
 //! // Allow any authenticated user (equivalent to all roles: User, Reporter, Moderator, Admin)
-//! let gate = Gate::cookie("my-app", jwt_codec)
+//! let gate = Gate::cookie::<_, auth::Role, auth::Group>("my-app", jwt_codec)
 //!     .require_login()  // Convenience method for any logged-in user
 //!     .configure_cookie_template(|tpl| tpl.name("auth-token"));
 //! ```

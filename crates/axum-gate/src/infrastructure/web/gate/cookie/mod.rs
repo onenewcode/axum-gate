@@ -194,35 +194,29 @@ where
     }
 }
 
-impl<C> CookieGate<C, crate::auth::Role, crate::auth::Group>
+impl<C, R, G> CookieGate<C, R, G>
 where
     C: Codec,
+    R: AccessHierarchy + std::fmt::Display,
+    G: Eq,
 {
-    /// Convenience method to configure this gate to allow any logged-in user.
+    /// Configures the gate to allow any authenticated user (baseline role + all supervisors).
     ///
-    /// This sets the access policy to allow any user with a valid authentication token,
-    /// regardless of their specific role or group membership. It uses the role hierarchy
-    /// to grant access to the lowest role (User) and all supervisor roles, effectively
-    /// allowing any authenticated user.
-    ///
-    /// This method is only available for gates using the default Role and Group types.
+    /// This sets the access policy to allow the baseline role (least privileged) and
+    /// all roles with higher privilege (according to the derived ordering where higher privilege < lower privilege).
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::auth::{Role, Group, Account};
+    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
     /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
     /// # use axum_gate::prelude::Gate;
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    ///
-    /// // This allows any authenticated user (User, Reporter, Moderator, Admin roles)
-    /// let gate = Gate::cookie("my-app", jwt_codec)
-    ///     .require_login()
-    ///     .configure_cookie_template(|tpl| tpl.name("auth-token"));
+    /// let gate = Gate::cookie::<_, Role, Group>("my-app", jwt_codec).require_login();
     /// ```
     pub fn require_login(mut self) -> Self {
-        use crate::auth::Role;
-        self.policy = AccessPolicy::require_role_or_supervisor(Role::User);
+        let baseline = R::default();
+        self.policy = AccessPolicy::require_role_or_supervisor(baseline);
         self
     }
 }

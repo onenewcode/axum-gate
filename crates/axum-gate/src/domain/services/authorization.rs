@@ -30,16 +30,16 @@ where
 
     /// Determines if the account is authorized based on any of the configured criteria.
     ///
-    /// Returns `true` if the account matches any of:
+    /// Returns `true` if the account matches ANY of:
     /// - Required permissions
     /// - Required groups
-    /// - Required roles
-    /// - Required supervisor roles
+    /// - Required exact roles
+    /// - Required roles via supervisor relationship (ordering: higher privilege > lower privilege)
     pub fn is_authorized(&self, account: &Account<R, G>) -> bool {
         self.meets_permission_requirement(account)
             || self.meets_group_requirement(account)
             || self.meets_role_requirement(account)
-            || self.meets_supervisor_role_requirement(account)
+            || self.meets_role_hierarchy_requirement(account)
     }
 
     /// Checks if the account meets any of the required roles.
@@ -52,14 +52,17 @@ where
         })
     }
 
-    /// Checks if the account has a role that supervises any required role.
-    pub fn meets_supervisor_role_requirement(&self, account: &Account<R, G>) -> bool {
-        debug!("Checking if any subordinate role matches the required one.");
-        account.roles.iter().any(|ur| {
+    /// Checks if the account has a role that satisfies a required role via hierarchy ordering.
+    ///
+    /// Ordering contract: Higher privilege > Lower privilege.
+    /// A supervisor or the same role satisfies: user_role >= required_role.
+    pub fn meets_role_hierarchy_requirement(&self, account: &Account<R, G>) -> bool {
+        debug!("Checking role hierarchy (same-or-supervisor) against required roles.");
+        account.roles.iter().any(|user_role| {
             self.policy
                 .role_requirements()
                 .iter()
-                .any(|scope| scope.grants_supervisor(ur))
+                .any(|scope| scope.grants_supervisor(user_role))
         })
     }
 

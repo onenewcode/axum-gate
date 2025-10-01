@@ -28,7 +28,12 @@ where
         self.role.eq(role)
     }
 
-    /// Returns `true` if one of the supervisor of the given role is allowed to access.
+    /// Returns `true` if the given role is the required role or a supervisor
+    /// (higher privilege according to the total ordering) of it.
+    ///
+    /// Ordering contract (enforced by AccessHierarchy marker):
+    /// Higher privilege > Lower privilege
+    /// So a supervisor (or same role) satisfies: user_role >= required_role
     pub fn grants_supervisor(&self, role: &Role) -> bool {
         if !self.allow_supervisor_access {
             debug!(
@@ -37,19 +42,20 @@ where
             );
             return false;
         }
-        debug!(
-            "Checking user role {role} if it is a supervisor of the required role {}.",
-            self.role
-        );
-        let mut subordinate_traveller_role = role.subordinate();
-        while let Some(ref r) = subordinate_traveller_role {
-            debug!("Logged in Role: {role}, Current subordinate to check: {r}");
-            if self.grants_role(r) {
-                return true;
-            }
-            subordinate_traveller_role = r.subordinate();
+
+        if role >= &self.role {
+            debug!(
+                "Role {role} is same or supervisor of required role {} – access granted.",
+                self.role
+            );
+            true
+        } else {
+            debug!(
+                "Role {role} is NOT a supervisor of required role {} – access denied.",
+                self.role
+            );
+            false
         }
-        false
     }
 
     /// Allows access to all supervisor of the role of the scope.

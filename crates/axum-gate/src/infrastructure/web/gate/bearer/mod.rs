@@ -146,6 +146,21 @@ where
         self
     }
 
+    /// Configure the gate to allow any authenticated user: the baseline role (least privileged,
+    /// provided by `Default::default()`) and all roles with higher privilege (per ordering where
+    /// higher privilege > lower privilege).
+    ///
+    /// This is equivalent to: `with_policy(AccessPolicy::require_role_or_supervisor(R::default()))`
+    /// but more ergonomic and generic over any role type implementing `Default + Ord`.
+    pub fn require_login(mut self) -> Self
+    where
+        R: Default,
+    {
+        let baseline = R::default();
+        self.mode.policy = AccessPolicy::require_role_or_supervisor(baseline);
+        self
+    }
+
     /// Transition to static token mode: policies are discarded.
     pub fn with_static_token(
         self,

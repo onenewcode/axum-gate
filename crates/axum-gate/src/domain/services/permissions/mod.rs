@@ -21,8 +21,8 @@
 //!
 //! ```rust
 //! # use axum_gate::auth::{PermissionId, Account};
-//! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-//! # enum MyRole { User, Admin }
+//! # #[derive(Debug, Default, Ord, PartialOrd, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+//! # enum MyRole { #[default] User, Admin }
 //! # impl std::fmt::Display for MyRole {
 //! #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //! #         match self {
@@ -32,20 +32,7 @@
 //! #     }
 //! # }
 //! # use axum_gate::advanced::AccessHierarchy;
-//! # impl AccessHierarchy for MyRole {
-//! #     fn supervisor(&self) -> Option<Self> {
-//! #         match self {
-//! #             Self::Admin => None,
-//! #             Self::User => Some(Self::Admin),
-//! #         }
-//! #     }
-//! #     fn subordinate(&self) -> Option<Self> {
-//! #         match self {
-//! #             Self::Admin => Some(Self::User),
-//! #             Self::User => None,
-//! #         }
-//! #     }
-//! # }
+//! # impl AccessHierarchy for MyRole { }
 //! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyGroup { Staff, Premium }
 //! let mut account = Account::<MyRole, MyGroup>::new("user123", &[MyRole::User], &[MyGroup::Staff]);
@@ -76,8 +63,8 @@
 //! # use axum_gate::advanced::AccessHierarchy;
 //! # use std::sync::Arc;
 //! # use axum::{routing::get, Router};
-//! # #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-//! # enum MyRole { User, Admin }
+//! # #[derive(Debug, Default, Ord, PartialOrd, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+//! # enum MyRole { #[default] User, Admin }
 //! # impl std::fmt::Display for MyRole {
 //! #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //! #         match self {
@@ -86,20 +73,7 @@
 //! #         }
 //! #     }
 //! # }
-//! # impl AccessHierarchy for MyRole {
-//! #     fn supervisor(&self) -> Option<Self> {
-//! #         match self {
-//! #             Self::Admin => None,
-//! #             Self::User => Some(Self::Admin),
-//! #         }
-//! #     }
-//! #     fn subordinate(&self) -> Option<Self> {
-//! #         match self {
-//! #             Self::Admin => Some(Self::User),
-//! #             Self::User => None,
-//! #         }
-//! #     }
-//! # }
+//! # impl AccessHierarchy for MyRole {}
 //! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 //! # enum MyGroup { Staff, Premium }
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<MyRole, MyGroup>>>::default());
