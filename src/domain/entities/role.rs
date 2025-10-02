@@ -48,12 +48,6 @@
 //! }
 //!
 //! impl AccessHierarchy for CustomRole {}
-//!
-//! // The marker trait is auto-implemented because bounds (Copy+Eq+Ord) are satisfied:
-//! fn _example(r: CustomRole) {
-//!     // r can participate in policies just like the built-in Role.
-//!     let _ = r;
-//! }
 //! ```
 
 use crate::domain::traits::AccessHierarchy;
