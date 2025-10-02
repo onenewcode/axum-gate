@@ -85,11 +85,13 @@ where
     /// ```rust
     /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
     /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::Gate;
+    /// # use axum_gate::prelude::{Gate, CookieTemplateBuilder};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+    /// let cookie_template = CookieTemplateBuilder::recommended().build();
     /// let gate = Gate::cookie("my-app", jwt_codec)
-    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all());
+    ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
+    ///     .with_cookie_template(cookie_template);
     /// ```
     pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
         self.cookie_template = template;
