@@ -22,9 +22,9 @@
 //!
 //! Strict Mode Semantics:
 //!   - JWT strict: validates Authorization: Bearer `<jwt>`, enforces AccessPolicy
-//!                 inserts Account<R,G> & RegisteredClaims on success, 401 otherwise
+//!     inserts Account<R,G> & RegisteredClaims on success, 401 otherwise
 //!   - Static token strict: requires Authorization: Bearer <exact_token>, inserts
-//!                 StaticTokenAuthorized(true) on success, 401 otherwise
+//!     StaticTokenAuthorized(true) on success, 401 otherwise
 //!
 //! Example (JWT strict):
 //! ```ignore
