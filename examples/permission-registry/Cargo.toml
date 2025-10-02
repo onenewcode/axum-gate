@@ -1,0 +1,12 @@
+[package]
+name = "permission-registry-example"
+version = "0.1.0"
+edition = "2021"
+description = "Example demonstrating the optional permission mapping registry pattern"
+
+[dependencies]
+axum-gate = { path = "../../" }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+anyhow = "1"

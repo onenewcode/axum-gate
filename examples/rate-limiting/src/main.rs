@@ -20,9 +20,9 @@ use axum::{
 use axum_gate::{
     auth::{Group, Role},
     http::CookieJar,
+    integrations::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
     jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
     prelude::{AccessPolicy, Account, Gate},
-    utils::external::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
 };
 
 use serde::{Deserialize, Serialize};

@@ -7,7 +7,7 @@ license = "MIT"
 
 [dependencies]
 axum = "0.8.3"
-axum-gate = { path = "../../crates/axum-gate", features = ["storage-surrealdb"] }
+axum-gate = { path = "../../", features = ["storage-surrealdb"] }
 chrono = { version = "0.4" }
 dotenvy = "0.15"
 surrealdb = { version = "2", features = ["kv-mem"] }
