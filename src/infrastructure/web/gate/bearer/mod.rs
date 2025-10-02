@@ -2,7 +2,6 @@
 //! - JWT bearer authentication & authorization (policy-based)
 //! - Static shared-secret bearer token (boolean authorization)
 //!
-//! This refactor uses a generic mode type parameter instead of a runtime enum/panics.
 //! Each mode exposes only the relevant builder methods at compile time:
 //!
 //! JWT Mode (BearerGate<_, _, _, JwtConfig<_, _>>):
