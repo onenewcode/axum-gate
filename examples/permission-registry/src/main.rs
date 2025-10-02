@@ -36,9 +36,6 @@ async fn main() -> anyhow::Result<()> {
     // Demonstrate account permissions with registry
     demo_account_with_registry(&mapping_repo).await?;
 
-    // Demonstrate bulk operations
-    demo_bulk_operations(&mapping_repo).await?;
-
     info!("Permission Mapping Registry Example completed successfully!");
     Ok(())
 }
@@ -235,41 +232,6 @@ async fn demo_account_with_registry(
             }
             None => info!("  Unknown permission (ID: {})", permission_id),
         }
-    }
-
-    Ok(())
-}
-
-/// Demonstrates bulk operations (if available)
-async fn demo_bulk_operations(repo: &Arc<MemoryPermissionMappingRepository>) -> anyhow::Result<()> {
-    info!("\n=== Cleanup and Bulk Operations ===");
-
-    // Remove some mappings
-    info!("Removing some mappings:");
-    let to_remove = vec!["read:api", "write:api"];
-
-    for perm_str in to_remove {
-        match repo.remove_mapping_by_string(perm_str).await? {
-            Some(removed) => info!(
-                "  Removed: '{}' (ID: {})",
-                removed.normalized_string(),
-                removed.id_as_u64()
-            ),
-            None => info!("  Not found: '{}'", perm_str),
-        }
-    }
-
-    // Show remaining mappings count
-    let remaining = repo.list_all_mappings().await?;
-    info!("Remaining mappings: {}", remaining.len());
-
-    // Demonstrate existence checks
-    info!("\n--- Existence Checks ---");
-    let check_permissions = vec!["admin:users", "nonexistent:permission"];
-
-    for perm_str in check_permissions {
-        let exists = repo.has_mapping_for_string(perm_str).await?;
-        info!("  '{}' exists: {}", perm_str, exists);
     }
 
     Ok(())
