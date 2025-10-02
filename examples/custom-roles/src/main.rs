@@ -1,5 +1,4 @@
 use axum_gate::advanced::AccessHierarchy;
-// AccessHierarchy marker auto-implemented via Ord; explicit import removed.
 use axum_gate::auth::AccountInsertService;
 use axum_gate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
