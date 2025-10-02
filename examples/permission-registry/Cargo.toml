@@ -5,7 +5,7 @@ edition = "2021"
 description = "Example demonstrating the optional permission mapping registry pattern"
 
 [dependencies]
-axum-gate = { path = "../../crates/axum-gate" }
+axum-gate = { path = "../../" }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"

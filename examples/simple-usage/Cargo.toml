@@ -8,7 +8,7 @@ license = "MIT"
 [dependencies]
 axum = "0.8.3"
 axum-extra = { version = "0.10", features = ["cookie"] }
-axum-gate = { path = "../../crates/axum-gate" }
+axum-gate = { path = "../../" }
 chrono = { version = "0.4" }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }

@@ -14,7 +14,7 @@ path = "src/bin/consumer_node.rs"
 
 [dependencies]
 axum = "0.8.3"
-axum-gate = { path = "../../crates/axum-gate" }
+axum-gate = { path = "../../" }
 chrono = "0.4.41"
 dotenvy = "0.15"
 roaring = "0.10"

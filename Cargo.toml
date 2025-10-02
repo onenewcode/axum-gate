@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "crates/axum-gate",
     "examples/custom-roles",
     "examples/distributed",
     "examples/permission-registry",
@@ -11,7 +10,68 @@ members = [
     "examples/surrealdb",
     "examples/prometheus",
 ]
-resolver = "2"
+resolver = "3"
 
-[workspace.package]
+[package]
+name = "axum-gate"
 version = "1.0.0-rc.1"
+edition = "2024"
+rust-version = "1.86"
+license = "MIT"
+authors = ["Lewin Probst <info@emirror.de>"]
+description = "Role based access for axum using JWT cookies. For both, single nodes and distributed systems."
+homepage = "https://github.com/emirror-de/axum-gate"
+repository = "https://github.com/emirror-de/axum-gate"
+readme = "README.md"
+keywords = ["auth", "distributed", "JWT", "axum", "login"]
+categories = ["authentication", "web-programming"]
+
+[features]
+# Enables the DevFast Argon2 preset in release builds if explicitly opted-in.
+# In debug builds the preset is available automatically via cfg(debug_assertions).
+insecure-fast-hash = []
+storage-surrealdb = ["surrealdb"]
+storage-seaorm = ["sea-orm/uuid"]
+audit-logging = []
+prometheus = ["audit-logging", "dep:prometheus"]
+
+
+[dependencies]
+anyhow = "1.0.98"
+argon2 = { version = "0.5.3", features = ["std"] }
+async-trait = "0.1.83"
+axum = "0.8.3"
+axum-extra = { version = "0.10.1", features = ["cookie"] }
+chrono = { version = "0.4.40", features = ["serde"] }
+const-crypto = "0.3.0"
+cookie = { version = "0.18" }
+http = "1.3.1"
+jsonwebtoken = "9.3.1"
+pin-project = "1.1.10"
+rand = "0.9.0"
+roaring = { version = "0.10.12", features = ["serde"] }
+sea-orm = { version = "1", optional = true }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+serde_with = "3.12.0"
+strum = { version = "0.27.1", features = ["derive"] }
+subtle = "2.6"
+surrealdb = { version = "2", optional = true }
+thiserror = "2.0.12"
+tokio = { version = "1", features = ["sync"] }
+tower = "0.5.2"
+tracing = { version = "0.1.41", features = ["release_max_level_info"] }
+uuid = { version = "1", features = ["serde", "v7"] }
+prometheus = { version = "0.14", optional = true }
+
+
+[dev-dependencies]
+mime = "0.3.17"
+num_enum = "0.7.3"
+surrealdb = { version = "2", features = ["kv-mem"] }
+tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
+tokio-test = "0.4.4"
+uuid = "1"
+
+[profile.dev]
+debug = false
