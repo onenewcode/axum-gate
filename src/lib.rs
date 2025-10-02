@@ -309,7 +309,23 @@
 //! in the authentication process. The login service now takes approximately the same time whether
 //! a user exists or not, making timing-based user enumeration attacks infeasible.
 
-pub mod advanced;
+pub mod accounts;
+pub mod as_permission_name;
+pub mod authn;
+pub mod authz;
+#[cfg(feature = "storage-seaorm")]
+pub mod comma_separated_value;
+pub mod credentials;
+pub mod groups;
+pub mod hashing;
+pub mod permission_mapping;
+pub mod permissions;
+pub mod roles;
+pub mod secrets;
+pub mod static_token_authorized;
+pub mod validate_permissions;
+pub mod verification_result;
+
 pub(crate) mod application;
 pub(crate) mod domain;
 pub mod errors;
@@ -318,7 +334,11 @@ pub(crate) mod ports;
 
 /// Common types and functions for quick imports.
 pub mod prelude {
+    pub use crate::as_permission_name::AsPermissionName;
     pub use crate::auth::{AccessPolicy, Account, Credentials, Group, Role};
+    pub use crate::authz::{AccessHierarchy, AccessScope};
+    #[cfg(feature = "storage-seaorm")]
+    pub use crate::comma_separated_value::CommaSeparatedValue;
     pub use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
     // Authentication middleware and builders.
     pub use crate::infrastructure::web::gate::{Gate, cookie::CookieGate};
