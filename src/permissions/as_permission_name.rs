@@ -7,7 +7,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use axum_gate::as_permission_name::AsPermissionName;
+//! use axum_gate::permissions::AsPermissionName;
 //! use axum_gate::permissions::Permissions;
 //!
 //! #[derive(Debug, Clone, PartialEq)]

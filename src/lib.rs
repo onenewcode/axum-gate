@@ -265,7 +265,6 @@ pub use serde_json;
 pub use uuid;
 
 pub mod accounts;
-pub mod as_permission_name;
 #[cfg(feature = "audit-logging")]
 pub mod audit;
 pub mod authn;

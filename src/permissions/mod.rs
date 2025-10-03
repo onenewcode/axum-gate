@@ -90,11 +90,12 @@
 //! }
 //! ```
 
+pub use self::application_validator::ApplicationValidator;
+pub use self::as_permission_name::AsPermissionName;
 pub use self::collision_checker::PermissionCollisionChecker;
+pub use self::permission_collision::PermissionCollision;
 pub use self::permission_id::PermissionId;
 pub use self::validation_report::ValidationReport;
-pub use application_validator::ApplicationValidator;
-pub use permission_collision::PermissionCollision;
 
 use std::fmt;
 
@@ -102,6 +103,7 @@ use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
 
 mod application_validator;
+mod as_permission_name;
 mod collision_checker;
 pub mod mapping;
 mod permission_collision;

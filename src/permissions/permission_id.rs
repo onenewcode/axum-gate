@@ -1,4 +1,4 @@
-use crate::as_permission_name::AsPermissionName;
+use super::AsPermissionName;
 
 use const_crypto::sha2::Sha256;
 use serde::{Deserialize, Serialize};
