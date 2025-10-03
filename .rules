@@ -74,33 +74,80 @@ Expert-level Rust programming guidance optimized for AI-assisted development wor
 ### Project Structure
 ```
 src/
-├── lib.rs              # Crate root with public API
-├── bin/                # Binary targets
-│   └── main.rs
-├── config/             # Configuration management
+├── verification_result.rs
+├── comma_separated_value.rs
+├── groups.rs
+├── roles.rs
+├── lib.rs
+├── cookie_template.rs
+├── route_handlers.rs
+├── credentials
+│   ├── credentials_verifier.rs
+│   └── mod.rs
+├── secrets
+│   ├── secret_repository.rs
+│   └── mod.rs
+├── audit.rs
+├── hashing
+│   ├── hashing_service.rs
 │   ├── mod.rs
-│   └── settings.rs
-├── domain/             # Domain models and business logic
+│   └── argon2.rs
+├── jwt
 │   ├── mod.rs
-│   ├── entities/       # Domain entities
-│   ├── services/       # Business services
-│   └── repositories/   # Data access abstractions
-├── infrastructure/     # External integrations
+│   ├── validation_result.rs
+│   └── validation_service.rs
+├── codecs
+│   ├── logout.rs
 │   ├── mod.rs
-│   ├── database/
-│   ├── http_client/
-│   └── messaging/
-├── api/                # API layer (REST, GraphQL, gRPC)
+│   └── login.rs
+├── authn
 │   ├── mod.rs
-│   ├── handlers/
-│   ├── middleware/
-│   └── routing/
-├── utils/              # Utility functions and helpers
+│   ├── access_scope.rs
+│   ├── access_hierarchy.rs
+│   ├── authorization_service.rs
+│   └── access_policy.rs
+├── authz
+│   ├── account_delete.rs
+│   ├── account_repository.rs
+│   ├── account_insert.rs
+│   └── mod.rs
+├── accounts
 │   ├── mod.rs
-│   └── validation.rs
-└── tests/              # Integration tests
-    └── common/
-        └── mod.rs
+│   ├── bearer
+│   │   ├── static_token_authorized.rs
+│   │   └── mod.rs
+│   └── cookie
+│       ├── cookie_service.rs
+│       └── mod.rs
+├── gate
+│   ├── mod.rs
+│   ├── models
+│   │   ├── credentials.rs
+│   │   ├── account.rs
+│   │   └── permission_mapping.rs
+│   ├── sea_orm
+│   ├── memory.rs
+│   ├── sea_orm.rs
+│   └── surrealdb.rs
+├── repositories
+│   ├── validate_permissions.rs
+│   ├── permission_collision.rs
+│   ├── as_permission_name.rs
+│   ├── permission_id.rs
+│   ├── application_validator.rs
+│   ├── validation_report.rs
+│   ├── collision_checker.rs
+│   └── mod.rs
+├── mapping
+│   ├── mapping_repository.rs
+│   └── mod.rs
+├── permissions
+│   ├── domain.rs
+│   ├── mod.rs
+│   ├── application.rs
+│   ├── infrastructure.rs
+│   └── ports.rs
+├── errors
 ```
 
 ### Module Design Principles
@@ -110,7 +157,10 @@ src/
 - Use `pub(crate)` for internal APIs that shouldn't be exposed
 - Implement proper module documentation with usage examples
 - Design for testability with dependency injection patterns
-- Create clear boundaries between layers (domain, infrastructure, API)
+- Enforce category-domain boundaries: categories are top-level business groupings; domains are submodules within a category
+- Dependencies flow inward: delivery-facing modules (e.g., `route_handlers.rs`) depend on category/domain modules; category/domain modules depend only on shared technical modules within the crate (e.g., `hashing`, `jwt`, `repositories`) and Rust std/libs; never on delivery modules or unrelated categories directly
+- Cross-category interactions occur via explicit interfaces (traits) and dedicated integration modules; avoid direct imports between categories and avoid cyclic dependencies
+- Surface public API via `mod.rs` per domain; keep internal modules `pub(crate)` unless deliberately shared
 
 ### Dependency Management
 ```toml
@@ -1203,6 +1253,7 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 - Respect the project's current versions and dependency management approach.
 - Propose upgrades explicitly with a short risk assessment and a test/rollback plan.
 - Keep feature flags and dependency updates localized and documented.
+- When looking up the latest API versions or official docs, use Context7 to fetch up-to-date documentation and version information.
 
 ## Universal Patterns for Quality Code
 
