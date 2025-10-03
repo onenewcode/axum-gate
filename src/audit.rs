@@ -1,22 +1,25 @@
 //! Audit logging utilities for sensitive operations.
-//!
+//
 //! This module is intentionally minimal and only defines functions when the
 //! `audit-logging` feature is enabled. All call sites are also feature-gated,
 //! so there is no need for separate enabled/disabled submodules or no-op
 //! fallbacks here.
-//!
+//
 //! Security notes:
 //! - Never log secrets, passwords, raw tokens, or JWT contents.
 //! - Prefer stable identifiers (UUID/user_id), reason codes, and support codes.
 //! - Keep spans/events coarse and avoid leaking internal state.
-//!
+//
 //! Enable via Cargo features (in the depending crate):
 //! - `axum-gate = { version = "...", features = ["audit-logging"] }`
-//!
+//
 //! Environment and subscriber configuration are left to the application.
 
 use tracing::{Level, Span, event, span};
 use uuid::Uuid;
+
+#[cfg(feature = "prometheus")]
+use std::time::Instant;
 
 const TARGET: &str = "axum_gate::audit";
 
@@ -248,12 +251,55 @@ pub fn account_insert_failure(user_id: &str, reason_code: &str) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Authorization latency histogram helper
+// ---------------------------------------------------------------------------
+
+#[cfg(feature = "prometheus")]
+/// Outcome of an authorization decision for latency observation.
+#[derive(Copy, Clone, Debug)]
+pub enum AuthzOutcome {
+    /// Authorization succeeded.
+    Authorized,
+    /// Authorization was denied.
+    Denied,
+}
+
+#[cfg(feature = "prometheus")]
+impl AuthzOutcome {
+    fn as_label(&self) -> &'static str {
+        match self {
+            AuthzOutcome::Authorized => "authorized",
+            AuthzOutcome::Denied => "denied",
+        }
+    }
+}
+
+#[cfg(feature = "prometheus")]
+/// Observes the elapsed time between `start` and now for an authorization decision.
+///
+/// Typical usage pattern at a call site:
+/// ```ignore
+/// let start = Instant::now();
+/// // ... perform authz logic ...
+/// audit::authorized(account_id, role);
+/// audit::observe_authz_latency(start, AuthzOutcome::Authorized);
+/// ```
+pub fn observe_authz_latency(start: Instant, outcome: AuthzOutcome) {
+    if let Some(m) = prometheus_metrics::metrics() {
+        let elapsed = start.elapsed().as_secs_f64();
+        m.authz_decision_latency
+            .with_label_values(&[outcome.as_label()])
+            .observe(elapsed);
+    }
+}
+
 #[cfg(feature = "prometheus")]
 /// Prometheus metrics integration for axum-gate authentication events.
 ///
 /// This module provides Prometheus metrics collection for monitoring authentication
 /// and authorization events. Metrics include authorization decisions, JWT validation
-/// failures, and account management operations.
+/// failures, account management operations, and authorization decision latency.
 ///
 /// # Features
 ///
@@ -275,7 +321,7 @@ pub fn account_insert_failure(user_id: &str, reason_code: &str) {
 /// # }
 /// ```
 pub mod prometheus_metrics {
-    use prometheus::{Counter, CounterVec, Registry};
+    use prometheus::{Counter, CounterVec, HistogramOpts, HistogramVec, Registry};
     use std::sync::OnceLock;
     use strum::AsRefStr;
 
@@ -332,6 +378,8 @@ pub mod prometheus_metrics {
         pub account_delete_outcome: CounterVec,
         /// Counter for account insertion operations, labeled by outcome and reason.
         pub account_insert_outcome: CounterVec,
+        /// Histogram for authorization decision latency, labeled by outcome.
+        pub authz_decision_latency: HistogramVec,
     }
 
     static METRICS: OnceLock<Metrics> = OnceLock::new();
@@ -398,12 +446,24 @@ pub mod prometheus_metrics {
             &["outcome", "reason"],
         )?;
 
+        let authz_decision_latency = HistogramVec::new(
+            HistogramOpts::new(
+                "axum_gate_authz_decision_seconds",
+                "Authorization decision latency in seconds",
+            )
+            .buckets(vec![
+                0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0,
+            ]),
+            &["outcome"],
+        )?;
+
         // Register metrics with the provided registry
         registry.register(Box::new(authz_authorized.clone()))?;
         registry.register(Box::new(authz_denied.clone()))?;
         registry.register(Box::new(jwt_invalid.clone()))?;
         registry.register(Box::new(account_delete_outcome.clone()))?;
         registry.register(Box::new(account_insert_outcome.clone()))?;
+        registry.register(Box::new(authz_decision_latency.clone()))?;
 
         // Store metrics in static for global access
         let metrics = Metrics {
@@ -412,6 +472,7 @@ pub mod prometheus_metrics {
             jwt_invalid,
             account_delete_outcome,
             account_insert_outcome,
+            authz_decision_latency,
         };
 
         let _ = METRICS.set(metrics);

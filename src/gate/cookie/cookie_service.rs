@@ -11,6 +11,8 @@ use std::sync::Arc;
 
 #[cfg(feature = "audit-logging")]
 use crate::audit;
+#[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+use crate::audit::{AuthzOutcome, observe_authz_latency};
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use cookie::CookieBuilder;
@@ -218,6 +220,9 @@ where
         #[cfg(feature = "audit-logging")]
         let _authz_enter = _authz_span.enter();
 
+        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+        let authz_start = std::time::Instant::now();
+
         let account = &jwt.custom_claims;
         let is_authorized = self.authorization_service.is_authorized(account);
 
@@ -226,6 +231,8 @@ where
             {
                 audit::denied(Some(&jwt.custom_claims.account_id), "policy_denied");
             }
+            #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+            observe_authz_latency(authz_start, AuthzOutcome::Denied);
             return unauthorized_future;
         }
 
@@ -233,6 +240,8 @@ where
         {
             audit::authorized(&jwt.custom_claims.account_id, None);
         }
+        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+        observe_authz_latency(authz_start, AuthzOutcome::Authorized);
 
         req.extensions_mut().insert(jwt.custom_claims.clone());
         req.extensions_mut().insert(jwt.registered_claims.clone());

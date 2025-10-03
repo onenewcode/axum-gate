@@ -158,6 +158,26 @@ where
         self
     }
 
+    /// Enables Prometheus metrics for audit logging (JWT bearer mode).
+    ///
+    /// No-op unless both `audit-logging` and `prometheus` features are enabled.
+    /// Safe to call multiple times; registration is idempotent.
+    #[cfg(feature = "prometheus")]
+    pub fn with_prometheus_metrics(self) -> Self {
+        let _ = crate::audit::prometheus_metrics::install_prometheus_metrics();
+        self
+    }
+
+    /// Installs Prometheus metrics into the provided registry (JWT bearer mode).
+    ///
+    /// No-op if metrics already installed. Returns `self` for builder chaining.
+    #[cfg(feature = "prometheus")]
+    pub fn with_prometheus_registry(self, registry: &prometheus::Registry) -> Self {
+        let _ =
+            crate::audit::prometheus_metrics::install_prometheus_metrics_with_registry(registry);
+        self
+    }
+
     /// Transition to static token mode: policies are discarded.
     pub fn with_static_token(
         self,
@@ -382,15 +402,21 @@ where
 
         #[cfg(feature = "audit-logging")]
         let _authz_span = audit::authorization_span(Some(&jwt.custom_claims.account_id), None);
+        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+        let authz_start = std::time::Instant::now();
 
         if !self.authorization.is_authorized(&jwt.custom_claims) {
             #[cfg(feature = "audit-logging")]
             audit::denied(Some(&jwt.custom_claims.account_id), "policy_denied");
+            #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+            crate::audit::observe_authz_latency(authz_start, crate::audit::AuthzOutcome::Denied);
             return unauthorized_future;
         }
 
         #[cfg(feature = "audit-logging")]
         audit::authorized(&jwt.custom_claims.account_id, None);
+        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+        crate::audit::observe_authz_latency(authz_start, crate::audit::AuthzOutcome::Authorized);
 
         req.extensions_mut().insert(jwt.custom_claims.clone());
         req.extensions_mut().insert(jwt.registered_claims.clone());
