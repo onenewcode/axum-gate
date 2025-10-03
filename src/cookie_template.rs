@@ -1,3 +1,31 @@
+//! Secure cookie template builder for authentication cookies.
+//!
+//! This module provides [`CookieTemplateBuilder`] for creating secure authentication
+//! cookies with sensible defaults that automatically adjust based on build configuration.
+//! The builder ensures proper security settings while maintaining development ergonomics.
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use axum_gate::cookie_template::CookieTemplateBuilder;
+//! use cookie::time::Duration;
+//!
+//! // Use secure defaults
+//! let template = CookieTemplateBuilder::recommended()
+//!     .name("auth-token")
+//!     .persistent(Duration::hours(24))
+//!     .build();
+//! ```
+//!
+//! # Security Features
+//!
+//! The builder automatically provides secure defaults:
+//! - **HttpOnly**: Prevents JavaScript access (XSS protection)
+//! - **Secure**: HTTPS-only in production builds
+//! - **SameSite=Strict**: CSRF protection in production
+//! - **Session cookies**: No persistence by default
+//! - **Development-friendly**: Relaxed settings in debug builds for localhost testing
+
 #![allow(clippy::module_name_repetitions)]
 
 use std::borrow::Cow;
@@ -8,31 +36,49 @@ use cookie::{CookieBuilder, SameSite};
 /// Default cookie name used by the gate when none is specified.
 pub const DEFAULT_COOKIE_NAME: &str = "axum-gate";
 
-/// Builder for the authentication cookie used by `Gate`.
+/// Builder for secure authentication cookies used by `Gate`.
 ///
-/// Defaults:
-/// - Release: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
-/// - Debug:   Secure=false (localhost), SameSite=Lax, HttpOnly=true, session cookie
+/// Provides secure defaults that are automatically adjusted based on build configuration:
+/// - **Production builds**: Secure=true, HttpOnly=true, SameSite=Strict, session cookie
+/// - **Debug builds**: Secure=false (for localhost), SameSite=Lax, HttpOnly=true, session cookie
 ///
-/// Common overrides:
-/// - name("auth-token")
-/// - persistent(Duration::hours(24)) / max_age(...)
-/// - same_site(SameSite::Lax) for redirect/OAuth flows
-/// - insecure_dev_only() (debug only – panics in release)
+/// # Security Best Practices
 ///
-/// Example:
+/// The recommended approach is to start with [`CookieTemplateBuilder::recommended()`] and
+/// customize only what you need:
+///
 /// ```rust
-/// use axum_gate::http::{Duration, SameSite};
-/// use axum_gate::prelude::CookieTemplateBuilder;
-/// let cookie_builder = CookieTemplateBuilder::recommended()
+/// use axum_gate::cookie_template::CookieTemplateBuilder;
+/// use cookie::{time::Duration, SameSite};
+///
+/// // Secure defaults with custom name and expiration
+/// let template = CookieTemplateBuilder::recommended()
 ///     .name("auth-token")
-///     .persistent(Duration::hours(12))
-///     .same_site(SameSite::Strict)
+///     .persistent(Duration::hours(24))
+///     .build();
+///
+/// // For OAuth/redirect flows that need cross-site navigation
+/// let oauth_template = CookieTemplateBuilder::recommended()
+///     .name("oauth-state")
+///     .same_site(SameSite::Lax)  // Allow cross-site for redirects
 ///     .build();
 /// ```
 ///
-/// All settings start secure; you must opt out explicitly.
-/// Convert into the underlying `cookie::CookieBuilder` via [`CookieTemplateBuilder::build`].
+/// # Security Features
+///
+/// - **HttpOnly**: Prevents JavaScript access to auth cookies (XSS protection)
+/// - **Secure**: HTTPS-only in production (MITM protection)
+/// - **SameSite=Strict**: Prevents CSRF attacks in production
+/// - **Session cookies**: No persistent storage by default (privacy)
+///
+/// # Common Customizations
+///
+/// - `name("my-auth-cookie")` - Set custom cookie name
+/// - `persistent(Duration::hours(24))` - Make cookie persist across browser sessions
+/// - `same_site(SameSite::Lax)` - Allow cross-site navigation (OAuth flows)
+/// - `domain(".example.com")` - Share cookies across subdomains
+///
+/// Convert to `cookie::CookieBuilder` via [`CookieTemplateBuilder::build`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CookieTemplateBuilder {
     name: Cow<'static, str>,
@@ -226,5 +272,6 @@ impl CookieTemplateBuilder {
 #[derive(Debug, thiserror::Error)]
 pub enum CookieTemplateBuilderError {
     #[error("SameSite=None requires Secure=true (browser enforcement & CSRF protection)")]
+    /// SameSite=None requires Secure=true for browser security and CSRF protection.
     InsecureNoneSameSite,
 }

@@ -135,7 +135,7 @@ where
         self
     }
 
-    /// Turn on optional mode (install Option<Account>, Option<RegisteredClaims>).
+    /// Turn on optional mode (install `Option<Account>`, `Option<RegisteredClaims>`).
     pub fn allow_anonymous_with_optional_user(mut self) -> Self {
         self.mode.optional = true;
         self
@@ -237,6 +237,10 @@ where
 // ===================== JWT SERVICE ======================
 
 #[derive(Clone)]
+/// JWT bearer token authentication service.
+///
+/// This service handles JWT bearer token authentication for protected routes,
+/// validating tokens from the `Authorization: Bearer <token>` header.
 pub struct JwtBearerService<C, R, G, S>
 where
     C: Codec,
@@ -397,6 +401,10 @@ where
 // ===================== STATIC TOKEN SERVICE ======================
 
 #[derive(Clone)]
+/// Static bearer token authentication service.
+///
+/// This service handles authentication using pre-configured static tokens
+/// from the `Authorization: Bearer <token>` header.
 pub struct StaticTokenService<S> {
     inner: S,
     token: String,

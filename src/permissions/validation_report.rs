@@ -4,8 +4,8 @@ use tracing::{info, warn};
 /// Validation outcome for a set of permission strings.
 ///
 /// Produced by:
-/// - [`PermissionCollisionChecker::validate`]
-/// - [`ApplicationValidator::validate`]
+/// - [`PermissionCollisionChecker::validate`](super::PermissionCollisionChecker::validate)
+/// - [`ApplicationValidator::validate`](super::ApplicationValidator::validate)
 ///
 /// # Terminology
 /// - *Duplicate* permission: The exact same string appears more than once. These are

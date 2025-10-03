@@ -23,7 +23,7 @@ use crate::verification_result::VerificationResult;
 /// the login flow will layer enumeration resistance. However, implementations
 /// SHOULD avoid obviously data‑dependent early exits where practical.
 ///
-/// See [`Argon2Hasher`](crate::advanced::Argon2Hasher) for a production‑ready implementation.
+/// See [`Argon2Hasher`](crate::hashing::argon2::Argon2Hasher) for a production‑ready implementation.
 pub trait HashingService {
     /// Hash a plaintext secret into an opaque, self‑contained representation.
     ///

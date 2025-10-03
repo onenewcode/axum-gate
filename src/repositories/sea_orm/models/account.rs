@@ -3,7 +3,7 @@
 //! Internal database representation of a domain `Account<R, G>` storing user id,
 //! groups and roles as comma separated strings. Most users only need the repository
 //! API; this model is exposed for migrations or direct queries.
-//! See also: [`credentials`](crate::storage::seaorm::models::credentials) for secret storage.
+//! See also: [`credentials`](super::credentials) for secret storage.
 
 use crate::accounts::Account;
 use crate::authz::AccessHierarchy;

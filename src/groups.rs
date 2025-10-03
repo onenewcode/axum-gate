@@ -1,18 +1,28 @@
-//! Group entity for organizing users into collections.
+//! Group-based access control for organizing users into logical collections.
 //!
-//! Groups provide a way to organize users into logical collections for access control.
-//! Unlike roles, groups are typically used for organizational purposes like departments,
-//! teams, or project memberships.
+//! Groups provide a flexible way to organize users into collections for access control
+//! purposes. Unlike hierarchical roles, groups are typically used for organizational
+//! structures like departments, teams, projects, or any logical grouping of users.
+//!
+//! # Key Features
+//!
+//! - **Organizational structure** - Model departments, teams, or project memberships
+//! - **Flexible membership** - Users can belong to multiple groups simultaneously
+//! - **Simple equality** - Groups are compared by name (no hierarchy)
+//! - **Access policies** - Use groups in access control policies alongside roles
 //!
 //! # Creating and Using Groups
 //!
 //! ```rust
-//! use axum_gate::auth::{Group, AccessPolicy, Role};
+//! use axum_gate::prelude::Group;
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::prelude::Role;
 //!
-//! // Create groups
+//! // Create groups for different organizational units
 //! let engineering = Group::new("engineering");
 //! let marketing = Group::new("marketing");
-//! let backend_team = Group::new("backend-team");
+//! let qa_team = Group::new("qa-team");
+//! let project_alpha = Group::new("project-alpha");
 //!
 //! // Use groups in access policies
 //! let policy = AccessPolicy::<Role, Group>::require_group(engineering)
@@ -22,25 +32,65 @@
 //! # Group-Based Access Control
 //!
 //! ```rust
-//! use axum_gate::auth::{Account, Role, Group, AccessPolicy};
-//! use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! use axum_gate::prelude::Gate;
+//! use axum_gate::accounts::Account;
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::prelude::{Gate, Role, Group};
+//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
 //! use std::sync::Arc;
 //!
-//! // Create an account with group membership
+//! // Create an account with multiple group memberships
 //! let account = Account::new(
 //!     "developer@example.com",
 //!     &[Role::User],
-//!     &[Group::new("engineering"), Group::new("backend-team")]
+//!     &[Group::new("engineering"), Group::new("backend-team"), Group::new("project-alpha")]
 //! );
 //!
-//! // Create access policy for specific groups
-//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let gate = Gate::cookie("my-app", jwt_codec)
+//! // Create access policies for different areas
+//! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let engineering_gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
+//!     .with_policy(AccessPolicy::<Role, Group>::require_group(Group::new("engineering")));
+//!
+//! let project_gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(
-//!         AccessPolicy::<Role, Group>::require_group(Group::new("engineering"))
-//!             .or_require_group(Group::new("qa-team"))
+//!         AccessPolicy::<Role, Group>::require_group(Group::new("project-alpha"))
+//!             .or_require_group(Group::new("project-beta"))
 //!     );
+//!
+//! // Combine with role requirements
+//! let admin_or_engineering = Gate::cookie("my-app", jwt_codec)
+//!     .with_policy(
+//!         AccessPolicy::<Role, Group>::require_role(Role::Admin)
+//!             .or_require_group(Group::new("engineering"))
+//!     );
+//! ```
+//!
+//! # Common Group Patterns
+//!
+//! ```rust
+//! use axum_gate::prelude::Group;
+//!
+//! // Department-based groups
+//! let groups = vec![
+//!     Group::new("engineering"),
+//!     Group::new("marketing"),
+//!     Group::new("sales"),
+//!     Group::new("support"),
+//! ];
+//!
+//! // Project-based groups
+//! let project_groups = vec![
+//!     Group::new("project-alpha"),
+//!     Group::new("project-beta"),
+//!     Group::new("maintenance"),
+//! ];
+//!
+//! // Team-based groups
+//! let team_groups = vec![
+//!     Group::new("frontend-team"),
+//!     Group::new("backend-team"),
+//!     Group::new("devops-team"),
+//!     Group::new("qa-team"),
+//! ];
 //! ```
 
 #[cfg(feature = "storage-seaorm")]

@@ -1,4 +1,56 @@
-//! Repository implementations.
+//! Repository implementations for account and secret storage.
+//!
+//! This module provides repository abstractions and implementations for storing
+//! user accounts and authentication secrets across different storage backends.
+//!
+//! # Available Backends
+//!
+//! - [`memory`] - In-memory storage (development, testing)
+//! - `surrealdb` - SurrealDB backend (feature: `storage-surrealdb`)
+//! - `sea_orm` - SeaORM backend (feature: `storage-seaorm`)
+//!
+//! # Usage
+//!
+//! ## In-Memory (Development)
+//! ```rust
+//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use axum_gate::prelude::{Role, Group};
+//! use std::sync::Arc;
+//!
+//! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! ```
+//!
+//! ## SurrealDB (Production)
+//! ```rust
+//! # #[cfg(feature = "storage-surrealdb")]
+//! # {
+//! use axum_gate::repositories::surrealdb::{SurrealDbRepository, DatabaseScope};
+//! use std::sync::Arc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let db = surrealdb::Surreal::new::<surrealdb::engine::local::Mem>(()).await?;
+//! let scope = DatabaseScope::default();
+//! let repo = Arc::new(SurrealDbRepository::new(db, scope));
+//! # Ok(())
+//! # }
+//! # }
+//! ```
+//!
+//! ## SeaORM (SQL Databases)
+//! ```rust
+//! # #[cfg(feature = "storage-seaorm")]
+//! # {
+//! use axum_gate::repositories::sea_orm::SeaOrmRepository;
+//! use std::sync::Arc;
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! # let db = sea_orm::Database::connect("sqlite::memory:").await?;
+//! let repo = Arc::new(SeaOrmRepository::new(&db));
+//! # Ok(())
+//! # }
+//! # }
+//! ```
 
 pub mod memory;
 #[cfg(feature = "storage-seaorm")]

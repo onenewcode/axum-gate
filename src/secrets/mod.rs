@@ -61,7 +61,7 @@ mod secret_repository;
 ///
 /// Secrets should be stored separately from account data for enhanced security:
 ///
-/// - Use dedicated secret repositories ([`SecretRepository`](crate::ports::repositories::SecretRepository))
+/// - Use dedicated secret repositories ([`SecretRepository`])
 /// - Consider separate databases for account metadata vs. authentication secrets
 /// - Implement appropriate access controls on secret storage
 /// - Regular backup and recovery procedures for authentication data
@@ -76,10 +76,10 @@ mod secret_repository;
 /// - Caching verification results appropriately (with security considerations)
 ///
 /// The `account_id` must correspond to a valid account in an
-/// [`AccountRepository`](crate::ports::repositories::AccountRepository) to create a correct secret.
+/// [`AccountRepository`](crate::accounts::AccountRepository) to create a correct secret.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Secret {
-    /// The [account id](crate::domain::entities::Account::account_id) that this secret belongs to.
+    /// The [account id](crate::accounts::Account::account_id) that this secret belongs to.
     pub account_id: Uuid,
     /// The actual secret.
     pub secret: HashedValue,
@@ -96,7 +96,7 @@ impl Secret {
     ///
     /// - `account_id`: The unique identifier of the account this secret belongs to
     /// - `plain_secret`: The plaintext password or secret to be hashed
-    /// - `hasher`: The hashing service implementation (typically [`Argon2Hasher`](crate::infrastructure::hashing::Argon2Hasher))
+    /// - `hasher`: The hashing service implementation (typically [`Argon2Hasher`](crate::hashing::argon2::Argon2Hasher))
     ///
     /// # Security
     ///

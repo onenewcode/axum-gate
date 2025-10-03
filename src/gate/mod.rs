@@ -1,17 +1,18 @@
-//! Gate implementation for protecting axum routes with JWT cookie authentication.
+//! Gate implementation for protecting axum routes with JWT authentication.
 //!
 //! The `Gate` provides a high-level API for adding authentication and authorization
-//! to your axum routes using JWT cookies. It supports role-based access control,
-//! group-based access control, and fine-grained permission systems.
+//! to your axum routes using JWT cookies or bearer tokens. It supports role-based
+//! access control, group-based access control, and fine-grained permission systems.
 //!
 //! # Basic Usage
 //!
 //! ```rust
 //! use axum::{routing::get, Router};
-//! use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-//! use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! use axum_gate::prelude::Gate;
-//! use axum_gate::prelude::CookieTemplateBuilder;
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::accounts::Account;
+//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use axum_gate::cookie_template::CookieTemplateBuilder;
+//! use axum_gate::prelude::{Gate, Role, Group};
 //! use std::sync::Arc;
 //!
 //! # async fn protected_handler() -> &'static str { "Protected!" }
@@ -34,12 +35,12 @@
 //!
 //! ## Role-Based Access
 //! ```rust
-//! # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! # use axum_gate::prelude::Gate;
+//! # use axum_gate::authz::AccessPolicy;
+//! # use axum_gate::accounts::Account;
+//! # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::{Gate, Role, Group};
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! # let cookie_template = cookie::CookieBuilder::new("auth", "");
 //! // Allow only Admin role
 //! let gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
 //!     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
@@ -54,9 +55,10 @@
 //!
 //! ## Hierarchical Access
 //! ```rust
-//! # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! # use axum_gate::prelude::Gate;
+//! # use axum_gate::authz::AccessPolicy;
+//! # use axum_gate::accounts::Account;
+//! # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::{Gate, Role, Group};
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
@@ -66,9 +68,11 @@
 //!
 //! ## Permission-Based Access
 //! ```rust
-//! # use axum_gate::auth::{AccessPolicy, Role, Group, Account, PermissionId};
-//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! # use axum_gate::prelude::Gate;
+//! # use axum_gate::authz::AccessPolicy;
+//! # use axum_gate::permissions::PermissionId;
+//! # use axum_gate::accounts::Account;
+//! # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::{Gate, Role, Group};
 //! # use std::sync::Arc;
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let gate = Gate::cookie("my-app", jwt_codec)
@@ -83,6 +87,7 @@ use crate::codecs::Codec;
 use std::sync::Arc;
 
 pub mod bearer;
+/// Cookie-based JWT authentication gate implementation.
 pub mod cookie;
 
 /// Main entry point for creating authentication gates.
@@ -105,9 +110,10 @@ impl Gate {
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::Gate;
+    /// # use axum_gate::authz::AccessPolicy;
+    /// # use axum_gate::accounts::Account;
+    /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::{Gate, Role, Group};
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);

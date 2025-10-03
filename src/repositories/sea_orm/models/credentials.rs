@@ -3,7 +3,6 @@
 //! Internal table storing the Argon2 hashed secret for an account.
 //! Most users interact through `SeaOrmRepository`; import this only
 //! for custom migrations or direct queries.
-//! See also: [`SeaOrmRepository`](crate::storage::seaorm::SeaOrmRepository) for usage and constant‑time verification logic.
 use crate::secrets::Secret;
 
 use sea_orm::{ActiveValue, entity::prelude::*};

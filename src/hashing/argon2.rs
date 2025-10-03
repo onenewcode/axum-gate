@@ -31,12 +31,18 @@ use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version}
 /// Argon2 parameter configuration (memory in KiB).
 #[derive(Debug, Clone, Copy)]
 pub struct Argon2Config {
+    /// Memory usage in KiB for the Argon2 algorithm.
     pub memory_kib: u32,
+    /// Number of iterations (time cost) for the Argon2 algorithm.
     pub time_cost: u32,
+    /// Number of parallel threads to use during hashing.
     pub parallelism: u32,
 }
 
 impl Argon2Config {
+    /// High security configuration for production environments.
+    ///
+    /// Uses 64 MiB memory, 3 iterations, and 1 thread for maximum security.
     pub fn high_security() -> Self {
         Self {
             memory_kib: 64 * 1024, // 64 MiB
@@ -44,6 +50,9 @@ impl Argon2Config {
             parallelism: 1,
         }
     }
+    /// Interactive configuration balanced for user-facing applications.
+    ///
+    /// Uses 32 MiB memory, 2 iterations, and 1 thread for reasonable performance.
     pub fn interactive() -> Self {
         Self {
             memory_kib: 32 * 1024,
@@ -51,6 +60,9 @@ impl Argon2Config {
             parallelism: 1,
         }
     }
+    /// Fast configuration for development and testing.
+    ///
+    /// Uses minimal resources: 1 MiB memory, 1 iteration, and 1 thread.
     pub fn dev_fast() -> Self {
         Self {
             memory_kib: 4 * 1024,
@@ -58,14 +70,17 @@ impl Argon2Config {
             parallelism: 1,
         }
     }
+    /// Override the memory usage in KiB.
     pub fn with_memory_kib(mut self, v: u32) -> Self {
         self.memory_kib = v;
         self
     }
+    /// Override the time cost (number of iterations).
     pub fn with_time_cost(mut self, v: u32) -> Self {
         self.time_cost = v;
         self
     }
+    /// Override the number of parallel threads.
     pub fn with_parallelism(mut self, v: u32) -> Self {
         self.parallelism = v;
         self
@@ -81,13 +96,17 @@ impl Default for Argon2Config {
 /// Preset selector for convenience.
 #[derive(Debug, Clone, Copy)]
 pub enum Argon2Preset {
+    /// High security preset for production environments (64 MiB memory, 3 iterations).
     HighSecurity,
+    /// Interactive preset balanced for user-facing applications (32 MiB memory, 2 iterations).
     Interactive,
     #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
+    /// Fast preset for development and testing (4 MiB memory, 1 iteration).
     DevFast,
 }
 
 impl Argon2Preset {
+    /// Convert this preset to an `Argon2Config`.
     pub fn to_config(self) -> Argon2Config {
         match self {
             Self::HighSecurity => Argon2Config::high_security(),

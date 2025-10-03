@@ -23,12 +23,12 @@ use std::collections::HashMap;
 /// - **Methods**: Provides introspection methods like `get_conflicting_permissions()`
 /// - **Lifecycle**: Can be reused after validation for analysis
 ///
-/// For simple application startup validation, consider using [`ApplicationValidator`]
+/// For simple application startup validation, consider using [`ApplicationValidator`](super::ApplicationValidator)
 /// which provides a more ergonomic builder pattern API.
 ///
 /// # See Also
 ///
-/// - [`ApplicationValidator`] - High-level builder pattern validator for startup validation
+/// - [`ApplicationValidator`](super::ApplicationValidator) - High-level builder pattern validator for startup validation
 ///
 /// # Examples
 ///

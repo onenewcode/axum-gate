@@ -4,12 +4,19 @@
 //! from permission names using cryptographic hashing. This eliminates the need for synchronization
 //! between distributed nodes while maintaining high performance through bitmap operations.
 //!
+//! # Key Features
+//!
+//! - **Deterministic hashing** - Same permission names always produce the same IDs
+//! - **Zero synchronization** - No coordination needed between distributed nodes
+//! - **Fast lookups** - Bitmap-based storage for O(1) permission checks
+//! - **Collision detection** - Compile-time and runtime validation to prevent hash collisions
+//!
 //! # Using Permissions in Your Application
 //!
 //! ## 1. Validating Permissions at Compile Time
 //!
 //! ```rust
-//! # use axum_gate::auth::PermissionId;
+//! use axum_gate::permissions::PermissionId;
 //! axum_gate::validate_permissions![
 //!     "read:resource1",
 //!     "write:resource1",
@@ -17,27 +24,16 @@
 //! ];
 //! ```
 //!
-//! ## 2. Working with Account Permissions (recommended)
+//! ## 2. Working with Account Permissions
 //!
 //! ```rust
-//! # use axum_gate::auth::{PermissionId, Account};
-//! # #[derive(Debug, Default, Ord, PartialOrd, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-//! # enum MyRole { #[default] User, Admin }
-//! # impl std::fmt::Display for MyRole {
-//! #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//! #         match self {
-//! #             MyRole::User => write!(f, "User"),
-//! #             MyRole::Admin => write!(f, "Admin"),
-//! #         }
-//! #     }
-//! # }
-//! # use axum_gate::advanced::AccessHierarchy;
-//! # impl AccessHierarchy for MyRole { }
-//! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-//! # enum MyGroup { Staff, Premium }
-//! let mut account = Account::<MyRole, MyGroup>::new("user123", &[MyRole::User], &[MyGroup::Staff]);
+//! use axum_gate::permissions::{PermissionId, Permissions};
+//! use axum_gate::accounts::Account;
+//! use axum_gate::prelude::{Role, Group};
 //!
-//! // Add permissions to an account
+//! let mut account = Account::<Role, Group>::new("user123", &[Role::User], &[Group::new("staff")]);
+//!
+//! // Grant permissions to an account
 //! account.grant_permission("read:resource1");
 //! account.grant_permission("write:resource1");
 //!
@@ -46,49 +42,51 @@
 //!     // Account has permission
 //! }
 //!
-//! // Remove permissions from an account
+//! // Revoke permissions from an account
 //! account.revoke_permission("write:resource1");
-//!
-//! // Note: After modifying account permissions, you would typically
-//! // save the account back to your repository system using your chosen
-//! // repository implementation (see AccountRepository).
 //! ```
 //!
-//! ## 3. Using Permissions with Gates (recommended)
+//! ## 3. Using Permissions with Access Policies
 //!
 //! ```rust
-//! # use axum_gate::auth::{Account, Group, PermissionId, AccessPolicy};
-//! # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! # use axum_gate::prelude::{Gate, CookieTemplateBuilder};
-//! # use axum_gate::advanced::AccessHierarchy;
-//! # use std::sync::Arc;
-//! # use axum::{routing::get, Router};
-//! # #[derive(Debug, Default, Ord, PartialOrd, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-//! # enum MyRole { #[default] User, Admin }
-//! # impl std::fmt::Display for MyRole {
-//! #     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//! #         match self {
-//! #             MyRole::User => write!(f, "User"),
-//! #             MyRole::Admin => write!(f, "Admin"),
-//! #         }
-//! #     }
-//! # }
-//! # impl AccessHierarchy for MyRole {}
-//! # #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-//! # enum MyGroup { Staff, Premium }
-//! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<MyRole, MyGroup>>>::default());
-//! // Build a secure authentication cookie template (uses recommended defaults).
-//! # let cookie_template = CookieTemplateBuilder::recommended().build();
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::permissions::PermissionId;
+//! use axum_gate::prelude::{Gate, Role, Group};
+//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use axum_gate::accounts::Account;
+//! use std::sync::Arc;
+//! use axum::{routing::get, Router};
+//!
+//! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! let app = Router::<()>::new()
 //!     .route("/protected", get(protected_handler))
 //!     .layer(
 //!         Gate::cookie("issuer", jwt_codec)
-//!             .with_cookie_template(cookie_template)
-//!             .with_policy(AccessPolicy::<MyRole, MyGroup>::require_permission(PermissionId::from("read:resource1")))
+//!             .with_policy(AccessPolicy::<Role, Group>::require_permission(
+//!                 PermissionId::from("read:resource1")
+//!             ))
 //!     );
 //!
 //! async fn protected_handler() -> &'static str {
 //!     "Access granted!"
+//! }
+//! ```
+//!
+//! ## 4. Working with Permission Collections
+//!
+//! ```rust
+//! use axum_gate::permissions::Permissions;
+//!
+//! // Create permissions from an iterator
+//! let permissions: Permissions = ["read:api", "write:api", "admin:system"].into_iter().collect();
+//!
+//! // Check for multiple permissions
+//! if permissions.has_all(["read:api", "write:api"]) {
+//!     println!("Has both read and write access");
+//! }
+//!
+//! if permissions.has_any(["admin:system", "super:admin"]) {
+//!     println!("Has admin access");
 //! }
 //! ```
 
@@ -108,6 +106,7 @@ mod collision_checker;
 pub mod mapping;
 mod permission_collision;
 mod permission_id;
+pub mod validate_permissions;
 mod validation_report;
 
 /// A collection of permissions that provides a clean API for permission management.

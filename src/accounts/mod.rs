@@ -1,7 +1,31 @@
-//! Account-related application services and use cases.
+//! Account management and user data structures.
 //!
-//! This module contains application layer logic for account management,
-//! including use cases for account creation, modification, and deletion.
+//! This module provides the core [`Account`] type and services for managing user accounts,
+//! including creation, deletion, and repository abstractions for data persistence.
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use axum_gate::accounts::{Account, AccountInsertService};
+//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::permissions::Permissions;
+//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
+//! use std::sync::Arc;
+//!
+//! # tokio_test::block_on(async {
+//! // Create repositories
+//! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//!
+//! // Create a new account
+//! let account = AccountInsertService::insert("user@example.com", "password")
+//!     .with_roles(vec![Role::User, Role::Reporter])
+//!     .with_groups(vec![Group::new("engineering"), Group::new("backend-team")])
+//!     .with_permissions(Permissions::from_iter(["read:api", "write:docs"]))
+//!     .into_repositories(account_repo, secret_repo)
+//!     .await;
+//! # });
+//! ```
 
 mod account_delete;
 mod account_insert;
@@ -26,14 +50,15 @@ use uuid::Uuid;
 /// # Creating Accounts
 ///
 /// ```rust
-/// use axum_gate::auth::{Account, Role, Group, Permissions};
+/// use axum_gate::accounts::Account;
+/// use axum_gate::prelude::{Role, Group};
+/// use axum_gate::permissions::Permissions;
 ///
 /// // Create a basic account
 /// let account = Account::new("user123", &[Role::User], &[Group::new("staff")]);
 ///
 /// // Create account with permissions
 /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
-///
 /// let account = Account::<Role, Group>::new("admin@example.com", &[Role::Admin], &[])
 ///     .with_permissions(permissions);
 /// ```
@@ -41,7 +66,9 @@ use uuid::Uuid;
 /// # Working with Permissions
 ///
 /// ```rust
-/// # use axum_gate::auth::{Account, Role, Group, PermissionId};
+/// # use axum_gate::accounts::Account;
+/// # use axum_gate::prelude::{Role, Group};
+/// # use axum_gate::permissions::PermissionId;
 /// # let mut account = Account::<Role, Group>::new("user", &[], &[]);
 /// // Grant permissions
 /// account.grant_permission("read:api");
@@ -108,7 +135,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{Account, Role, Group};
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
     ///
     /// let account = Account::new(
     ///     "user@example.com",
@@ -162,11 +190,12 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{Account, Role, Group, Permissions};
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
+    /// use axum_gate::permissions::Permissions;
     ///
     /// // Create permissions
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
-    ///
     /// let account = Account::<Role, Group>::new("user@example.com", &[Role::User], &[])
     ///     .with_permissions(permissions);
     /// ```
@@ -181,7 +210,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{Account, Role, Group, PermissionId};
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
+    /// use axum_gate::permissions::PermissionId;
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("read:profile");
@@ -198,7 +229,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{Account, Role, Group, PermissionId};
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
+    /// use axum_gate::permissions::PermissionId;
     ///
     /// let mut account = Account::<Role, Group>::new("user", &[], &[]);
     /// account.grant_permission("write:profile");

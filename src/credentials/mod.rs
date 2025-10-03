@@ -1,3 +1,55 @@
+//! User credential types and verification abstractions.
+//!
+//! This module provides the [`Credentials`] type for handling user login data
+//! and the [`CredentialsVerifier`] trait for validating credentials against
+//! stored authentication secrets.
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use axum_gate::prelude::Credentials;
+//!
+//! // Create credentials from user input
+//! let credentials = Credentials::new(&"user@example.com".to_string(), "password123");
+//!
+//! // Use with JSON APIs
+//! use serde_json;
+//! let json = r#"{"id": "admin@company.com", "secret": "admin_pass"}"#;
+//! let creds: Credentials<String> = serde_json::from_str(json)?;
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
+//!
+//! # Security Considerations
+//!
+//! **⚠️ Important Security Notes:**
+//!
+//! - **Contains plaintext secrets** - Handle credentials with extreme care
+//! - **Never log credentials** - They contain sensitive password data
+//! - **Minimize lifetime** - Process and discard credentials quickly
+//! - **Use HTTPS/TLS** - Always encrypt credentials during transmission
+//! - **Timing attack protection** - Built-in when using axum-gate login services
+//!
+//! # Integration with Authentication
+//!
+//! Credentials integrate seamlessly with axum-gate's authentication system:
+//!
+//! ```rust
+//! use axum::{Json, extract::State, http::StatusCode};
+//! use axum_gate::prelude::Credentials;
+//! use axum_gate::route_handlers::login;
+//! use axum_extra::extract::CookieJar;
+//!
+//! async fn login_endpoint(
+//!     cookie_jar: CookieJar,
+//!     Json(credentials): Json<Credentials<String>>,
+//!     // State with repositories and JWT codec...
+//! ) -> Result<CookieJar, StatusCode> {
+//!     // Use the pre-built login handler
+//!     // login(cookie_jar, credentials, claims, secret_repo, account_repo, codec, template).await
+//!     # Ok(cookie_jar)
+//! }
+//! ```
+
 pub use self::credentials_verifier::CredentialsVerifier;
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +74,7 @@ mod credentials_verifier;
 /// - **Memory safety**: Minimize the lifetime of credential instances in memory
 /// - **Logging**: Never log or print credential values - they contain sensitive data
 /// - **Transport security**: Always use HTTPS/TLS when transmitting credentials
-/// - **Storage**: Never store credentials directly - convert to [`Secret`](crate::advanced::Secret) for persistence
+/// - **Storage**: Never store credentials directly - convert to hashed secrets for persistence
 ///
 /// # Authentication Flow Integration
 ///
@@ -47,7 +99,7 @@ mod credentials_verifier;
 ///
 /// # Timing Attack Protection
 ///
-/// When used with the built-in [`login`](crate::auth::login) handler or [`LoginService`](crate::advanced::LoginResult),
+/// When used with the built-in [`login`](crate::route_handlers::login) handler or [`LoginService`](crate::authn::LoginService),
 /// credentials are processed using constant-time operations to prevent timing-based
 /// user enumeration attacks:
 ///

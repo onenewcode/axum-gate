@@ -1,53 +1,85 @@
-//! Default role implementation with hierarchical access control.
+//! Pre-defined hierarchical role system for access control.
 //!
-//! This module provides a pre-defined role system using an ordering-based
-//! hierarchy.
+//! This module provides a built-in role system with four levels arranged in a hierarchy
+//! where higher roles inherit access from lower roles. The hierarchy is:
 //!
-//! The ordering is encoded directly by the enum variant order:
-//! Higher privilege > Lower privilege
+//! **Admin > Moderator > Reporter > User**
 //!
-//! Admin > Moderator > Reporter > User
+//! # Role Hierarchy
 //!
-//! # Using Default Roles
+//! When using `AccessPolicy::require_role_or_supervisor()`, higher roles automatically
+//! inherit access from lower roles:
 //!
 //! ```rust
-//! use axum_gate::auth::Role;
+//! use axum_gate::prelude::Role;
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::prelude::Group;
 //!
-//! // Ordering (higher privilege comes first):
-//! assert!(Role::Admin > Role::Moderator);
-//! assert!(Role::Moderator > Role::User);
+//! // Allow User role and all supervisor roles (Reporter, Moderator, Admin)
+//! let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User);
 //!
-//! // Use with access policies
-//! use axum_gate::auth::{AccessPolicy, Group, Account};
-//! use axum_gate::jwt::{JsonWebToken, JwtClaims};
-//! use axum_gate::prelude::Gate;
+//! // Allow only Moderator role and supervisor roles (Admin)
+//! let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);
+//!
+//! // Allow only Admin role (no supervisors above Admin)
+//! let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Admin);
+//! ```
+//!
+//! # Using Roles with Gates
+//!
+//! ```rust
+//! use axum_gate::prelude::*;
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! use axum_gate::accounts::Account;
 //! use std::sync::Arc;
 //!
-//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let gate = Gate::cookie("my-app", jwt_codec)
+//! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! // Exact role match (only Admin)
+//! let admin_gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
+//!     .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
+//!
+//! // Multiple specific roles
+//! let staff_gate = Gate::cookie("my-app", Arc::clone(&jwt_codec))
+//!     .with_policy(
+//!         AccessPolicy::<Role, Group>::require_role(Role::Admin)
+//!             .or_require_role(Role::Moderator)
+//!     );
+//!
+//! // Hierarchical access (User + all supervisors)
+//! let user_gate = Gate::cookie("my-app", jwt_codec)
 //!     .with_policy(AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User));
-//! // This allows User, Reporter, Moderator, and Admin roles (User is the baseline)
 //! ```
 //!
 //! # Creating Custom Roles
 //!
-//! Implement a custom ordered hierarchy by deriving `Ord` / `PartialOrd` and
-//! implementing `Default` for the least-privileged (baseline) variant:
+//! Create your own role hierarchy by implementing the required traits:
 //!
 //! ```rust
 //! use serde::{Deserialize, Serialize};
-//! use axum_gate::advanced::AccessHierarchy;
+//! use axum_gate::authz::AccessHierarchy;
 //!
 //! #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-//! enum CustomRole {
+//! enum CompanyRole {
 //!     #[default]
-//!     Employee,
+//!     Employee,      // Lowest privilege
+//!     TeamLead,
 //!     Manager,
-//!     Admin,
-//!     SuperAdmin,
+//!     Director,      // Highest privilege
 //! }
 //!
-//! impl AccessHierarchy for CustomRole {}
+//! impl std::fmt::Display for CompanyRole {
+//!     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//!         match self {
+//!             CompanyRole::Employee => write!(f, "Employee"),
+//!             CompanyRole::TeamLead => write!(f, "TeamLead"),
+//!             CompanyRole::Manager => write!(f, "Manager"),
+//!             CompanyRole::Director => write!(f, "Director"),
+//!         }
+//!     }
+//! }
+//!
+//! impl AccessHierarchy for CompanyRole {}
 //! ```
 
 use crate::authz::AccessHierarchy;

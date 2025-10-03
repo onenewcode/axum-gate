@@ -1,3 +1,52 @@
+//! Compile-time permission validation to prevent hash collisions.
+//!
+//! This module provides the [`validate_permissions!`](crate::validate_permissions) macro for compile-time validation
+//! of permission strings to ensure they don't have hash collisions. This is essential
+//! for the deterministic permission system to work correctly across distributed nodes.
+//!
+//! # Usage
+//!
+//! Call the macro once in your application with all permission strings you use:
+//!
+//! ```rust
+//! axum_gate::validate_permissions![
+//!     "read:user",
+//!     "write:user",
+//!     "delete:user",
+//!     "read:admin",
+//!     "write:admin",
+//!     "system:health",
+//! ];
+//! ```
+//!
+//! # How It Works
+//!
+//! The macro generates a test function that:
+//! 1. Converts each permission string to a `PermissionId`
+//! 2. Checks for hash collisions between any two permissions
+//! 3. Panics during `cargo test` if collisions are found
+//!
+//! # When to Use
+//!
+//! - **Required**: When using string-based permissions in production
+//! - **Recommended**: Run during CI/CD to catch collisions early
+//! - **Best Practice**: Include all permissions used across your application
+//!
+//! # Example Integration
+//!
+//! ```rust
+//! // In your main application or tests
+//! axum_gate::validate_permissions![
+//!     "api:read",
+//!     "api:write",
+//!     "api:delete",
+//!     "user:profile:read",
+//!     "user:profile:write",
+//!     "admin:users:manage",
+//!     "admin:system:config",
+//! ];
+//! ```
+
 /// Macro for test-time permission validation.
 ///
 /// This macro validates that the provided permission strings don't have hash collisions

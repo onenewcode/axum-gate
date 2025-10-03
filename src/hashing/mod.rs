@@ -1,3 +1,50 @@
+//! Password hashing and verification services.
+//!
+//! This module provides secure password hashing functionality using industry-standard
+//! algorithms. The primary implementation uses Argon2, which is recommended by security
+//! experts for password hashing due to its resistance to both brute-force and side-channel
+//! attacks.
+//!
+//! # Key Components
+//!
+//! - [`HashingService`] - Service for hashing and verifying passwords
+//! - [`HashedValue`] - Represents a hashed password with algorithm metadata
+//! - [`argon2`] - Argon2 algorithm implementation with secure defaults
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use axum_gate::hashing::{HashingService, argon2::Argon2HashingService};
+//!
+//! # tokio_test::block_on(async {
+//! let hashing_service = Argon2HashingService::default();
+//!
+//! // Hash a password
+//! let hashed = hashing_service.hash_secret("user_password").await?;
+//! println!("Hashed password: {}", hashed.value());
+//!
+//! // Verify a password
+//! let is_valid = hashing_service.verify_secret("user_password", &hashed).await?;
+//! assert!(is_valid);
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! # });
+//! ```
+//!
+//! # Security Features
+//!
+//! - **Argon2id algorithm** - Recommended by password hashing competition
+//! - **Configurable parameters** - Memory cost, time cost, and parallelism
+//! - **Built-in salt generation** - Each password gets a unique random salt
+//! - **Constant-time verification** - Prevents timing attacks
+//! - **Development vs production profiles** - Fast hashing in debug builds, secure in release
+//!
+//! # Performance Considerations
+//!
+//! The hashing service automatically adjusts parameters based on build configuration:
+//! - **Debug builds**: Fast parameters for development efficiency
+//! - **Release builds**: Secure parameters for production security
+//! - **Custom parameters**: Override via `Argon2HashingService::with_params()`
+
 pub mod argon2;
 mod hashing_service;
 

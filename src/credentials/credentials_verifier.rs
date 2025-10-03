@@ -7,7 +7,7 @@ use std::future::Future;
 /// Asynchronous credential verification abstraction.
 ///
 /// Implement this trait to plug in a secret/credential verification backend (e.g.
-/// database + password hash store). It is used by [`LoginService`](crate::advanced::LoginService)
+/// database + password hash store). It is used by [`LoginService`](crate::authn::LoginService)
 /// to perform *enumeration‑resistant*, constant‑time style authentication flows.
 ///
 /// # Responsibilities

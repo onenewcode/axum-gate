@@ -1,43 +1,74 @@
-//! Encoding/decoding abstraction for JWTs or alternative token / credential formats.
+//! JWT and token encoding/decoding infrastructure.
 //!
-//! The [`Codec`] trait defines a minimal interface for transforming a strongly-typed
-//! payload (`Self::Payload`) into an opaque byte vector and back again. It is used
-//! throughout the crate wherever pluggable token formats are desirable (e.g. JWT,
-//! custom signed blobs, encrypted envelopes, detached signatures).
+//! This module provides the [`Codec`] trait for pluggable token encoding/decoding and
+//! a complete JWT implementation via the [`jwt`] submodule. The codec system allows
+//! axum-gate to work with different token formats while maintaining type safety.
 //!
-//! # Design Goals
-//! - Small surface area: only `encode` and `decode`.
-//! - Payload associated type must implement `Serialize` + `DeserializeOwned` (serde-based).
-//! - Clone required to allow cheap cloning of lightweight codec configurations (keys, etc.).
+//! # JWT Implementation
 //!
-//! # Typical Implementation (JWT Example)
-//! The provided `JsonWebToken` implements this trait for `JwtClaims<T>` payloads. You can
-//! supply your own implementation to:
-//! - Use a different signing / encryption algorithm
-//! - Add envelope encryption before signing
-//! - Delegate to a remote signing service / HSM
+//! The primary implementation is [`jwt::JsonWebToken`], which provides secure JWT
+//! encoding/decoding with customizable keys and validation:
 //!
-//! # Error Semantics
-//! - `Ok(Vec<u8>)` / `Ok(Payload)` for normal success
-//! - `Err(Error::Infrastructure(..))` (or other error variants) for malformed tokens,
-//!   signature failures, expired tokens (depending on implementation), serialization issues,
-//!   or cryptographic backend errors
+//! ```rust
+//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, JsonWebTokenOptions};
+//! use axum_gate::accounts::Account;
+//! use axum_gate::prelude::{Role, Group};
+//! use std::sync::Arc;
 //!
-//! # Security Considerations
-//! - Implementations MUST validate integrity / authenticity in `decode` (e.g. verify
-//!   signatures / MACs) before returning a payload.
-//! - Avoid producing distinguishable error messages that leak sensitive validation details
-//!   if the higher layer aims for uniform failure responses.
-//! - Ensure keys / secrets are held in memory securely (consider zeroing where appropriate).
+//! // Use default (random key - development only)
+//! let jwt_codec = Arc::new(JsonWebToken::default());
 //!
-//! # Streaming vs In-Memory
-//! This trait intentionally uses an in-memory `Vec<u8>` to keep the interface simple.
-//! If you require streaming (very large claims / payloads), introduce a separate
-//! streaming codec trait rather than expanding this one.
+//! // Production: use persistent key
+//! let options = JsonWebTokenOptions {
+//!     enc_key: jsonwebtoken::EncodingKey::from_secret(b"your-secret-key"),
+//!     dec_key: jsonwebtoken::DecodingKey::from_secret(b"your-secret-key"),
+//!     header: None,
+//!     validation: None,
+//! };
+//! let jwt_codec = Arc::new(JsonWebToken::new_with_options(options));
+//! ```
 //!
-//! # Backward Compatibility
-//! Keep custom codecs liberal in what they accept (where safe) and strict in what they
-//! produce to ease migrations (e.g. version tagging in headers / envelopes).
+//! # Custom Codec Implementation
+//!
+//! Implement the [`Codec`] trait for custom token formats:
+//!
+//! ```rust
+//! use axum_gate::codecs::Codec;
+//! use axum_gate::errors::Result;
+//! use serde::{Serialize, Deserialize};
+//!
+//! #[derive(Clone)]
+//! struct CustomCodec {
+//!     secret: String,
+//! }
+//!
+//! #[derive(Serialize, Deserialize)]
+//! struct CustomPayload {
+//!     data: String,
+//! }
+//!
+//! impl Codec for CustomCodec {
+//!     type Payload = CustomPayload;
+//!
+//!     fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>> {
+//!         // Your encoding implementation
+//!         # Ok(vec![])
+//!     }
+//!
+//!     fn decode(&self, encoded: &[u8]) -> Result<Self::Payload> {
+//!         // Your decoding implementation
+//!         # Ok(CustomPayload { data: "".to_string() })
+//!     }
+//! }
+//! ```
+//!
+//! # Security Requirements
+//!
+//! Codec implementations must:
+//! - Validate integrity/authenticity in `decode` (verify signatures/MACs)
+//! - Use secure key management practices
+//! - Avoid leaking sensitive validation details in error messages
+//! - Handle token expiration and validation consistently
 use crate::errors::Result;
 use serde::{Serialize, de::DeserializeOwned};
 

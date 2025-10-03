@@ -1,32 +1,40 @@
-//! Pre-defined route handlers for authentication operations.
+//! Pre-built route handlers for authentication workflows.
 //!
-//! This module provides ready-to-use handlers for common authentication workflows
-//! like user login and logout. These handlers integrate seamlessly with your
-//! chosen storage implementations and JWT configuration.
+//! This module provides ready-to-use handlers for common authentication operations:
+//! [`login`] for user authentication and JWT cookie creation, and [`logout`] for
+//! session termination. These handlers integrate with your storage backends and
+//! JWT configuration to provide secure authentication endpoints.
 //!
-//! # Login Handler
-//!
-//! The `login` handler authenticates user credentials and sets a JWT cookie:
+//! # Quick Setup
 //!
 //! ```rust
-//! use axum::{routing::post, Router, Json};
-//! use axum_gate::auth::{login, Credentials, Account, Role, Group};
-//! use axum_gate::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
-//! use axum_gate::http::CookieJar;
-//! use axum_gate::storage::{MemorySecretRepository, MemoryAccountRepository};
+//! use axum::{routing::post, Router, Json, extract::State};
+//! use axum_gate::route_handlers::{login, logout};
+//! use axum_gate::prelude::Credentials;
+//! use axum_gate::codecs::jwt::{RegisteredClaims, JsonWebToken, JwtClaims};
+//! use axum_gate::accounts::Account;
+//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::repositories::memory::{MemorySecretRepository, MemoryAccountRepository};
+//! use axum_extra::extract::CookieJar;
 //! use std::sync::Arc;
 //!
-//! async fn login_endpoint(
+//! type AppJwtCodec = JsonWebToken<JwtClaims<Account<Role, Group>>>;
+//!
+//! #[derive(Clone)]
+//! struct AppState {
+//!     account_repo: Arc<MemoryAccountRepository<Role, Group>>,
+//!     secret_repo: Arc<MemorySecretRepository>,
+//!     jwt_codec: Arc<AppJwtCodec>,
+//! }
+//!
+//! async fn login_handler(
+//!     State(state): State<AppState>,
 //!     cookie_jar: CookieJar,
 //!     Json(credentials): Json<Credentials<String>>,
-//!     // Your repositories and codec would be provided via extensions or state
 //! ) -> Result<CookieJar, axum::http::StatusCode> {
-//!     let registered_claims = RegisteredClaims::new("my-app",
+//!     let claims = RegisteredClaims::new("my-app",
 //!         chrono::Utc::now().timestamp() as u64 + 3600); // 1 hour expiry
 //!
-//!     let secret_verifier = Arc::new(MemorySecretRepository::default());
-//!     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//!     let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!     let cookie_template = cookie::CookieBuilder::new("auth-token", "")
 //!         .secure(true)
 //!         .http_only(true);
@@ -34,33 +42,32 @@
 //!     login(
 //!         cookie_jar,
 //!         credentials,
-//!         registered_claims,
-//!         secret_verifier,
-//!         account_repo,
-//!         jwt_codec,
+//!         claims,
+//!         state.secret_repo,
+//!         state.account_repo,
+//!         state.jwt_codec,
 //!         cookie_template,
 //!     ).await
 //! }
-//! ```
 //!
-//! # Logout Handler
-//!
-//! The `logout` handler removes the authentication cookie:
-//!
-//! ```rust
-//! use axum_gate::auth::logout;
-//! use axum_gate::http::CookieJar;
-//!
-//! async fn logout_endpoint(cookie_jar: CookieJar) -> CookieJar {
+//! async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 //!     let cookie_template = cookie::CookieBuilder::new("auth-token", "");
 //!     logout(cookie_jar, cookie_template).await
 //! }
+//!
+//! let app = Router::new()
+//!     .route("/login", post(login_handler))
+//!     .route("/logout", post(logout_handler))
+//!     .with_state(app_state);
 //! ```
 //!
-//! # Permission Management
+//! # Security Features
 //!
-//! User permissions are managed through the `Permissions` struct and associated methods.
-//! See the `auth` module for details on permission management.
+//! The login handler includes built-in timing attack protection:
+//! - Constant-time credential verification using the `subtle` crate
+//! - Always performs password hashing, even for non-existent users
+//! - Unified error responses prevent user enumeration attacks
+//! - Applied consistently across all storage backend implementations
 use crate::accounts::{Account, AccountRepository};
 use crate::authn::{LoginResult, LoginService, LogoutService};
 use crate::authz::AccessHierarchy;
