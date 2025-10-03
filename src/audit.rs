@@ -366,6 +366,28 @@ pub mod prometheus_metrics {
         Failure,
     }
 
+    /// Outcomes of JWT validation for latency labeling.
+    #[derive(Copy, Clone, Debug)]
+    pub enum JwtValidationOutcome {
+        #[doc = "JWT was successfully validated."]
+        Valid,
+        #[doc = "JWT failed issuer validation (issuer mismatch)."]
+        InvalidIssuer,
+        #[doc = "JWT was invalid for other reasons (decode failure, signature, format, etc.)."]
+        InvalidToken,
+    }
+
+    impl JwtValidationOutcome {
+        #[doc = "Returns the stable label value used in `axum_gate_jwt_validation_seconds`."]
+        pub fn as_label(&self) -> &'static str {
+            match self {
+                JwtValidationOutcome::Valid => "valid",
+                JwtValidationOutcome::InvalidIssuer => "invalid_issuer",
+                JwtValidationOutcome::InvalidToken => "invalid_token",
+            }
+        }
+    }
+
     /// Collection of Prometheus metrics for axum-gate operations.
     pub struct Metrics {
         /// Counter for successful authorization decisions.
@@ -380,6 +402,8 @@ pub mod prometheus_metrics {
         pub account_insert_outcome: CounterVec,
         /// Histogram for authorization decision latency, labeled by outcome.
         pub authz_decision_latency: HistogramVec,
+        /// Histogram for JWT validation latency, labeled by outcome.
+        pub jwt_validation_latency: HistogramVec,
     }
 
     static METRICS: OnceLock<Metrics> = OnceLock::new();
@@ -457,6 +481,17 @@ pub mod prometheus_metrics {
             &["outcome"],
         )?;
 
+        let jwt_validation_latency = HistogramVec::new(
+            HistogramOpts::new(
+                "axum_gate_jwt_validation_seconds",
+                "JWT validation latency in seconds",
+            )
+            .buckets(vec![
+                0.0005, 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5,
+            ]),
+            &["outcome"],
+        )?;
+
         // Register metrics with the provided registry
         registry.register(Box::new(authz_authorized.clone()))?;
         registry.register(Box::new(authz_denied.clone()))?;
@@ -464,6 +499,7 @@ pub mod prometheus_metrics {
         registry.register(Box::new(account_delete_outcome.clone()))?;
         registry.register(Box::new(account_insert_outcome.clone()))?;
         registry.register(Box::new(authz_decision_latency.clone()))?;
+        registry.register(Box::new(jwt_validation_latency.clone()))?;
 
         // Store metrics in static for global access
         let metrics = Metrics {
@@ -473,9 +509,26 @@ pub mod prometheus_metrics {
             account_delete_outcome,
             account_insert_outcome,
             authz_decision_latency,
+            jwt_validation_latency,
         };
 
         let _ = METRICS.set(metrics);
         Ok(())
+    }
+
+    /// Observe JWT validation latency with an outcome label.
+    ///
+    /// Capture `let start = Instant::now();` immediately before decoding/validating
+    /// and call this after the validation result is known.
+    pub fn observe_jwt_validation_latency(
+        start: std::time::Instant,
+        outcome: JwtValidationOutcome,
+    ) {
+        if let Some(m) = metrics() {
+            let elapsed = start.elapsed().as_secs_f64();
+            m.jwt_validation_latency
+                .with_label_values(&[outcome.as_label()])
+                .observe(elapsed);
+        }
     }
 }

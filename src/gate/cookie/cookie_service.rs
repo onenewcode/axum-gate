@@ -8,9 +8,13 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+#[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+use std::time::Instant;
 
 #[cfg(feature = "audit-logging")]
 use crate::audit;
+#[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+use crate::audit::prometheus_metrics::{JwtValidationOutcome, observe_jwt_validation_latency};
 #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
 use crate::audit::{AuthzOutcome, observe_authz_latency};
 use axum::{body::Body, extract::Request, http::Response};
@@ -190,9 +194,20 @@ where
         trace!("axum-gate cookie: {auth_cookie:#?}");
 
         let cookie_value = auth_cookie.value_trimmed();
+        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+        let jwt_validation_start = Instant::now();
         let jwt = match self.jwt_validation_service.validate_token(cookie_value) {
-            JwtValidationResult::Valid(jwt) => jwt,
+            JwtValidationResult::Valid(jwt) => {
+                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+                observe_jwt_validation_latency(jwt_validation_start, JwtValidationOutcome::Valid);
+                jwt
+            }
             JwtValidationResult::InvalidToken => {
+                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+                observe_jwt_validation_latency(
+                    jwt_validation_start,
+                    JwtValidationOutcome::InvalidToken,
+                );
                 debug!("JWT token validation failed");
                 #[cfg(feature = "audit-logging")]
                 {
@@ -201,6 +216,11 @@ where
                 return unauthorized_future;
             }
             JwtValidationResult::InvalidIssuer { expected, actual } => {
+                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+                observe_jwt_validation_latency(
+                    jwt_validation_start,
+                    JwtValidationOutcome::InvalidIssuer,
+                );
                 warn!(
                     "JWT issuer validation failed. Expected: '{}', Actual: '{}', Account: {}",
                     expected, actual, "unknown"

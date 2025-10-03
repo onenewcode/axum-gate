@@ -384,15 +384,35 @@ where
             return unauthorized_future;
         };
 
+        #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+        let jwt_validation_start = std::time::Instant::now();
+
         let jwt = match self.validator.validate_token(token) {
-            JwtValidationResult::Valid(jwt) => jwt,
+            JwtValidationResult::Valid(jwt) => {
+                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
+                    jwt_validation_start,
+                    crate::audit::prometheus_metrics::JwtValidationOutcome::Valid,
+                );
+                jwt
+            }
             JwtValidationResult::InvalidToken => {
+                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
+                    jwt_validation_start,
+                    crate::audit::prometheus_metrics::JwtValidationOutcome::InvalidToken,
+                );
                 debug!("JWT token validation failed");
                 #[cfg(feature = "audit-logging")]
                 audit::jwt_invalid_token("validation_failed");
                 return unauthorized_future;
             }
             JwtValidationResult::InvalidIssuer { expected, actual } => {
+                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
+                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
+                    jwt_validation_start,
+                    crate::audit::prometheus_metrics::JwtValidationOutcome::InvalidIssuer,
+                );
                 warn!("JWT issuer mismatch. Expected='{expected}', Actual='{actual}'");
                 #[cfg(feature = "audit-logging")]
                 audit::jwt_invalid_issuer(&expected, &actual);
