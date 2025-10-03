@@ -390,10 +390,17 @@ where
         let jwt = match self.validator.validate_token(token) {
             JwtValidationResult::Valid(jwt) => {
                 #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-                crate::audit::prometheus_metrics::observe_jwt_validation_latency(
-                    jwt_validation_start,
-                    crate::audit::prometheus_metrics::JwtValidationOutcome::Valid,
-                );
+                {
+                    crate::audit::prometheus_metrics::observe_jwt_validation_latency(
+                        jwt_validation_start,
+                        crate::audit::prometheus_metrics::JwtValidationOutcome::Valid,
+                    );
+                    // Observe remaining TTL (0 if expired already)
+                    let now = chrono::Utc::now().timestamp() as u64;
+                    let exp = jwt.registered_claims.expiration_time;
+                    let ttl = if exp > now { (exp - now) as f64 } else { 0.0 };
+                    crate::audit::prometheus_metrics::observe_jwt_remaining_ttl(ttl);
+                }
                 jwt
             }
             JwtValidationResult::InvalidToken => {
