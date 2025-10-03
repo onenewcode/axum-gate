@@ -42,6 +42,9 @@ where
 
     /// Creates a policy that allows access for users with the specified role.
     ///
+    /// Use this when you need exact role matching without hierarchy. For scenarios
+    /// where supervisor roles should also have access, use `require_role_or_supervisor()`.
+    ///
     /// # Example
     /// ```rust
     /// use axum_gate::authz::AccessPolicy;
@@ -58,6 +61,10 @@ where
     }
 
     /// Creates a policy that allows access for users with the specified role or any supervisor role.
+    ///
+    /// Use this when you want hierarchical access control where higher-level roles
+    /// automatically inherit permissions from lower-level roles. This is ideal for
+    /// organizational structures where managers should have access to employee resources.
     ///
     /// This leverages the role hierarchy defined by the `AccessHierarchy` trait.
     ///
@@ -78,6 +85,10 @@ where
     }
 
     /// Creates a policy that allows access for users in the specified group.
+    ///
+    /// Use this for team-based or department-based access control. Groups are ideal
+    /// for cross-cutting concerns that don't fit hierarchical role structures,
+    /// such as project teams, geographical regions, or temporary access grants.
     ///
     /// # Example
     /// ```rust

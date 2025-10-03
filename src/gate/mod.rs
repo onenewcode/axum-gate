@@ -92,14 +92,19 @@ pub mod cookie;
 
 /// Main entry point for creating authentication gates.
 ///
-/// Gates protect your axum routes from unauthorized access using JWT cookies.
+/// Gates protect your axum routes from unauthorized access using JWT tokens.
 /// All requests are denied by default unless explicitly granted access through
-/// an access policy.
+/// an access policy. Choose between cookie-based gates for web applications
+/// and bearer token gates for APIs and SPAs.
 #[derive(Clone)]
 pub struct Gate;
 
 impl Gate {
     /// Creates a new cookie-based gate that denies all access by default.
+    ///
+    /// Use this for web applications where you want automatic token handling
+    /// through HTTP-only cookies. Cookie gates provide CSRF protection and
+    /// work seamlessly with browser-based authentication flows.
     ///
     /// Attach an access policy using `with_policy()` to grant access. This secure-by-default
     /// approach ensures no routes are exposed until you explicitly configure a policy.
@@ -131,6 +136,11 @@ impl Gate {
     }
 
     /// Creates a new bearer-header based gate that denies all access by default.
+    ///
+    /// Use this for APIs, SPAs, and mobile applications where you need explicit
+    /// token management. Bearer token gates require clients to include tokens
+    /// in the `Authorization: Bearer <token>` header, providing fine-grained
+    /// control over token lifecycle and excellent support for API integrations.
     ///
     /// This variant protects routes by expecting an `Authorization: Bearer <token>`
     /// header. Missing or invalid bearer tokens result in `401 Unauthorized`.

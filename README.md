@@ -161,6 +161,43 @@ async fn dashboard_handler(AuthenticatedAccount(account): AuthenticatedAccount<A
 
 See the `/examples` directory for fully working code (distributed deployment, rate limiting integration, SeaORM models, SurrealDB schema, custom permission validation).
 
+## Common Patterns
+
+### Web Application (Cookie-based)
+```rust
+// Secure cookie authentication for web apps
+let gate = Gate::cookie("my-app", jwt_codec)
+    .with_policy(AccessPolicy::require_role(Role::Admin))
+    .configure_cookie_template(|tpl| 
+        tpl.name("auth-token")
+           .http_only(true)
+           .secure(true)
+           .same_site(cookie::SameSite::Strict)
+    );
+```
+
+### API/SPA (Bearer Token)
+```rust
+// Header-based authentication for APIs
+let gate = Gate::bearer("my-api", jwt_codec)
+    .with_policy(AccessPolicy::require_permission(PermissionId::from("read:api")));
+```
+
+### Hierarchical Access
+```rust
+// Managers automatically get employee permissions
+let gate = Gate::cookie("company-portal", jwt_codec)
+    .with_policy(AccessPolicy::require_role_or_supervisor(Role::Employee));
+```
+
+### Optional Authentication
+```rust
+// Public routes with optional user context
+let gate = Gate::cookie("public-site", jwt_codec)
+    .allow_anonymous_with_optional_user();
+// Handler receives Extension<Option<Account<Role, Group>>>
+```
+
 ## Architecture
 
 The library is structured along clean architecture principles:
@@ -262,29 +299,9 @@ Contributions are welcome—tests & documentation are especially helpful. Standa
 
 See `SECURITY.md` for coordinated security disclosure guidelines.
 
-## Planned Features
+## Roadmap
 
-The following features are planned for future releases to enhance axum-gate's production readiness:
-
-### Production Observability (v1.1.0)
-- **Structured logging integration**: Comprehensive tracing spans with contextual metadata for all authentication operations
-- **Prometheus metrics**: Built-in counters, histograms, and gauges for login attempts, JWT operations, authorization checks, and system health
-- **Audit trail system**: Pluggable audit recorders for security compliance (file, database, structured logging)
-- **Performance monitoring**: Request duration tracking, storage operation metrics, and system health indicators
-- **Security metrics**: Brute force detection, rate limiting triggers, suspicious activity monitoring
-- **Multiple backend support**: In-memory (development), Prometheus (production), OpenTelemetry (enterprise)
-
-Feature flags: `metrics-prometheus`, `observability-full`
-
-### Authentication Enhancements
-- **Key rotation utilities**: Seamless JWT signing key rotation without global session invalidation
-- **Bearer token Gate**: Header-based authentication for SPA and API clients
-
-### Security & Compliance
-- **Audit hooks**: Unified security event streaming for SIEM integration
-- **IP-based restrictions**: Geographic and network-based access controls
-
-All features will be backward-compatible and opt-in via feature flags. See [SECURITY.md](SECURITY.md) for additional security-focused planned features.
+See [ROADMAP.md](ROADMAP.md) for planned features, upcoming releases, and long-term vision including production observability, authentication enhancements, and security compliance features.
 
 ## Community & Support
 
@@ -314,7 +331,7 @@ Thanks to all current & future contributors!
 
 Built with ❤️ by the Rust community
 
-[Documentation](https://docs.rs/axum-gate) • [Examples](https://github.com/emirror-de/axum-gate/tree/main/examples) • [Changelog](CHANGELOG.md)
+[Documentation](https://docs.rs/axum-gate) • [Examples](https://github.com/emirror-de/axum-gate/tree/main/examples) • [Changelog](CHANGELOG.md) • [Roadmap](ROADMAP.md)
 
 </div>
 

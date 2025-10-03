@@ -111,12 +111,11 @@ mod permission_id;
 pub mod validate_permissions;
 mod validation_report;
 
-/// A collection of permissions that provides a clean API for permission management.
+/// A collection of permissions with efficient storage and fast operations.
 ///
-/// This struct abstracts away the underlying RoaringTreemap implementation,
-/// providing a more intuitive and flexible interface for working with permissions.
-/// It maintains all the performance benefits of RoaringTreemap while offering
-/// better developer experience and future flexibility.
+/// Uses compressed bitmap storage internally for optimal memory usage and O(1)
+/// permission checks. Designed for high-performance authorization systems that
+/// need to handle thousands of permissions per user efficiently.
 ///
 /// # Examples
 ///
@@ -406,7 +405,9 @@ impl Permissions {
 
     /// Builder method for granting a permission (immutable version).
     ///
-    /// This is useful for building permissions in a functional style.
+    /// Use this when building permissions in a functional style or when you need
+    /// to create permissions without mutable access. Prefer `grant()` for
+    /// performance-critical code where you're modifying existing permission sets.
     ///
     /// # Examples
     ///
@@ -429,10 +430,11 @@ impl Permissions {
         self
     }
 
-    /// Finalizes the builder pattern (for aesthetic purposes).
+    /// Finalizes the builder pattern.
     ///
-    /// This method does nothing but return self, but provides a nice
-    /// conclusion to the builder pattern.
+    /// This method returns self unchanged, providing a clean conclusion to
+    /// the builder pattern. Use this when you want to clearly signal the
+    /// end of permission configuration.
     ///
     /// # Examples
     ///
@@ -448,10 +450,10 @@ impl Permissions {
         self
     }
 
-    /// Returns an iterator over the raw permission IDs.
+    /// Returns an iterator over the permission IDs in this collection.
     ///
-    /// This is primarily for advanced use cases where you need to work
-    /// with the underlying bitmap data.
+    /// Use this when you need to examine all granted permissions or integrate
+    /// with external systems that work with permission IDs directly.
     ///
     /// # Examples
     ///
@@ -466,13 +468,8 @@ impl Permissions {
         self.bitmap.iter()
     }
 
-    /// Internal method to access the underlying bitmap for testing.
-    ///
-    /// This method is intended for internal use only and should not be used
-    /// in production code. It provides direct access to the underlying
-    /// RoaringTreemap for testing purposes.
-    #[doc(hidden)]
-    pub fn bitmap_mut(&mut self) -> &mut roaring::RoaringTreemap {
+    /// Internal method for testing access.
+    pub(crate) fn bitmap_mut(&mut self) -> &mut roaring::RoaringTreemap {
         &mut self.bitmap
     }
 }
