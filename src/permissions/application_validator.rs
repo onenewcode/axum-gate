@@ -1,5 +1,6 @@
 use super::{PermissionCollisionChecker, ValidationReport};
-use crate::errors::{DomainError, Error, Result};
+use crate::errors::domain::DomainError;
+use crate::errors::{Error, Result};
 use tracing::info;
 
 /// High-level builder pattern validator for application startup validation.

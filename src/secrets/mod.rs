@@ -1,7 +1,7 @@
 //! Secrets hashing and verification models.
-use crate::errors::{Error, PortError, Result};
+use crate::errors::ports::{HashingOperation, PortError};
+use crate::errors::{Error, Result};
 use crate::hashing::{HashedValue, HashingService};
-use crate::ports::errors::HashingOperation;
 use crate::verification_result::VerificationResult;
 pub use secret_repository::SecretRepository;
 

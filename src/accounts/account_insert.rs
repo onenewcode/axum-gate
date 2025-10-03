@@ -1,8 +1,8 @@
 use super::{Account, AccountRepository};
-use crate::application::errors::AccountOperation;
 #[cfg(feature = "audit-logging")]
 use crate::audit;
 use crate::authz::AccessHierarchy;
+use crate::errors::application::AccountOperation;
 use crate::errors::{ApplicationError, Error, Result};
 use crate::hashing::argon2::Argon2Hasher;
 use crate::permissions::Permissions;

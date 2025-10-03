@@ -1,6 +1,6 @@
 use super::{Account, AccountRepository};
-use crate::application::errors::AccountOperation;
 use crate::authz::AccessHierarchy;
+use crate::errors::application::AccountOperation;
 use crate::errors::{ApplicationError, Error};
 use crate::secrets::SecretRepository;
 

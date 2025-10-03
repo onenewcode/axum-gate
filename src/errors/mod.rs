@@ -52,10 +52,15 @@ use std::fmt;
 use thiserror::Error;
 
 // Re-export only the primary error enums and auth-specific leaf errors needed by users.
-pub use crate::application::errors::{ApplicationError, AuthenticationError};
-pub use crate::domain::errors::DomainError;
-pub use crate::infrastructure::errors::InfrastructureError;
-pub use crate::ports::errors::PortError;
+pub use self::application::{ApplicationError, AuthenticationError};
+pub use crate::errors::domain::DomainError;
+pub use crate::errors::infrastructure::InfrastructureError;
+pub use crate::errors::ports::PortError;
+
+pub(crate) mod application;
+pub(crate) mod domain;
+pub(crate) mod infrastructure;
+pub(crate) mod ports;
 
 /// Trait providing user-friendly error messaging at multiple levels.
 ///
@@ -231,7 +236,7 @@ impl UserFriendlyError for Error {
 impl From<surrealdb::Error> for Error {
     fn from(err: surrealdb::Error) -> Self {
         Error::Infrastructure(InfrastructureError::Database {
-            operation: crate::infrastructure::errors::DatabaseOperation::Query,
+            operation: crate::errors::infrastructure::DatabaseOperation::Query,
             message: format!("SurrealDB error: {}", err),
             table: None,
             record_id: None,
@@ -243,9 +248,9 @@ impl From<surrealdb::Error> for Error {
 mod tests {
     use super::*;
     // Import operation enums from their defining modules now that they are no longer re-exported.
-    use crate::application::errors::AccountOperation;
-    use crate::infrastructure::errors::{DatabaseOperation, JwtOperation};
-    use crate::ports::errors::{CodecOperation, HashingOperation, RepositoryType};
+    use self::application::AccountOperation;
+    use crate::errors::infrastructure::{DatabaseOperation, JwtOperation};
+    use crate::errors::ports::{CodecOperation, HashingOperation, RepositoryType};
 
     #[test]
     fn domain_error_permission_collision() {

@@ -339,11 +339,7 @@ pub mod static_token_authorized;
 pub mod validate_permissions;
 pub mod verification_result;
 
-pub(crate) mod application;
-pub(crate) mod domain;
 pub mod errors;
-pub(crate) mod infrastructure;
-pub(crate) mod ports;
 
 /// Common types and functions for quick imports.
 pub mod prelude {

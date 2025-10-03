@@ -128,7 +128,7 @@ mod tests {
             if self.should_fail_decode {
                 return Err(crate::errors::Error::Infrastructure(
                     crate::errors::InfrastructureError::Jwt {
-                        operation: crate::infrastructure::errors::JwtOperation::Decode,
+                        operation: crate::errors::infrastructure::JwtOperation::Decode,
                         message: "Mock decode failure".to_string(),
                         token_preview: None,
                     },

@@ -1,8 +1,8 @@
 //! JWT infrastructure components.
 //!
 use super::Codec;
+use crate::errors::infrastructure::JwtOperation;
 use crate::errors::{Error, InfrastructureError, Result};
-use crate::infrastructure::errors::JwtOperation;
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 pub use validation_result::JwtValidationResult;
 pub use validation_service::JwtValidationService;

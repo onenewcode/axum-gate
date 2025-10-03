@@ -13,10 +13,10 @@ use crate::authz::AccessHierarchy;
 use crate::comma_separated_value::CommaSeparatedValue;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use crate::errors::{Error, InfrastructureError, Result};
+use crate::errors::infrastructure::{DatabaseOperation, InfrastructureError};
+use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
 use crate::hashing::argon2::Argon2Hasher;
-use crate::infrastructure::errors::DatabaseOperation;
 use crate::permissions::PermissionId;
 use crate::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
 use crate::repositories::TableName;
@@ -351,9 +351,6 @@ impl PermissionMappingRepository for SeaOrmRepository {
         &self,
         mapping: PermissionMapping,
     ) -> crate::errors::Result<Option<PermissionMapping>> {
-        use crate::errors::{Error, InfrastructureError};
-        use crate::infrastructure::errors::DatabaseOperation;
-
         // Validate mapping consistency first
         if let Err(e) = mapping.validate() {
             return Err(Error::Infrastructure(InfrastructureError::Database {
@@ -398,9 +395,6 @@ impl PermissionMappingRepository for SeaOrmRepository {
         &self,
         id: PermissionId,
     ) -> crate::errors::Result<Option<PermissionMapping>> {
-        use crate::errors::{Error, InfrastructureError};
-        use crate::infrastructure::errors::DatabaseOperation;
-
         let id_str = id.as_u64().to_string();
 
         // Fetch existing to return it
@@ -448,9 +442,6 @@ impl PermissionMappingRepository for SeaOrmRepository {
         &self,
         permission: &str,
     ) -> crate::errors::Result<Option<PermissionMapping>> {
-        use crate::errors::{Error, InfrastructureError};
-        use crate::infrastructure::errors::DatabaseOperation;
-
         let normalized = PermissionMapping::from(permission)
             .normalized_string()
             .to_string();
@@ -500,9 +491,6 @@ impl PermissionMappingRepository for SeaOrmRepository {
         &self,
         id: PermissionId,
     ) -> crate::errors::Result<Option<PermissionMapping>> {
-        use crate::errors::{Error, InfrastructureError};
-        use crate::infrastructure::errors::DatabaseOperation;
-
         let id_str = id.as_u64().to_string();
         let model_opt = seaorm_permission_mapping::Entity::find()
             .filter(seaorm_permission_mapping::Column::PermissionId.eq(id_str.clone()))
@@ -535,9 +523,6 @@ impl PermissionMappingRepository for SeaOrmRepository {
         &self,
         permission: &str,
     ) -> crate::errors::Result<Option<PermissionMapping>> {
-        use crate::errors::{Error, InfrastructureError};
-        use crate::infrastructure::errors::DatabaseOperation;
-
         let normalized = PermissionMapping::from(permission)
             .normalized_string()
             .to_string();
@@ -570,9 +555,6 @@ impl PermissionMappingRepository for SeaOrmRepository {
     }
 
     async fn list_all_mappings(&self) -> crate::errors::Result<Vec<PermissionMapping>> {
-        use crate::errors::{Error, InfrastructureError};
-        use crate::infrastructure::errors::DatabaseOperation;
-
         let models = seaorm_permission_mapping::Entity::find()
             .all(&self.db)
             .await
