@@ -33,9 +33,11 @@ use std::future::Future;
 ///
 /// # Example (generic usage)
 /// ```rust
-/// use axum_gate::auth::{Account, Role, Group};
-/// use axum_gate::advanced::AccountRepository;
-/// use axum_gate::storage::MemoryAccountRepository;
+
+/// use axum_gate::accounts::Account;
+/// use axum_gate::prelude::{Role, Group};
+/// use axum_gate::accounts::AccountRepository;
+/// use axum_gate::repositories::memory::MemoryAccountRepository;
 ///
 /// # #[tokio::test]
 /// async fn load_or_create(

@@ -13,19 +13,30 @@
 //! ```rust
 //! use axum_gate::comma_separated_value::CommaSeparatedValue;
 //!
-//! impl CommaSeparatedValue for Vec<String> {
+//! // Define a local wrapper type (avoids orphan rule violations)
+//! #[derive(Debug, Clone)]
+//! struct StringList(Vec<String>);
+//!
+//! impl CommaSeparatedValue for StringList {
 //!     fn into_csv(self) -> String {
-//!         self.join(",")
+//!         self.0.join(",")
 //!     }
 //!
 //!     fn from_csv(value: &str) -> Result<Self, String> {
-//!         if value.is_empty() {
-//!             Ok(Vec::new())
+//!         if value.trim().is_empty() {
+//!             Ok(Self(Vec::new()))
 //!         } else {
-//!             Ok(value.split(',').map(|s| s.to_string()).collect())
+//!             Ok(Self(value.split(',').map(|s| s.trim().to_string()).collect()))
 //!         }
 //!     }
 //! }
+//!
+//! // Example usage
+//! let list = StringList(vec!["alpha".into(), "beta".into()]);
+//! let csv = list.into_csv();
+//! assert_eq!(csv, "alpha,beta");
+//! let parsed = StringList::from_csv("alpha,beta").unwrap();
+//! assert_eq!(parsed.0.len(), 2);
 //! ```
 //!
 //! # Note

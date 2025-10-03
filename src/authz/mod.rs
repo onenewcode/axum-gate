@@ -26,8 +26,8 @@
 //! let account = Account::new("user@example.com", &[Role::User], &[Group::new("engineering")]);
 //!
 //! // Check authorization
-//! let auth_service = AuthorizationService::new();
-//! let result = auth_service.is_authorized(&account, &admin_policy);
+//! let auth_service = AuthorizationService::new(admin_policy.clone());
+//! let result = auth_service.is_authorized(&account);
 //! ```
 //!
 //! # Policy Combinations

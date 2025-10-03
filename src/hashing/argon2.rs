@@ -10,7 +10,8 @@
 //!
 //! # Example
 //! ```rust
-//! use axum_gate::advanced::{Argon2Hasher, HashingService};
+//! use axum_gate::hashing::argon2::Argon2Hasher;
+//! use axum_gate::hashing::HashingService;
 //!
 //! // Default (build‑mode appropriate) hasher
 //! let hasher = Argon2Hasher::default();

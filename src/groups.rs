@@ -106,7 +106,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Example Usage
 /// ```rust
-/// use axum_gate::auth::Group;
+/// use axum_gate::prelude::Group;
 ///
 /// let engineering = Group::new("engineering");
 /// let backend_team = Group::new("backend-team");
@@ -126,7 +126,7 @@ impl Group {
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::Group;
+    /// use axum_gate::prelude::Group;
     ///
     /// let engineering = Group::new("engineering");
     /// let marketing = Group::new("marketing");
@@ -140,7 +140,7 @@ impl Group {
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::Group;
+    /// use axum_gate::prelude::Group;
     ///
     /// let group = Group::new("engineering");
     /// assert_eq!(group.name(), "engineering");

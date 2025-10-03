@@ -170,9 +170,9 @@ impl JsonWebTokenOptions {
 /// ## Providing a Persistent Symmetric Key
 /// ```rust
 /// use std::sync::Arc;
-/// use axum_gate::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-/// use axum_gate::jwt::JsonWebTokenOptions;
-/// use axum_gate::auth::{Account, Role, Group};
+/// use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims, JsonWebTokenOptions};
+/// use axum_gate::accounts::Account;
+/// use axum_gate::prelude::{Role, Group};
 /// use jsonwebtoken::{EncodingKey, DecodingKey};
 ///
 /// // For the example we define a stable secret. In real code, load from env or secret manager.

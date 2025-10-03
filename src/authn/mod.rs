@@ -25,7 +25,7 @@
 //!
 //! # tokio_test::block_on(async {
 //! let login_service = LoginService::<Role, Group>::new();
-//! let credentials = Credentials::new("user@example.com", "password");
+//! let credentials = Credentials::new(&"user@example.com".to_string(), "password");
 //! let claims = RegisteredClaims::new("my-app",
 //!     chrono::Utc::now().timestamp() as u64 + 3600);
 //!

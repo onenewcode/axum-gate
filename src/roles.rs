@@ -102,9 +102,11 @@ use serde::{Deserialize, Serialize};
 /// - `Reporter` - Read access with reporting capabilities
 /// - `User` - Basic user access
 ///
+/** Updated example imports to reflect current public modules */
 /// # Example Usage
 /// ```rust
-/// use axum_gate::auth::{Role, AccessPolicy, Group};
+/// use axum_gate::prelude::{Role, Group};
+/// use axum_gate::authz::AccessPolicy;
 ///
 /// // Grant access to Moderators and all supervisor roles (Admin)
 /// let policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::Moderator);

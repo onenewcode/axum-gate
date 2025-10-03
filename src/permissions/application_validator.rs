@@ -36,7 +36,7 @@ use tracing::info;
 /// ## Application startup validation
 ///
 /// ```
-/// use axum_gate::advanced::ApplicationValidator;
+/// use axum_gate::permissions::ApplicationValidator;
 ///
 /// # fn load_config_permissions() -> Vec<String> { vec!["user:read".to_string()] }
 /// # async fn load_db_permissions() -> Result<Vec<String>, Box<dyn std::error::Error>> { Ok(vec!["admin:write".to_string()]) }
@@ -63,7 +63,7 @@ use tracing::info;
 /// ## Simple validation workflow
 ///
 /// ```
-/// use axum_gate::advanced::ApplicationValidator;
+/// use axum_gate::permissions::ApplicationValidator;
 ///
 /// // For simple cases where you just need pass/fail validation
 /// let report = ApplicationValidator::new()
@@ -80,7 +80,7 @@ use tracing::info;
 /// ## Comparison with PermissionCollisionChecker
 ///
 /// ```
-/// use axum_gate::advanced::{ApplicationValidator, PermissionCollisionChecker};
+/// use axum_gate::permissions::{ApplicationValidator, PermissionCollisionChecker};
 ///
 /// let permissions = vec!["user:read".to_string(), "user:write".to_string()];
 ///

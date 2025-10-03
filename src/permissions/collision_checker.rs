@@ -35,7 +35,7 @@ use std::collections::HashMap;
 /// ## Basic validation with post-analysis
 ///
 /// ```
-/// use axum_gate::advanced::PermissionCollisionChecker;
+/// use axum_gate::permissions::PermissionCollisionChecker;
 ///
 /// let permissions = vec![
 ///     "user:read".to_string(),
@@ -65,7 +65,7 @@ use std::collections::HashMap;
 /// ## Runtime permission updates
 ///
 /// ```
-/// use axum_gate::advanced::PermissionCollisionChecker;
+/// use axum_gate::permissions::PermissionCollisionChecker;
 ///
 /// fn update_permissions(new_permissions: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 ///     let mut checker = PermissionCollisionChecker::new(new_permissions);
@@ -118,7 +118,7 @@ impl PermissionCollisionChecker {
     /// # Examples
     ///
     /// ```
-    /// use axum_gate::advanced::PermissionCollisionChecker;
+    /// use axum_gate::permissions::PermissionCollisionChecker;
     ///
     /// let permissions = vec!["read:file".to_string(), "write:file".to_string()];
     /// let mut checker = PermissionCollisionChecker::new(permissions);

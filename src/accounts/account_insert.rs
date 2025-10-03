@@ -21,8 +21,9 @@ use tracing::debug;
 /// # Basic Usage
 ///
 /// ```rust
-/// use axum_gate::auth::{AccountInsertService, Role, Group};
-/// use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
+/// use axum_gate::accounts::AccountInsertService;
+/// use axum_gate::prelude::{Role, Group};
+/// use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 /// use std::sync::Arc;
 ///
 /// # tokio_test::block_on(async {
@@ -69,7 +70,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{AccountInsertService, Role, Group};
+    /// use axum_gate::accounts::AccountInsertService;
+    /// use axum_gate::prelude::{Role, Group};
     ///
     /// let builder = AccountInsertService::<Role, Group>::insert("admin@example.com", "strong_password");
     /// // Continue with .with_roles(), .with_groups(), etc.
@@ -91,7 +93,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{AccountInsertService, Role, Group};
+    /// use axum_gate::accounts::AccountInsertService;
+    /// use axum_gate::prelude::{Role, Group};
     ///
     /// let builder = AccountInsertService::<Role, Group>::insert("user@example.com", "password")
     ///     .with_roles(vec![Role::User, Role::Reporter]);
@@ -107,7 +110,8 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{AccountInsertService, Role, Group};
+    /// use axum_gate::accounts::AccountInsertService;
+    /// use axum_gate::prelude::{Role, Group};
     ///
     /// let builder = AccountInsertService::<Role, Group>::insert("user@example.com", "password")
     ///     .with_groups(vec![Group::new("engineering"), Group::new("backend-team")]);
@@ -126,7 +130,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{AccountInsertService, Permissions, Role, Group};
+    /// use axum_gate::accounts::AccountInsertService;
+    /// use axum_gate::permissions::Permissions;
+    /// use axum_gate::prelude::{Role, Group};
     ///
     /// let permissions: Permissions = [
     ///     "read:api",
@@ -165,8 +171,9 @@ where
     ///
     /// # Example
     /// ```rust
-    /// use axum_gate::auth::{AccountInsertService, Role, Group};
-    /// use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
+    /// use axum_gate::accounts::AccountInsertService;
+    /// use axum_gate::prelude::{Role, Group};
+    /// use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
     /// use std::sync::Arc;
     ///
     /// # tokio_test::block_on(async {

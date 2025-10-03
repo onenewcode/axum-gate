@@ -1,9 +1,9 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
-use axum_gate::auth::PermissionId;
-use axum_gate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use axum_gate::prelude::{AccessPolicy, Account, Gate, Group, Role};
+use axum_gate::authz::AccessPolicy;
+use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+use axum_gate::permissions::PermissionId;
+use axum_gate::prelude::{Account, Gate, Group, Role};
 
 use std::sync::Arc;
 
@@ -96,13 +96,13 @@ async fn main() {
         dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(
         JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(JsonWebTokenOptions {
-            enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-            dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-            header: Some(Header::default()),
-            validation: Some(Validation::default()),
+            enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+            dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+            header: Some(axum_gate::jsonwebtoken::Header::default()),
+            validation: Some(axum_gate::jsonwebtoken::Validation::default()),
         }),
     );
-    let cookie_template = axum_gate::prelude::CookieTemplateBuilder::recommended().build();
+    let cookie_template = axum_gate::cookie_template::CookieTemplateBuilder::recommended().build();
 
     let app = Router::new()
         .route("/admin", get(admin))

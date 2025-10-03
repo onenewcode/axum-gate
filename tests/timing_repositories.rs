@@ -27,10 +27,12 @@
 //! Run with: `cargo test -- --nocapture` to see raw timing output.
 use std::time::{Duration, Instant};
 
-use axum_gate::advanced::{
-    AccountRepository, Argon2Hasher, CredentialsVerifier, Secret, SecretRepository,
-};
-use axum_gate::auth::{Account, Credentials, Group, Role};
+use axum_gate::accounts::{Account, AccountRepository};
+use axum_gate::credentials::{Credentials, CredentialsVerifier};
+use axum_gate::hashing::argon2::Argon2Hasher;
+use axum_gate::prelude::{Group, Role};
+use axum_gate::secrets::{Secret, SecretRepository};
+use axum_gate::verification_result::VerificationResult;
 
 /// Returns a fresh random (UUID v7 backed) email identifier to avoid collisions in shared DBs.
 fn random_user_id() -> String {
@@ -48,7 +50,7 @@ fn median(mut v: Vec<Duration>) -> Duration {
 //
 #[tokio::test]
 async fn surrealdb_timing_symmetry() {
-    use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
+    use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
     use surrealdb::Surreal;
     use surrealdb::engine::local::Mem;
 
@@ -124,18 +126,9 @@ async fn surrealdb_timing_symmetry() {
             .expect("verify correct");
         let dur_correct = t2.elapsed();
 
-        assert!(matches!(
-            res_nonexistent,
-            axum_gate::advanced::VerificationResult::Unauthorized
-        ));
-        assert!(matches!(
-            res_wrong,
-            axum_gate::advanced::VerificationResult::Unauthorized
-        ));
-        assert!(matches!(
-            res_correct,
-            axum_gate::advanced::VerificationResult::Ok
-        ));
+        assert!(matches!(res_nonexistent, VerificationResult::Unauthorized));
+        assert!(matches!(res_wrong, VerificationResult::Unauthorized));
+        assert!(matches!(res_correct, VerificationResult::Ok));
 
         nonexist_durs.push(dur_nonexistent);
         wrong_durs.push(dur_wrong);
@@ -177,7 +170,7 @@ async fn surrealdb_timing_symmetry() {
 //
 #[tokio::test]
 async fn seaorm_timing_symmetry() {
-    use axum_gate::storage::seaorm::SeaOrmRepository;
+    use axum_gate::repositories::sea_orm::SeaOrmRepository;
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
 
     const ITERATIONS: usize = 5;
@@ -192,7 +185,7 @@ async fn seaorm_timing_symmetry() {
     };
 
     // Create tables using SeaORM entity definitions (no migrations needed)
-    use axum_gate::storage::seaorm::models::{
+    use axum_gate::repositories::sea_orm::models::{
         account as seaorm_account, credentials as seaorm_credentials,
     };
     let builder = Schema::new(DatabaseBackend::Sqlite);
@@ -305,18 +298,9 @@ async fn seaorm_timing_symmetry() {
         };
         let dur_correct = t2.elapsed();
 
-        assert!(matches!(
-            res_nonexistent,
-            axum_gate::advanced::VerificationResult::Unauthorized
-        ));
-        assert!(matches!(
-            res_wrong,
-            axum_gate::advanced::VerificationResult::Unauthorized
-        ));
-        assert!(matches!(
-            res_correct,
-            axum_gate::advanced::VerificationResult::Ok
-        ));
+        assert!(matches!(res_nonexistent, VerificationResult::Unauthorized));
+        assert!(matches!(res_wrong, VerificationResult::Unauthorized));
+        assert!(matches!(res_correct, VerificationResult::Ok));
 
         nonexist_durs.push(dur_nonexistent);
         wrong_durs.push(dur_wrong);

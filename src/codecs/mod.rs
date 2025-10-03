@@ -16,7 +16,7 @@
 //! use std::sync::Arc;
 //!
 //! // Use default (random key - development only)
-//! let jwt_codec = Arc::new(JsonWebToken::default());
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! // Production: use persistent key
 //! let options = JsonWebTokenOptions {
@@ -25,7 +25,7 @@
 //!     header: None,
 //!     validation: None,
 //! };
-//! let jwt_codec = Arc::new(JsonWebToken::new_with_options(options));
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options));
 //! ```
 //!
 //! # Custom Codec Implementation

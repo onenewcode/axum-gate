@@ -81,7 +81,7 @@ mod credentials_verifier;
 /// Credentials are typically used as input to authentication services:
 ///
 /// ```rust
-/// use axum_gate::auth::Credentials;
+/// use axum_gate::prelude::Credentials;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // 1. Receive credentials from client (e.g., JSON payload)
@@ -112,7 +112,7 @@ mod credentials_verifier;
 /// Credentials support JSON serialization for API integration:
 ///
 /// ```rust
-/// use axum_gate::auth::Credentials;
+/// use axum_gate::prelude::Credentials;
 /// use serde_json;
 ///
 /// // Deserialize from JSON (typical in REST APIs)
@@ -127,7 +127,7 @@ mod credentials_verifier;
 /// # Different Identifier Types
 ///
 /// ```rust
-/// use axum_gate::auth::Credentials;
+/// use axum_gate::prelude::Credentials;
 /// use uuid::Uuid;
 ///
 /// // String-based identifiers (email, username)
@@ -150,7 +150,7 @@ mod credentials_verifier;
 ///
 /// ```rust
 /// use axum::{Json, extract::State, http::StatusCode};
-/// use axum_gate::auth::Credentials;
+/// use axum_gate::prelude::Credentials;
 ///
 /// // Extract credentials from JSON request body
 /// async fn login_endpoint(
@@ -202,7 +202,7 @@ impl<Id> Credentials<Id> {
     /// ## String-based Authentication
     ///
     /// ```rust
-    /// use axum_gate::auth::Credentials;
+    /// use axum_gate::prelude::Credentials;
     ///
     /// let credentials = Credentials::new(&"user@example.com".to_string(), "secure_password");
     /// assert_eq!(credentials.id, "user@example.com");
@@ -212,7 +212,7 @@ impl<Id> Credentials<Id> {
     /// ## UUID-based Authentication
     ///
     /// ```rust
-    /// use axum_gate::auth::Credentials;
+    /// use axum_gate::prelude::Credentials;
     /// use uuid::Uuid;
     ///
     /// let user_id = Uuid::now_v7();
@@ -224,7 +224,7 @@ impl<Id> Credentials<Id> {
     /// ## Usage in Authentication Flow
     ///
     /// ```rust
-    /// use axum_gate::auth::Credentials;
+    /// use axum_gate::prelude::Credentials;
     ///
     /// // Typically created from user input
     /// let user_input_email = "admin@company.com";

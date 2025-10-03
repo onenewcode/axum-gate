@@ -13,13 +13,15 @@
 //! - http://localhost:3000/admin - Admin-only area (requires admin role)
 //! - http://localhost:3000/metrics - Prometheus metrics endpoint
 
+use axum_extra::extract::CookieJar;
 use axum_gate::{
-    auth::{AccountInsertService, Credentials, login, logout},
-    http::CookieJar,
-    integrations::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
-    jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
-    prelude::{AccessPolicy, Account, CookieTemplateBuilder, Gate, Group, Role},
-    storage::{MemoryAccountRepository, MemorySecretRepository},
+    accounts::AccountInsertService,
+    authz::AccessPolicy,
+    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
+    cookie_template::CookieTemplateBuilder,
+    prelude::{Account, Credentials, Gate, Group, Role},
+    repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
+    route_handlers::{login, logout},
 };
 
 use std::sync::Arc;
@@ -78,10 +80,10 @@ async fn main() {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Default::default(),
-        validation: Some(Validation::default()),
+        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(Default::default()),
+        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));

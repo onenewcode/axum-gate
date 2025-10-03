@@ -14,20 +14,18 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::hashing::{HashingService, argon2::Argon2HashingService};
+//! use axum_gate::hashing::{HashingService, argon2::Argon2Hasher};
+//! use axum_gate::verification_result::VerificationResult;
 //!
-//! # tokio_test::block_on(async {
-//! let hashing_service = Argon2HashingService::default();
+//! let hasher = Argon2Hasher::default();
 //!
 //! // Hash a password
-//! let hashed = hashing_service.hash_secret("user_password").await?;
-//! println!("Hashed password: {}", hashed.value());
+//! let hashed = hasher.hash_value("user_password").unwrap();
+//! println!("Hashed password: {}", hashed);
 //!
 //! // Verify a password
-//! let is_valid = hashing_service.verify_secret("user_password", &hashed).await?;
-//! assert!(is_valid);
-//! # Ok::<(), Box<dyn std::error::Error>>(())
-//! # });
+//! let result = hasher.verify_value("user_password", &hashed).unwrap();
+//! assert_eq!(result, VerificationResult::Ok);
 //! ```
 //!
 //! # Security Features
@@ -43,7 +41,7 @@
 //! The hashing service automatically adjusts parameters based on build configuration:
 //! - **Debug builds**: Fast parameters for development efficiency
 //! - **Release builds**: Secure parameters for production security
-//! - **Custom parameters**: Override via `Argon2HashingService::with_params()`
+//! - **Custom parameters**: Override via `Argon2Hasher::with_params()`
 
 pub mod argon2;
 mod hashing_service;
@@ -80,7 +78,7 @@ pub use hashing_service::HashingService;
 /// ## Usage
 ///
 /// ```rust
-/// use axum_gate::advanced::{Argon2Hasher, HashingService, HashedValue};
+/// use axum_gate::hashing::{argon2::Argon2Hasher, HashingService, HashedValue};
 ///
 /// let hasher = Argon2Hasher::default();
 /// let hashed: HashedValue = hasher.hash_value("my_password").unwrap();
@@ -89,7 +87,7 @@ pub use hashing_service::HashingService;
 /// println!("Hashed password: {}", hashed);
 ///
 /// // Later, verify against the stored hash
-/// use axum_gate::advanced::VerificationResult;
+/// use axum_gate::verification_result::VerificationResult;
 /// let result = hasher.verify_value("my_password", &hashed).unwrap();
 /// assert_eq!(result, VerificationResult::Ok);
 /// ```

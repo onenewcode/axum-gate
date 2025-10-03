@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::auth::PermissionId;
+/// use axum_gate::permissions::PermissionId;
 ///
 /// let read_id = PermissionId::from("read:file");
 /// let write_id = PermissionId::from("write:file");

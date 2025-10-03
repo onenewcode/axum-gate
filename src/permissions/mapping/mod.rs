@@ -37,7 +37,8 @@ mod mapping_repository;
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::auth::{PermissionMapping, PermissionId};
+/// use axum_gate::permissions::mapping::PermissionMapping;
+/// use axum_gate::permissions::PermissionId;
 ///
 /// // Create from a permission string
 /// let mapping = PermissionMapping::from("Read:API");
@@ -92,7 +93,8 @@ impl PermissionMapping {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{PermissionMapping, PermissionId};
+    /// use axum_gate::permissions::mapping::PermissionMapping;
+    /// use axum_gate::permissions::PermissionId;
     ///
     /// let id = PermissionId::from("read:api");
     /// let mapping = PermissionMapping::new("Read:API", id).unwrap();
@@ -151,7 +153,7 @@ impl PermissionMapping {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::PermissionMapping;
+    /// use axum_gate::permissions::mapping::PermissionMapping;
     ///
     /// let mapping = PermissionMapping::from("read:api");
     /// assert!(mapping.matches_string("READ:API"));
@@ -168,7 +170,8 @@ impl PermissionMapping {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{PermissionMapping, PermissionId};
+    /// use axum_gate::permissions::mapping::PermissionMapping;
+    /// use axum_gate::permissions::PermissionId;
     ///
     /// let mapping = PermissionMapping::from("read:api");
     /// let id = PermissionId::from("read:api");

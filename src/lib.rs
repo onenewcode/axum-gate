@@ -47,7 +47,7 @@
 //!     let app = Router::<()>::new()
 //!         .route("/admin", get(admin_handler))
 //!         .layer(
-//!             Gate::cookie("my-app", jwt_codec)
+//!             Gate::cookie::<_, Role, Group>("my-app", jwt_codec)
 //!                 .with_policy(AccessPolicy::require_role(Role::Admin))
 //!                 .configure_cookie_template(|tpl| tpl.name("auth-token"))
 //!         );
@@ -105,7 +105,7 @@
 //!
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //! // Allow any authenticated user (all roles: User, Reporter, Moderator, Admin)
-//! let gate = Gate::cookie("my-app", jwt_codec)
+//! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt_codec)
 //!     .require_login()  // Convenience method for any logged-in user
 //!     .configure_cookie_template(|tpl| tpl.name("auth-token"));
 //! ```
@@ -136,7 +136,7 @@
 //! let app = Router::<()>::new()
 //!     .route("/", get(homepage))
 //!     .layer(
-//!         Gate::cookie("my-app", jwt_codec)
+//!         Gate::cookie::<_, Role, Group>("my-app", jwt_codec)
 //!             .allow_anonymous_with_optional_user()
 //!     );
 //! ```

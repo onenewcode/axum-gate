@@ -24,9 +24,10 @@ use std::future::Future;
 /// `Permissions` struct. When permission strings need to be recoverable:
 ///
 /// ```rust
-/// # use axum_gate::auth::{PermissionMapping, Permissions};
-/// # use axum_gate::advanced::PermissionMappingRepository;
-/// # use axum_gate::storage::MemoryPermissionMappingRepository;
+/// # use axum_gate::permissions::mapping::PermissionMapping;
+/// # use axum_gate::permissions::Permissions;
+/// # use axum_gate::permissions::mapping::PermissionMappingRepository;
+/// # use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
 ///
 /// // In-memory repository
 /// let repo = MemoryPermissionMappingRepository::default();
@@ -69,9 +70,9 @@ use std::future::Future;
 /// # Example Implementation Patterns
 ///
 /// ```rust
-/// use axum_gate::auth::{Permissions, PermissionMapping};
-/// use axum_gate::advanced::PermissionMappingRepository;
-/// use axum_gate::storage::MemoryPermissionMappingRepository;
+/// use axum_gate::permissions::Permissions;
+/// use axum_gate::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
+/// use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
 ///
 /// async fn grant_permission_with_registry(
 ///     permissions: &mut Permissions,

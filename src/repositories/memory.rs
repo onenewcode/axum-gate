@@ -14,9 +14,13 @@
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::auth::{Account, Role, Group};
-//! use axum_gate::advanced::{Secret, Argon2Hasher, AccountRepository, SecretRepository};
-//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository};
+//! use axum_gate::accounts::Account;
+//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::hashing::argon2::Argon2Hasher;
+//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository, MemoryPermissionMappingRepository};
+//! use axum_gate::secrets::Secret;
+//! use axum_gate::accounts::AccountRepository;
+//! use axum_gate::secrets::SecretRepository;
 //! use std::sync::Arc;
 //!
 //! # tokio_test::block_on(async {
@@ -42,9 +46,10 @@
 //! # Creating from Existing Data
 //!
 //! ```rust
-//! use axum_gate::auth::{Account, Role, Group};
-//! use axum_gate::advanced::Secret;
-//! use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
+//! use axum_gate::accounts::Account;
+//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::secrets::Secret;
+//! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //!
 //! // Create repositories with pre-populated data
 //! let accounts = vec![
@@ -92,9 +97,10 @@ use uuid::Uuid;
 ///
 /// # Example
 /// ```rust
-/// use axum_gate::auth::{Account, Role, Group};
-/// use axum_gate::advanced::AccountRepository;
-/// use axum_gate::storage::MemoryAccountRepository;
+/// use axum_gate::accounts::Account;
+/// use axum_gate::prelude::{Role, Group};
+/// use axum_gate::accounts::AccountRepository;
+/// use axum_gate::repositories::memory::MemoryAccountRepository;
 /// use std::sync::Arc;
 ///
 /// # tokio_test::block_on(async {
@@ -186,9 +192,9 @@ where
 ///
 /// # Example Usage
 /// ```rust
-/// use axum_gate::auth::Credentials;
-/// use axum_gate::advanced::{Secret, VerificationResult, Argon2Hasher, SecretRepository, CredentialsVerifier};
-/// use axum_gate::storage::MemorySecretRepository;
+/// use axum_gate::prelude::Credentials;
+/// use axum_gate::secrets::Secret; use axum_gate::verification_result::VerificationResult; use axum_gate::hashing::argon2::Argon2Hasher; use axum_gate::secrets::SecretRepository; use axum_gate::credentials::CredentialsVerifier;
+/// use axum_gate::repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// # tokio_test::block_on(async {
@@ -213,8 +219,8 @@ where
 ///
 /// # Creating from Existing Data
 /// ```rust
-/// use axum_gate::advanced::{Secret, Argon2Hasher};
-/// use axum_gate::storage::MemorySecretRepository;
+/// use axum_gate::secrets::Secret; use axum_gate::hashing::argon2::Argon2Hasher;
+/// use axum_gate::repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// let secrets = vec![
@@ -366,9 +372,9 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
 /// # Example
 ///
 /// ```rust
-/// use axum_gate::auth::{PermissionMapping, PermissionId};
-/// use axum_gate::storage::MemoryPermissionMappingRepository;
-/// use axum_gate::advanced::PermissionMappingRepository;
+/// use axum_gate::permissions::mapping::PermissionMapping;
+/// use axum_gate::permissions::PermissionId; use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
+/// use axum_gate::permissions::mapping::PermissionMappingRepository;
 /// use std::sync::Arc;
 ///
 /// # tokio_test::block_on(async {

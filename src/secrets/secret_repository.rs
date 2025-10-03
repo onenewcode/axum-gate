@@ -37,8 +37,9 @@ use uuid::Uuid;
 ///
 /// # Example (rotate secret)
 /// ```rust
-/// use axum_gate::advanced::{SecretRepository, Argon2Hasher, Secret};
-/// use axum_gate::storage::MemorySecretRepository;
+/// use axum_gate::secrets::{Secret, SecretRepository};
+/// use axum_gate::hashing::argon2::Argon2Hasher;
+/// use axum_gate::repositories::memory::MemorySecretRepository;
 /// use uuid::Uuid;
 ///
 /// fn rotate_secret(

@@ -119,7 +119,7 @@ mod validation_report;
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::auth::Permissions;
+/// use axum_gate::permissions::Permissions;
 ///
 /// // Create and populate permissions
 /// let mut permissions = Permissions::new();
@@ -140,7 +140,7 @@ mod validation_report;
 /// # Builder Pattern
 ///
 /// ```rust
-/// use axum_gate::auth::Permissions;
+/// use axum_gate::permissions::Permissions;
 ///
 /// let permissions = Permissions::new()
 ///     .with("read:api")
@@ -158,7 +158,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let permissions = Permissions::new();
     /// assert!(permissions.is_empty());
@@ -176,7 +176,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{Permissions, PermissionId};
+    /// use axum_gate::permissions::{Permissions, PermissionId};
     ///
     /// let mut permissions = Permissions::new();
     /// permissions
@@ -202,7 +202,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{Permissions, PermissionId};
+    /// use axum_gate::permissions::{Permissions, PermissionId};
     ///
     /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// permissions.revoke(PermissionId::from("write:profile"));
@@ -224,7 +224,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{Permissions, PermissionId};
+    /// use axum_gate::permissions::{Permissions, PermissionId};
     ///
     /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
@@ -245,7 +245,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{Permissions, PermissionId};
+    /// use axum_gate::permissions::{Permissions, PermissionId};
     ///
     /// let permissions: Permissions = [
     ///     "read:profile",
@@ -270,7 +270,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{Permissions, PermissionId};
+    /// use axum_gate::permissions::{Permissions, PermissionId};
     ///
     /// let permissions: Permissions = ["read:profile"].into_iter().collect();
     ///
@@ -291,7 +291,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// assert_eq!(permissions.len(), 2);
@@ -305,7 +305,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let permissions = Permissions::new();
     /// assert!(permissions.is_empty());
@@ -323,7 +323,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let mut permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// assert!(!permissions.is_empty());
@@ -342,7 +342,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let mut permissions1: Permissions = ["read:profile"].into_iter().collect();
     /// let permissions2: Permissions = ["write:profile"].into_iter().collect();
@@ -364,7 +364,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let permissions2: Permissions = ["read:profile", "admin:users"].into_iter().collect();
@@ -387,7 +387,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let mut permissions1: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let permissions2: Permissions = ["write:profile"].into_iter().collect();
@@ -409,7 +409,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::{Permissions, PermissionId};
+    /// use axum_gate::permissions::{Permissions, PermissionId};
     ///
     /// let permissions = Permissions::new()
     ///     .with("read:profile")
@@ -435,7 +435,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let permissions = Permissions::new()
     ///     .with("read:profile")
@@ -454,7 +454,7 @@ impl Permissions {
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile"].into_iter().collect();
     /// let ids: Vec<u64> = permissions.iter().collect();
@@ -514,7 +514,7 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use axum_gate::auth::Permissions;
+    /// use axum_gate::permissions::Permissions;
     ///
     /// let permissions: Permissions = ["read:profile", "write:profile", "read:posts"]
     ///     .into_iter()

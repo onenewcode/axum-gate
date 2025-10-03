@@ -67,7 +67,7 @@ pub mod models;
 /// ```rust
 /// # #[cfg(feature="storage-seaorm")]
 /// # {
-/// use axum_gate::storage::seaorm::SeaOrmRepository;
+/// use axum_gate::repositories::sea_orm::SeaOrmRepository;
 /// use sea_orm::Database;
 /// # #[tokio::test] async fn usage_sea_orm() -> anyhow::Result<()> {
 /// let db = Database::connect("sqlite::memory:").await?;

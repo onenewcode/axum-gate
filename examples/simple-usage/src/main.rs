@@ -3,13 +3,16 @@
 //! This example demonstrates basic authentication with a login form
 //! on the home page and logout buttons on protected pages.
 
+use axum_extra::extract::CookieJar;
+use axum_gate::cookie;
 use axum_gate::{
-    auth::{AccountInsertService, Credentials, Group, Role, login, logout},
-    http::{CookieJar, cookie},
-    integrations::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
-    jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
-    prelude::{AccessPolicy, Account, Gate},
-    storage::{MemoryAccountRepository, MemorySecretRepository},
+    accounts::AccountInsertService,
+    authz::AccessPolicy,
+    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
+    cookie_template::CookieTemplateBuilder,
+    prelude::{Account, Credentials, Gate, Group, Role},
+    repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
+    route_handlers::{login, logout},
 };
 
 use std::sync::Arc;
@@ -48,10 +51,10 @@ async fn main() {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Default::default(),
-        validation: Some(Validation::default()),
+        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(Default::default()),
+        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -519,7 +522,7 @@ async fn login_handler(
         (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
     );
 
-    let cookie_template = axum_gate::prelude::CookieTemplateBuilder::recommended()
+    let cookie_template = CookieTemplateBuilder::recommended()
         .name("my-app")
         .secure(false) // Dev only; enable HTTPS + Secure(true) in production
         .persistent(cookie::time::Duration::hours(24))
@@ -595,9 +598,7 @@ async fn login_handler(
 }
 
 async fn logout_handler(cookie_jar: CookieJar) -> (CookieJar, Redirect) {
-    let cookie_template = axum_gate::prelude::CookieTemplateBuilder::recommended()
-        .name("my-app")
-        .build();
+    let cookie_template = CookieTemplateBuilder::recommended().name("my-app").build();
     let updated_jar = logout(cookie_jar, cookie_template).await;
     (updated_jar, Redirect::to("/"))
 }

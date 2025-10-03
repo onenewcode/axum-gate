@@ -57,9 +57,10 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::Gate;
+    /// # use axum_gate::authz::AccessPolicy;
+    /// # use axum_gate::accounts::Account;
+    /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::{Role, Group, Gate};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie("my-app", jwt_codec)
@@ -82,9 +83,10 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::{Gate, CookieTemplateBuilder};
+    /// # use axum_gate::authz::AccessPolicy;
+    /// # use axum_gate::accounts::Account;
+    /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::{Role, Group, Gate, CookieTemplateBuilder};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let cookie_template = CookieTemplateBuilder::recommended().build();
@@ -125,9 +127,10 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::Gate;
+    /// # use axum_gate::authz::AccessPolicy;
+    /// # use axum_gate::accounts::Account;
+    /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::{Role, Group, Gate};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie("my-app", jwt_codec)
@@ -209,9 +212,10 @@ where
     ///
     /// # Example
     /// ```rust
-    /// # use axum_gate::auth::{AccessPolicy, Role, Group, Account};
-    /// # use axum_gate::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::Gate;
+    /// # use axum_gate::authz::AccessPolicy;
+    /// # use axum_gate::accounts::Account;
+    /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+    /// # use axum_gate::prelude::{Role, Group, Gate};
     /// # use std::sync::Arc;
     /// let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie::<_, Role, Group>("my-app", jwt_codec).require_login();

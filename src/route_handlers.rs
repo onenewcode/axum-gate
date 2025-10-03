@@ -55,7 +55,20 @@
 //!     logout(cookie_jar, cookie_template).await
 //! }
 //!
-//! let app = Router::new()
+//! // Instantiate repositories and JWT codec for the example
+//! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!
+//! // Build application state
+//! let app_state = AppState {
+//!     account_repo: Arc::clone(&account_repo),
+//!     secret_repo: Arc::clone(&secret_repo),
+//!     jwt_codec: Arc::clone(&jwt_codec),
+//! };
+//!
+//! // Build the router with state
+//! let app: Router<AppState> = Router::new()
 //!     .route("/login", post(login_handler))
 //!     .route("/logout", post(logout_handler))
 //!     .with_state(app_state);
@@ -232,10 +245,12 @@ where
 ///
 /// # Example
 /// ```rust
-/// use axum_gate::{auth::logout, http::CookieJar};
+/// use axum_gate::route_handlers::logout;
+/// use axum_extra::extract::CookieJar;
+/// use cookie::CookieBuilder;
 ///
 /// async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
-///     let cookie_template = cookie::CookieBuilder::new("auth-token", "");
+///     let cookie_template = CookieBuilder::new("auth-token", "");
 ///     logout(cookie_jar, cookie_template).await
 /// }
 /// ```
