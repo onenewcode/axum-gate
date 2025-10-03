@@ -5,8 +5,9 @@
 //! API; this model is exposed for migrations or direct queries.
 //! See also: [`credentials`](crate::storage::seaorm::models::credentials) for secret storage.
 
-use crate::domain::entities::Account;
-use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
+use crate::accounts::Account;
+use crate::authz::AccessHierarchy;
+use crate::comma_separated_value::CommaSeparatedValue;
 
 use sea_orm::ActiveValue;
 use sea_orm::entity::prelude::*;

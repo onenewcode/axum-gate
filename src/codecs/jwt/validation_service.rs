@@ -1,7 +1,7 @@
-use crate::domain::entities::Account;
-use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::jwt::JwtClaims;
-use crate::ports::Codec;
+use super::JwtValidationResult;
+use super::{Codec, JwtClaims};
+use crate::accounts::Account;
+use crate::authz::AccessHierarchy;
 
 use std::sync::Arc;
 use tracing::{debug, warn};
@@ -16,22 +16,6 @@ use tracing::{debug, warn};
 pub struct JwtValidationService<C> {
     codec: Arc<C>,
     expected_issuer: String,
-}
-
-/// Result of JWT validation.
-#[derive(Debug)]
-pub enum JwtValidationResult<T> {
-    /// Token is valid and contains the decoded claims.
-    Valid(JwtClaims<T>),
-    /// Token could not be decoded (invalid format, expired, etc.).
-    InvalidToken,
-    /// Token is valid but has wrong issuer.
-    InvalidIssuer {
-        /// The expected issuer value.
-        expected: String,
-        /// The actual issuer value found in the token.
-        actual: String,
-    },
 }
 
 impl<C> JwtValidationService<C> {
@@ -102,8 +86,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::auth::Permissions;
-    use crate::prelude::{Group, Role};
+    use crate::groups::Group;
+    use crate::permissions::Permissions;
+    use crate::roles::Role;
     use std::sync::Arc;
 
     // Mock codec for testing
@@ -150,7 +135,7 @@ mod tests {
                 ));
             }
 
-            use crate::infrastructure::jwt::RegisteredClaims;
+            use crate::codecs::jwt::RegisteredClaims;
 
             use uuid::Uuid;
 

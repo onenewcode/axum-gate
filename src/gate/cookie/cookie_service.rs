@@ -1,11 +1,7 @@
-use crate::domain::entities::Account;
-use crate::domain::services::access_policy::AccessPolicy;
-use crate::domain::services::authorization::AuthorizationService;
-use crate::domain::traits::AccessHierarchy;
-use crate::infrastructure::jwt::{
-    JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims,
-};
-use crate::ports::Codec;
+use crate::accounts::Account;
+use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
+use crate::codecs::Codec;
+use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
 
 use std::convert::Infallible;
 use std::fmt::Debug;
@@ -14,7 +10,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 #[cfg(feature = "audit-logging")]
-use crate::infrastructure::audit;
+use crate::audit;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use cookie::CookieBuilder;

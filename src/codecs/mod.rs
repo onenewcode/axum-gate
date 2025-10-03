@@ -41,6 +41,8 @@
 use crate::errors::Result;
 use serde::{Serialize, de::DeserializeOwned};
 
+pub mod jwt;
+
 /// A pluggable payload encoder/decoder.
 ///
 /// See the module-level documentation for detailed guidance and examples.

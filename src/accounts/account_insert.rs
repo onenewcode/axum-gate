@@ -1,16 +1,15 @@
-use super::Account;
+use super::{Account, AccountRepository};
 use crate::application::errors::AccountOperation;
+#[cfg(feature = "audit-logging")]
+use crate::audit;
 use crate::authz::AccessHierarchy;
 use crate::errors::{ApplicationError, Error, Result};
 use crate::hashing::argon2::Argon2Hasher;
 use crate::permissions::Permissions;
-use crate::ports::repositories::{AccountRepository, SecretRepository};
-use crate::secrets::Secret;
+use crate::secrets::{Secret, SecretRepository};
 
 use std::sync::Arc;
 
-#[cfg(feature = "audit-logging")]
-use crate::infrastructure::audit;
 use tracing::debug;
 
 /// Service for creating new user accounts with their associated authentication secrets.

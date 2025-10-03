@@ -56,17 +56,21 @@
 //! let secrets = vec![/* your secrets */];
 //! let secret_repo = MemorySecretRepository::from(secrets);
 //! ```
-use crate::domain::entities::{Account, Credentials};
-use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::{PermissionId, PermissionMapping, Secret, VerificationResult};
+use crate::accounts::Account;
+use crate::accounts::AccountRepository;
+use crate::authz::AccessHierarchy;
+use crate::credentials::Credentials;
+use crate::credentials::CredentialsVerifier;
 use crate::errors::{Error, PortError, Result};
-use crate::infrastructure::hashing::Argon2Hasher;
-use crate::ports::auth::CredentialsVerifier;
-use crate::ports::auth::HashingService;
+use crate::hashing::HashingService;
+use crate::hashing::argon2::Argon2Hasher;
+use crate::permissions::PermissionId;
+use crate::permissions::mapping::PermissionMapping;
+use crate::permissions::mapping::PermissionMappingRepository;
 use crate::ports::errors::RepositoryType;
-use crate::ports::repositories::{
-    AccountRepository, PermissionMappingRepository, SecretRepository,
-};
+use crate::secrets::Secret;
+use crate::secrets::SecretRepository;
+use crate::verification_result::VerificationResult;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -304,7 +308,7 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
         &self,
         credentials: Credentials<Uuid>,
     ) -> Result<VerificationResult> {
-        use crate::ports::auth::HashingService;
+        use crate::hashing::HashingService;
         use subtle::Choice;
 
         let read = self.store.read().await;

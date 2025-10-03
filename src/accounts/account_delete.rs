@@ -1,14 +1,14 @@
-use super::Account;
+use super::{Account, AccountRepository};
 use crate::application::errors::AccountOperation;
 use crate::authz::AccessHierarchy;
 use crate::errors::{ApplicationError, Error};
-use crate::ports::repositories::{AccountRepository, SecretRepository};
+use crate::secrets::SecretRepository;
 
 use std::sync::Arc;
 
-use crate::errors::Result;
 #[cfg(feature = "audit-logging")]
-use crate::infrastructure::audit;
+use crate::audit;
+use crate::errors::Result;
 use tracing::{debug, error, info, warn};
 
 /// Removes the given account and its corresponding secret from repositories.

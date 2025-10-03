@@ -1,5 +1,5 @@
 use crate::errors::Result;
-use crate::{domain::entities::Account, domain::traits::AccessHierarchy};
+use crate::{accounts::Account, authz::AccessHierarchy};
 
 use std::future::Future;
 

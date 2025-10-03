@@ -1,16 +1,20 @@
 //! SurrealDB-backed repositories for accounts and secrets with constant-time credential verification.
 
 use super::TableName;
-use crate::domain::entities::{Account, Credentials};
-use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::{PermissionId, PermissionMapping, Secret, VerificationResult};
+use crate::accounts::Account;
+use crate::accounts::AccountRepository;
+use crate::authz::AccessHierarchy;
+use crate::credentials::Credentials;
+use crate::credentials::CredentialsVerifier;
 use crate::errors::{Error, InfrastructureError, Result};
+use crate::hashing::HashingService;
+use crate::hashing::argon2::Argon2Hasher;
 use crate::infrastructure::errors::DatabaseOperation;
-use crate::infrastructure::hashing::Argon2Hasher;
-use crate::ports::auth::{CredentialsVerifier, HashingService};
-use crate::ports::repositories::{
-    AccountRepository, PermissionMappingRepository, SecretRepository,
-};
+use crate::permissions::PermissionId;
+use crate::permissions::mapping::PermissionMapping;
+use crate::permissions::mapping::PermissionMappingRepository;
+use crate::secrets::{Secret, SecretRepository};
+use crate::verification_result::VerificationResult;
 
 use std::default::Default;
 
@@ -681,7 +685,7 @@ where
 #[test]
 fn secret_repository() {
     tokio_test::block_on(async move {
-        use crate::infrastructure::hashing::Argon2Hasher;
+        use crate::hashing::argon2::Argon2Hasher;
         use surrealdb::engine::local::Mem;
 
         // create a repository

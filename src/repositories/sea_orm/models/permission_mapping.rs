@@ -12,7 +12,8 @@
 //!
 //! See also the domain value: `crate::domain::values::PermissionMapping`.
 
-use crate::domain::values::{PermissionId, PermissionMapping};
+use crate::permissions::PermissionId;
+use crate::permissions::mapping::PermissionMapping;
 
 use sea_orm::{ActiveValue, entity::prelude::*};
 

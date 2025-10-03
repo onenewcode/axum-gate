@@ -5,10 +5,4 @@
 //! - Repositories: Database and persistence implementations
 //! - JWT: JSON Web Token implementation details
 //! - Hashing: Password hashing and cryptographic implementations
-#[cfg(feature = "audit-logging")]
-pub mod audit;
 pub(crate) mod errors;
-pub(crate) mod hashing;
-pub(crate) mod jwt;
-pub(crate) mod repositories;
-pub(crate) mod web;

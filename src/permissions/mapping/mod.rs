@@ -5,10 +5,13 @@
 //! reverse lookup capabilities while maintaining the performance benefits
 //! of the existing bitmap-based permission system.
 
+pub use self::mapping_repository::{PermissionMappingRepository, PermissionMappingRepositoryBulk};
 use crate::permissions::PermissionId;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+mod mapping_repository;
 
 /// Domain value representing a mapping between permission strings and their IDs.
 ///

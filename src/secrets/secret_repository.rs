@@ -1,4 +1,4 @@
-use crate::domain::values::Secret;
+use super::Secret;
 
 use crate::errors::Result;
 use std::future::Future;

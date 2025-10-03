@@ -1,5 +1,5 @@
+use super::HashedValue;
 use crate::errors::Result;
-use crate::infrastructure::hashing::HashedValue;
 use crate::verification_result::VerificationResult;
 
 /// Abstraction over password / secret hashing and verification.

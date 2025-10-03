@@ -1,11 +1,10 @@
 pub(crate) mod cookie_service;
 
 use self::cookie_service::CookieGateService;
-use crate::domain::services::access_policy::AccessPolicy;
-use crate::domain::traits::AccessHierarchy;
-use crate::http::cookie::CookieBuilder;
-use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
-use crate::ports::Codec;
+use crate::authz::{AccessHierarchy, AccessPolicy};
+use crate::codecs::Codec;
+use crate::cookie::CookieBuilder;
+use crate::cookie_template::CookieTemplateBuilder;
 
 use std::sync::Arc;
 
@@ -154,7 +153,7 @@ where
     #[cfg(feature = "prometheus")]
     pub fn with_prometheus_metrics(self) -> Self {
         // Attempt to install metrics into the default registry; ignore errors to keep builder infallible.
-        let _ = crate::infrastructure::audit::prometheus_metrics::install_prometheus_metrics();
+        let _ = crate::audit::prometheus_metrics::install_prometheus_metrics();
         self
     }
 
@@ -163,7 +162,8 @@ where
     /// Safe to call multiple times; metrics are only registered once.
     #[cfg(feature = "prometheus")]
     pub fn with_prometheus_registry(self, registry: &prometheus::Registry) -> Self {
-        let _ = crate::infrastructure::audit::prometheus_metrics::install_prometheus_metrics_with_registry(registry);
+        let _ =
+            crate::audit::prometheus_metrics::install_prometheus_metrics_with_registry(registry);
         self
     }
 }
@@ -226,10 +226,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::{super::*, *};
-    use crate::auth::{Account, Group, Role};
+    use crate::accounts::Account;
+    use crate::groups::Group;
+    use crate::roles::Role;
 
-    use crate::http::cookie::{self, CookieBuilder};
-    use crate::jwt::{JsonWebToken, JwtClaims};
+    use crate::codecs::jwt::{JsonWebToken, JwtClaims};
+    use crate::cookie::{self, CookieBuilder};
     use std::sync::Arc;
 
     #[test]

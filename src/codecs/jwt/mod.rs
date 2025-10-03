@@ -1,9 +1,11 @@
 //! JWT infrastructure components.
 //!
+use super::Codec;
 use crate::errors::{Error, InfrastructureError, Result};
 use crate::infrastructure::errors::JwtOperation;
-use crate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use crate::ports::Codec;
+use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+pub use validation_result::JwtValidationResult;
+pub use validation_service::JwtValidationService;
 
 use std::collections::HashSet;
 use std::marker::PhantomData;
@@ -11,6 +13,9 @@ use std::marker::PhantomData;
 use chrono::Utc;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_with::skip_serializing_none;
+
+mod validation_result;
+mod validation_service;
 
 /// Registered/reserved claims by IANA/JWT spec, see
 /// [auth0](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-token-claims) for more
@@ -293,7 +298,3 @@ where
         Ok(claims.claims)
     }
 }
-
-mod validation_service;
-
-pub use validation_service::{JwtValidationResult, JwtValidationService};

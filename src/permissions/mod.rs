@@ -105,6 +105,7 @@ use serde::{Deserialize, Serialize};
 
 mod application_validator;
 mod collision_checker;
+pub mod mapping;
 mod permission_collision;
 mod permission_id;
 mod validation_report;

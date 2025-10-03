@@ -7,19 +7,26 @@
 //! does not exist, ensuring the Argon2 verification path is always
 //! executed.
 
-use crate::domain::entities::{Account, Credentials};
-use crate::domain::traits::{AccessHierarchy, CommaSeparatedValue};
-use crate::domain::values::{Secret, VerificationResult};
+use crate::accounts::Account;
+use crate::accounts::AccountRepository;
+use crate::authz::AccessHierarchy;
+use crate::comma_separated_value::CommaSeparatedValue;
+use crate::credentials::Credentials;
+use crate::credentials::CredentialsVerifier;
 use crate::errors::{Error, InfrastructureError, Result};
+use crate::hashing::HashingService;
+use crate::hashing::argon2::Argon2Hasher;
 use crate::infrastructure::errors::DatabaseOperation;
-use crate::infrastructure::hashing::Argon2Hasher;
-use crate::infrastructure::repositories::TableName;
-use crate::infrastructure::repositories::sea_orm::models::{
+use crate::permissions::PermissionId;
+use crate::permissions::mapping::{PermissionMapping, PermissionMappingRepository};
+use crate::repositories::TableName;
+use crate::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,
     permission_mapping as seaorm_permission_mapping,
 };
-use crate::ports::auth::{CredentialsVerifier, HashingService};
-use crate::ports::repositories::{AccountRepository, SecretRepository};
+use crate::secrets::Secret;
+use crate::secrets::SecretRepository;
+use crate::verification_result::VerificationResult;
 
 use sea_orm::{
     ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter,
@@ -339,11 +346,11 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
     }
 }
 
-impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepository {
+impl PermissionMappingRepository for SeaOrmRepository {
     async fn store_mapping(
         &self,
-        mapping: crate::domain::values::PermissionMapping,
-    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        mapping: PermissionMapping,
+    ) -> crate::errors::Result<Option<PermissionMapping>> {
         use crate::errors::{Error, InfrastructureError};
         use crate::infrastructure::errors::DatabaseOperation;
 
@@ -362,16 +369,14 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
             .insert(&self.db)
             .await
         {
-            Ok(model) => {
-                crate::domain::values::PermissionMapping::try_from(model).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Insert,
-                        message: format!("Failed to convert stored permission mapping: {}", e),
-                        table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                        record_id: None,
-                    })
-                })?
-            }
+            Ok(model) => PermissionMapping::try_from(model).map_err(|e| {
+                Error::Infrastructure(InfrastructureError::Database {
+                    operation: DatabaseOperation::Insert,
+                    message: format!("Failed to convert stored permission mapping: {}", e),
+                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
+                    record_id: None,
+                })
+            })?,
             Err(e) => {
                 let msg = e.to_string().to_lowercase();
                 if msg.contains("unique") && msg.contains("constraint") {
@@ -391,8 +396,8 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
 
     async fn remove_mapping_by_id(
         &self,
-        id: crate::domain::values::PermissionId,
-    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        id: PermissionId,
+    ) -> crate::errors::Result<Option<PermissionMapping>> {
         use crate::errors::{Error, InfrastructureError};
         use crate::infrastructure::errors::DatabaseOperation;
 
@@ -428,7 +433,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 })
             })?;
 
-        let domain = crate::domain::values::PermissionMapping::try_from(model).map_err(|e| {
+        let domain = PermissionMapping::try_from(model).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to convert deleted permission mapping: {}", e),
@@ -442,11 +447,11 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
     async fn remove_mapping_by_string(
         &self,
         permission: &str,
-    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+    ) -> crate::errors::Result<Option<PermissionMapping>> {
         use crate::errors::{Error, InfrastructureError};
         use crate::infrastructure::errors::DatabaseOperation;
 
-        let normalized = crate::domain::values::PermissionMapping::from(permission)
+        let normalized = PermissionMapping::from(permission)
             .normalized_string()
             .to_string();
 
@@ -480,7 +485,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
                 })
             })?;
 
-        let domain = crate::domain::values::PermissionMapping::try_from(model).map_err(|e| {
+        let domain = PermissionMapping::try_from(model).map_err(|e| {
             Error::Infrastructure(InfrastructureError::Database {
                 operation: DatabaseOperation::Delete,
                 message: format!("Failed to convert deleted permission mapping: {}", e),
@@ -493,8 +498,8 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
 
     async fn query_mapping_by_id(
         &self,
-        id: crate::domain::values::PermissionId,
-    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+        id: PermissionId,
+    ) -> crate::errors::Result<Option<PermissionMapping>> {
         use crate::errors::{Error, InfrastructureError};
         use crate::infrastructure::errors::DatabaseOperation;
 
@@ -514,7 +519,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
 
         model_opt
             .map(|m| {
-                crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
+                PermissionMapping::try_from(m).map_err(|e| {
                     Error::Infrastructure(InfrastructureError::Database {
                         operation: DatabaseOperation::Query,
                         message: format!("Failed to convert permission mapping: {}", e),
@@ -529,11 +534,11 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
     async fn query_mapping_by_string(
         &self,
         permission: &str,
-    ) -> crate::errors::Result<Option<crate::domain::values::PermissionMapping>> {
+    ) -> crate::errors::Result<Option<PermissionMapping>> {
         use crate::errors::{Error, InfrastructureError};
         use crate::infrastructure::errors::DatabaseOperation;
 
-        let normalized = crate::domain::values::PermissionMapping::from(permission)
+        let normalized = PermissionMapping::from(permission)
             .normalized_string()
             .to_string();
 
@@ -552,7 +557,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
 
         model_opt
             .map(|m| {
-                crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
+                PermissionMapping::try_from(m).map_err(|e| {
                     Error::Infrastructure(InfrastructureError::Database {
                         operation: DatabaseOperation::Query,
                         message: format!("Failed to convert permission mapping: {}", e),
@@ -564,9 +569,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
             .transpose()
     }
 
-    async fn list_all_mappings(
-        &self,
-    ) -> crate::errors::Result<Vec<crate::domain::values::PermissionMapping>> {
+    async fn list_all_mappings(&self) -> crate::errors::Result<Vec<PermissionMapping>> {
         use crate::errors::{Error, InfrastructureError};
         use crate::infrastructure::errors::DatabaseOperation;
 
@@ -584,7 +587,7 @@ impl crate::ports::repositories::PermissionMappingRepository for SeaOrmRepositor
 
         let mut out = Vec::with_capacity(models.len());
         for m in models {
-            let dom = crate::domain::values::PermissionMapping::try_from(m).map_err(|e| {
+            let dom = PermissionMapping::try_from(m).map_err(|e| {
                 Error::Infrastructure(InfrastructureError::Database {
                     operation: DatabaseOperation::Query,
                     message: format!("Failed to convert permission mapping: {}", e),

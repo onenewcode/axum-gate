@@ -61,14 +61,14 @@
 //!
 //! User permissions are managed through the `Permissions` struct and associated methods.
 //! See the `auth` module for details on permission management.
-use crate::application::auth::{LoginResult, LoginService, LogoutService};
-use crate::domain::entities::{Account, Credentials};
-use crate::domain::traits::AccessHierarchy;
-use crate::http::cookie::CookieBuilder;
-use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
-use crate::ports::Codec;
-use crate::ports::auth::CredentialsVerifier;
-use crate::ports::repositories::AccountRepository;
+use crate::accounts::{Account, AccountRepository};
+use crate::authn::{LoginResult, LoginService, LogoutService};
+use crate::authz::AccessHierarchy;
+use crate::codecs::Codec;
+use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
+use crate::cookie::CookieBuilder;
+use crate::credentials::Credentials;
+use crate::credentials::CredentialsVerifier;
 
 use std::sync::Arc;
 

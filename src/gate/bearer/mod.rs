@@ -72,15 +72,11 @@ use http::StatusCode;
 use tower::{Layer, Service};
 use tracing::{debug, trace, warn};
 
-use crate::domain::entities::Account;
-use crate::domain::services::access_policy::AccessPolicy;
-use crate::domain::services::authorization::AuthorizationService;
-use crate::domain::traits::AccessHierarchy;
-use crate::domain::values::StaticTokenAuthorized;
-use crate::infrastructure::jwt::{
-    JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims,
-};
-use crate::ports::Codec;
+use crate::accounts::Account;
+use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
+use crate::codecs::Codec;
+use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
+use crate::static_token_authorized::StaticTokenAuthorized;
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]
@@ -318,14 +314,13 @@ where
     }
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        #[cfg(feature = "audit-logging")]
+        use crate::audit;
+
         let unauthorized_future = Box::pin(async move { Ok(Self::unauthorized()) });
 
         #[cfg(feature = "audit-logging")]
-        let _span = crate::infrastructure::audit::request_span(
-            req.method().as_str(),
-            req.uri().path(),
-            None,
-        );
+        let _span = audit::request_span(req.method().as_str(), req.uri().path(), None);
 
         if self.optional {
             let mut opt_account: Option<Account<R, G>> = None;
@@ -353,13 +348,13 @@ where
         if self.authorization.policy_denies_all_access() {
             debug!("Bearer JWT gate denying access (deny-all policy)");
             #[cfg(feature = "audit-logging")]
-            crate::infrastructure::audit::denied(None, "policy_denies_all");
+            audit::denied(None, "policy_denies_all");
             return unauthorized_future;
         }
 
         let Some(token) = Self::bearer_token(&req) else {
             #[cfg(feature = "audit-logging")]
-            crate::infrastructure::audit::denied(None, "missing_authorization_header");
+            audit::denied(None, "missing_authorization_header");
             return unauthorized_future;
         };
 
@@ -368,34 +363,28 @@ where
             JwtValidationResult::InvalidToken => {
                 debug!("JWT token validation failed");
                 #[cfg(feature = "audit-logging")]
-                crate::infrastructure::audit::jwt_invalid_token("validation_failed");
+                audit::jwt_invalid_token("validation_failed");
                 return unauthorized_future;
             }
             JwtValidationResult::InvalidIssuer { expected, actual } => {
                 warn!("JWT issuer mismatch. Expected='{expected}', Actual='{actual}'");
                 #[cfg(feature = "audit-logging")]
-                crate::infrastructure::audit::jwt_invalid_issuer(&expected, &actual);
+                audit::jwt_invalid_issuer(&expected, &actual);
                 return unauthorized_future;
             }
         };
 
         #[cfg(feature = "audit-logging")]
-        let _authz_span = crate::infrastructure::audit::authorization_span(
-            Some(&jwt.custom_claims.account_id),
-            None,
-        );
+        let _authz_span = audit::authorization_span(Some(&jwt.custom_claims.account_id), None);
 
         if !self.authorization.is_authorized(&jwt.custom_claims) {
             #[cfg(feature = "audit-logging")]
-            crate::infrastructure::audit::denied(
-                Some(&jwt.custom_claims.account_id),
-                "policy_denied",
-            );
+            audit::denied(Some(&jwt.custom_claims.account_id), "policy_denied");
             return unauthorized_future;
         }
 
         #[cfg(feature = "audit-logging")]
-        crate::infrastructure::audit::authorized(&jwt.custom_claims.account_id, None);
+        audit::authorized(&jwt.custom_claims.account_id, None);
 
         req.extensions_mut().insert(jwt.custom_claims.clone());
         req.extensions_mut().insert(jwt.registered_claims.clone());
@@ -468,11 +457,10 @@ where
 
     fn call(&mut self, mut req: Request<Body>) -> Self::Future {
         #[cfg(feature = "audit-logging")]
-        let _span = crate::infrastructure::audit::request_span(
-            req.method().as_str(),
-            req.uri().path(),
-            None,
-        );
+        use crate::audit;
+
+        #[cfg(feature = "audit-logging")]
+        let _span = audit::request_span(req.method().as_str(), req.uri().path(), None);
 
         if self.optional {
             let provided = Self::bearer_token(&req);
@@ -485,13 +473,13 @@ where
 
         let Some(provided) = Self::bearer_token(&req) else {
             #[cfg(feature = "audit-logging")]
-            crate::infrastructure::audit::denied(None, "missing_authorization_header");
+            audit::denied(None, "missing_authorization_header");
             return Box::pin(async move { Ok(Self::unauthorized()) });
         };
 
         if provided != self.token {
             #[cfg(feature = "audit-logging")]
-            crate::infrastructure::audit::denied(None, "static_token_mismatch");
+            audit::denied(None, "static_token_mismatch");
             return Box::pin(async move { Ok(Self::unauthorized()) });
         }
 
@@ -509,8 +497,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::auth::{Account, Group, Role};
-    use crate::jwt::{JsonWebToken, JwtClaims};
+    use crate::accounts::Account;
+    use crate::codecs::jwt::{JsonWebToken, JwtClaims};
+    use crate::groups::Group;
+    use crate::roles::Role;
 
     #[test]
     fn jwt_gate_initial_deny_all() {

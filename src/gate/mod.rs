@@ -76,9 +76,9 @@
 //!         AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"))
 //!     );
 //! ```
-use crate::domain::traits::AccessHierarchy;
-use crate::ports::Codec;
-use cookie::CookieGate;
+use self::cookie::CookieGate;
+use crate::authz::AccessHierarchy;
+use crate::codecs::Codec;
 
 use std::sync::Arc;
 

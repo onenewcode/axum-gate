@@ -309,18 +309,31 @@
 //! in the authentication process. The login service now takes approximately the same time whether
 //! a user exists or not, making timing-based user enumeration attacks infeasible.
 
+pub use cookie;
+pub use jsonwebtoken;
+#[cfg(feature = "prometheus")]
+pub use prometheus;
+pub use serde_json;
+pub use uuid;
+
 pub mod accounts;
 pub mod as_permission_name;
+#[cfg(feature = "audit-logging")]
+pub mod audit;
 pub mod authn;
 pub mod authz;
+pub mod codecs;
 #[cfg(feature = "storage-seaorm")]
 pub mod comma_separated_value;
+pub mod cookie_template;
 pub mod credentials;
+pub mod gate;
 pub mod groups;
 pub mod hashing;
-pub mod permission_mapping;
 pub mod permissions;
+pub mod repositories;
 pub mod roles;
+pub mod route_handlers;
 pub mod secrets;
 pub mod static_token_authorized;
 pub mod validate_permissions;
@@ -334,133 +347,10 @@ pub(crate) mod ports;
 
 /// Common types and functions for quick imports.
 pub mod prelude {
-    pub use crate::as_permission_name::AsPermissionName;
-    pub use crate::auth::{AccessPolicy, Account, Credentials, Group, Role};
-    pub use crate::authz::{AccessHierarchy, AccessScope};
-    #[cfg(feature = "storage-seaorm")]
-    pub use crate::comma_separated_value::CommaSeparatedValue;
-    pub use crate::infrastructure::web::cookie_template::CookieTemplateBuilder;
-    // Authentication middleware and builders.
-    pub use crate::infrastructure::web::gate::{Gate, cookie::CookieGate};
+    pub use crate::accounts::Account;
+    pub use crate::cookie_template::CookieTemplateBuilder;
+    pub use crate::credentials::Credentials;
+    pub use crate::gate::Gate;
+    pub use crate::groups::Group;
+    pub use crate::roles::Role;
 }
-
-/// Authentication types, policies, and account management.
-pub mod auth {
-
-    pub use crate::domain::entities::{Account, Credentials, Group, Role};
-    pub use crate::domain::services::access_policy::AccessPolicy;
-    pub use crate::domain::values::{
-        PermissionId, PermissionMapping, PermissionMappingError, Permissions, StaticTokenAuthorized,
-    };
-
-    // Account creation and management.
-    pub use crate::application::accounts::{AccountDeleteService, AccountInsertService};
-
-    // Login and logout route handlers.
-    pub use crate::infrastructure::web::route_handlers::{login, logout};
-}
-
-/// JWT creation, validation, and claims management.
-pub mod jwt {
-
-    pub use crate::infrastructure::jwt::{
-        JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims,
-    };
-}
-
-/// Cookie handling and HTTP types.
-pub mod http {
-
-    pub use axum_extra::extract::cookie::CookieJar;
-    pub use cookie::{self, SameSite};
-
-    // Cookie duration type.
-    pub use cookie::time::Duration;
-}
-
-/// Storage backends for accounts (roles / groups / permissions) and authentication secrets.
-///
-/// Available backends (enable the feature flags you need):
-/// - memory (default, no feature): Fast & ephemeral. Use for tests and local development only.
-/// - surrealdb (feature: `storage-surrealdb`): SurrealDB (KV/SQL hybrid). Customize tables / namespace / database.
-/// - seaorm (feature: `storage-seaorm`): Any SQL database supported by SeaORM. Use provided entity models for schema creation.
-///
-/// Quick start (memory):
-/// ```rust
-/// use axum_gate::{storage, auth};
-/// use std::sync::Arc;
-/// let accounts = Arc::new(storage::MemoryAccountRepository::<auth::Role, auth::Group>::default());
-/// let secrets  = Arc::new(storage::MemorySecretRepository::default());
-/// ```
-///
-/// SurrealDB (feature `storage-surrealdb`):
-/// ```rust,no_run
-/// # #[cfg(feature="storage-surrealdb")]
-/// # {
-/// use axum_gate::storage::surrealdb::{DatabaseScope, SurrealDbRepository};
-/// use axum_gate::storage::TableName;
-/// # let db: surrealdb::Surreal<surrealdb::engine::any::Any> = todo!(); // In real code: surrealdb::Surreal::new(...).await
-/// let scope = DatabaseScope {
-///     accounts: TableName::AxumGateAccounts.to_string(),
-///     credentials: TableName::AxumGateCredentials.to_string(),
-///     permission_mappings: TableName::AxumGatePermissionMappings.to_string(),
-///     namespace: "axum-gate".into(),
-///     database: "axum-gate".into(),
-/// };
-/// let repo = SurrealDbRepository::new(db, scope);
-/// # }
-/// ```
-///
-/// SeaORM (feature `storage-seaorm`):
-/// ```rust,no_run
-/// # #[cfg(feature="storage-seaorm")]
-/// # {
-/// use axum_gate::storage::seaorm::{SeaOrmRepository, models};
-/// # let db: sea_orm::DatabaseConnection = todo!(); // In real code: sea_orm::Database::connect(...).await
-/// // Use models::account::Entity & models::credentials::Entity in migrations
-/// let repo = SeaOrmRepository::new(&db);
-/// # }
-/// ```
-///
-/// All backends implement:
-/// - [`AccountRepository`](crate::advanced::AccountRepository)
-/// - [`SecretRepository`](crate::advanced::SecretRepository)
-/// - [`CredentialsVerifier`](crate::advanced::CredentialsVerifier)
-///
-/// Security: Every backend performs constant-time credential verification (dummy hash for non‑existent users) to reduce timing side channel risk.
-pub mod storage {
-    pub use crate::infrastructure::repositories::memory::{
-        MemoryAccountRepository, MemoryPermissionMappingRepository, MemorySecretRepository,
-    };
-
-    #[cfg(feature = "storage-surrealdb")]
-    /// SurrealDB storage backend (enable the `storage-surrealdb` feature).
-    pub mod surrealdb {
-        pub use crate::infrastructure::repositories::surrealdb::{
-            DatabaseScope, SurrealDbRepository,
-        };
-    }
-
-    #[cfg(feature = "storage-seaorm")]
-    /// SeaORM storage backend (enable the `storage-seaorm` feature).
-    pub mod seaorm {
-        pub use crate::infrastructure::repositories::sea_orm::{SeaOrmRepository, models};
-    }
-
-    // Re-export for SurrealDB table / namespace customization and (optionally) other DB backends.
-    #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
-    pub use crate::infrastructure::repositories::TableName;
-}
-
-/// External crate re-exports, convenient access to commonly used external types.
-pub mod integrations {
-    pub use jsonwebtoken;
-    #[cfg(feature = "prometheus")]
-    pub use prometheus;
-    pub use serde_json;
-    pub use uuid::Uuid;
-}
-
-/// Audit logging utilities (feature: `audit-logging`).
-#[cfg(feature = "audit-logging")]
-pub use crate::infrastructure::audit;

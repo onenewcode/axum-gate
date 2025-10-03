@@ -1,12 +1,14 @@
 //! Secrets hashing and verification models.
 use crate::errors::{Error, PortError, Result};
-use crate::hashing::HashingService;
-use crate::infrastructure::hashing::HashedValue;
+use crate::hashing::{HashedValue, HashingService};
 use crate::ports::errors::HashingOperation;
 use crate::verification_result::VerificationResult;
+pub use secret_repository::SecretRepository;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+mod secret_repository;
 
 /// A cryptographically secure secret (password) bound to a specific user account.
 ///
@@ -265,7 +267,7 @@ impl Secret {
 
 #[test]
 fn secret_verification() {
-    use crate::infrastructure::hashing::Argon2Hasher;
+    use crate::hashing::argon2::Argon2Hasher;
 
     let id = Uuid::now_v7();
     let correct_password = "admin_password";

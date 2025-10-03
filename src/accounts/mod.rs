@@ -5,6 +5,7 @@
 
 mod account_delete;
 mod account_insert;
+mod account_repository;
 
 use crate::authz::AccessHierarchy;
 #[cfg(feature = "storage-seaorm")]
@@ -12,6 +13,7 @@ use crate::comma_separated_value::CommaSeparatedValue;
 use crate::permissions::{PermissionId, Permissions};
 pub use account_delete::AccountDeleteService;
 pub use account_insert::AccountInsertService;
+pub use account_repository::AccountRepository;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -211,8 +213,7 @@ where
 }
 
 #[cfg(feature = "storage-seaorm")]
-impl<R, G> TryFrom<crate::infrastructure::repositories::sea_orm::models::account::Model>
-    for Account<R, G>
+impl<R, G> TryFrom<crate::repositories::sea_orm::models::account::Model> for Account<R, G>
 where
     R: AccessHierarchy + Eq + std::fmt::Display + Clone,
     Vec<R>: CommaSeparatedValue,
@@ -222,7 +223,7 @@ where
     type Error = String;
 
     fn try_from(
-        value: crate::infrastructure::repositories::sea_orm::models::account::Model,
+        value: crate::repositories::sea_orm::models::account::Model,
     ) -> Result<Self, Self::Error> {
         Ok(Self::new_with_account_id(
             &value.account_id,

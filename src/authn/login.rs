@@ -1,10 +1,9 @@
-use crate::accounts::Account;
+use crate::accounts::{Account, AccountRepository};
 use crate::authz::AccessHierarchy;
+use crate::codecs::Codec;
+use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use crate::credentials::Credentials;
-use crate::infrastructure::jwt::{JwtClaims, RegisteredClaims};
-use crate::ports::Codec;
-use crate::ports::auth::CredentialsVerifier;
-use crate::ports::repositories::AccountRepository;
+use crate::credentials::CredentialsVerifier;
 use crate::verification_result::VerificationResult;
 
 use std::sync::Arc;
@@ -310,12 +309,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::codecs::jwt::{JsonWebToken, JwtClaims};
     use crate::groups::Group;
     use crate::hashing::argon2::Argon2Hasher;
-    use crate::infrastructure::jwt::{JsonWebToken, JwtClaims};
-    use crate::infrastructure::repositories::memory::{
-        MemoryAccountRepository, MemorySecretRepository,
-    };
+    use crate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
     use crate::roles::Role;
     use crate::secrets::Secret;
     use std::time::{Duration, Instant};
@@ -328,6 +325,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_timing_attack_protection() {
+        use crate::secrets::SecretRepository;
         // Setup
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
         let secret_repo = Arc::new(MemorySecretRepository::default());
@@ -346,10 +344,9 @@ mod tests {
             Argon2Hasher::default(),
         )
         .expect("secret");
-        use crate::ports::repositories::SecretRepository;
         secret_repo.store_secret(secret).await.unwrap();
 
-        let registered_claims = crate::infrastructure::jwt::RegisteredClaims::new(
+        let registered_claims = crate::codecs::jwt::RegisteredClaims::new(
             "test-issuer",
             chrono::Utc::now().timestamp() as u64 + 3600,
         );
@@ -525,7 +522,7 @@ mod tests {
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 
-        let registered_claims = crate::infrastructure::jwt::RegisteredClaims::new(
+        let registered_claims = crate::codecs::jwt::RegisteredClaims::new(
             "test-issuer",
             chrono::Utc::now().timestamp() as u64 + 3600,
         );

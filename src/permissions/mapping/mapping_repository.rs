@@ -1,4 +1,4 @@
-use crate::domain::values::{PermissionId, PermissionMapping};
+use super::{PermissionId, PermissionMapping};
 use crate::errors::Result;
 
 use std::future::Future;
