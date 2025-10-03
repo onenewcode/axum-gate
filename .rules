@@ -12,7 +12,7 @@ _This file is generated. Do not edit manually. Sources: ai-ruleset/src/{rust,glo
 
 # Rust Best Practices for AI-Assisted Development
 
-You are an expert in Rust programming and related technologies, optimized for AI-assisted development workflows using Zed editor, Claude Sonnet 4, and GPT-5.
+Expert-level Rust programming guidance optimized for AI-assisted development workflows.
 
 ## AI-Optimized Development Principles
 
@@ -29,7 +29,7 @@ You are an expert in Rust programming and related technologies, optimized for AI
 - If the complete answer may exceed tool or model limits, propose a plan and split the work into steps
 - When requirements are ambiguous, ask one clarifying question, then proceed with a conservative, safe default
 
-### Zed Editor Integration
+### IDE Integration
 - Structure code for optimal Go-to-Definition and Find References functionality
 - Use consistent naming conventions that support fuzzy finding and navigation
 - Organize imports in standard order: std, external crates, local crates, modules
@@ -416,7 +416,7 @@ pub enum DatabaseError {
 
 ---
 
-Following these practices ensures that Rust code generated with AI assistance is maintainable, performant, and follows modern Rust idioms while being optimized for development workflows using Zed editor and AI assistants like Claude Sonnet 4 and GPT-5.
+Following these practices ensures that Rust code generated with AI assistance is maintainable, performant, and follows modern Rust idioms while being optimized for development workflows with modern AI assistants.
 
 
 ## Source: rust/axum.md
@@ -424,7 +424,7 @@ Following these practices ensures that Rust code generated with AI assistance is
 
 # Axum Best Practices for AI-Assisted Development
 
-Optimized for Zed editor, Claude Sonnet 4, and GPT-5 workflows.
+Expert-level Axum guidance optimized for AI-assisted development workflows.
 Target: Axum 0.8.4+, Tokio + Hyper + Tower stack.
 
 ## Core Principles
@@ -927,7 +927,7 @@ Adopting these rules ensures consistent, high-quality changes and smooth collabo
 
 # Global AI Rules for This Workspace
 
-These rules are model-agnostic and apply equally when using Claude Sonnet 4 or GPT‑5 in Zed. They define how to structure assistance, keep changes safe, and maximize developer productivity across any programming language or framework.
+These rules are model-agnostic and apply equally across different AI providers in any development environment. They define how to structure assistance, keep changes safe, and maximize developer productivity across any programming language or framework.
 
 ## Purpose
 - Provide consistent, high-quality assistance across languages and stacks in this workspace.
@@ -1015,7 +1015,7 @@ These rules are model-agnostic and apply equally when using Claude Sonnet 4 or G
 - Update or create README snippets when adding meaningful features or workflows.
 - Avoid implementation details unless they directly impact how the code should be used.
 
-## Zed Integration Notes
+## IDE Integration Notes
 - Optimize for navigation: consistent naming, clear module structures, and meaningful symbols for go-to-definition/find references.
 - Keep imports ordered and deduplicated.
 - When suggesting commands or scripts, prefer portable, single-shot commands (no long-running watchers).
@@ -1049,9 +1049,9 @@ These global rules ensure consistent, safe, and efficient collaboration with AI 
 ## Source: global/provider-guidance.md
 
 
-# Provider-Agnostic Model Guidance (Claude Sonnet 4 and GPT-5)
+# Provider-Agnostic Model Guidance
 
-This document makes the ruleset work interchangeably with Claude Sonnet 4 and GPT-5 in Zed. It provides model-neutral instructions, selection guidance by task type, and response-shaping patterns that produce consistent, reviewable results regardless of the chosen provider.
+This document makes the ruleset work interchangeably with different AI models in any development environment. It provides model-neutral instructions, selection guidance by task type, and response-shaping patterns that produce consistent, reviewable results regardless of the chosen provider.
 
 ## Goals and Scope
 
@@ -1143,7 +1143,7 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 - Use stable wording for headings and checklists.
 - Prefer explicit types, clear interfaces, and well-defined contracts.
 
-## Zed-Oriented Tips (Model-Neutral)
+## IDE-Oriented Tips (Model-Neutral)
 
 - Respect ruleset scoping via globs; keep changes within the current file set unless asked otherwise.
 - Include complete module context (imports, dependencies, configuration updates when relevant).
@@ -1232,7 +1232,7 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 
 ---
 
-With these rules, Claude Sonnet 4 and GPT-5 can be used interchangeably in Zed. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers and programming languages.
+With these rules, different AI models can be used interchangeably in any development environment. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers and programming languages.
 
 
 ## Source: global/security-ai.md
@@ -1240,7 +1240,7 @@ With these rules, Claude Sonnet 4 and GPT-5 can be used interchangeably in Zed. 
 
 # AI Security & Privacy Rules (Global)
 
-Model-agnostic rules to keep code, data, and credentials safe while collaborating with AI in Zed. These rules apply to all files matched by this ruleset.
+Model-agnostic rules to keep code, data, and credentials safe while collaborating with AI in any development environment. These rules apply to all files matched by this ruleset.
 
 ## Golden rules
 
@@ -1380,5 +1380,5 @@ Use these templates to align requests/responses with safe practices.
 - Logging: Log security events for monitoring but never log sensitive data.
 
 ---
-By following these rules, assistants and contributors maintain strong security posture across models and workflows while enabling effective, privacy-preserving collaboration in Zed regardless of the programming language or technology stack being used.
+By following these rules, assistants and contributors maintain strong security posture across models and workflows while enabling effective, privacy-preserving collaboration in any development environment regardless of the programming language or technology stack being used.
 
