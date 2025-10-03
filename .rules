@@ -1235,6 +1235,261 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 With these rules, different AI models can be used interchangeably in any development environment. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers and programming languages.
 
 
+## Source: global/readme-structure.md
+
+
+# README Structure and Content Rules for AI-Assisted Development
+
+## Purpose
+Define standards for creating comprehensive, user-friendly README.md files that effectively communicate project purpose, usage, and contribution guidelines to users and developers.
+
+## Essential README Sections
+
+### Project Header Requirements
+- Start with clear, descriptive project title as H1 heading
+- Include concise one-line description immediately after title
+- Add detailed project purpose and goals in following paragraph
+- Place badges (build status, version, license) after description if applicable
+
+### Installation Section Standards
+- Provide complete prerequisites list with version requirements
+- Include step-by-step installation instructions
+- Add platform-specific guidance when needed
+- Show actual commands users should run (npm install, pip install, etc.)
+- Test all installation commands before including them
+
+### Usage Examples Requirements
+- Include basic usage example that users can run immediately
+- Provide complete, working code snippets with proper syntax highlighting
+- Show expected output where helpful
+- Include common use cases and workflows
+- Add configuration options with examples
+
+### Documentation Structure
+- Use consistent heading hierarchy (H1 for title, H2 for main sections, H3 for subsections)
+- Include table of contents for READMEs longer than 200 lines
+- Link to external documentation when available
+- Provide API reference or quick reference section for libraries
+
+## Code Example Standards
+
+### Code Block Requirements
+- Use proper language tags for syntax highlighting
+- Provide complete, runnable examples that work out of the box
+- Include necessary imports and setup code
+- Show realistic data and scenarios, not placeholder text
+- Test all code examples before including them
+
+### Example Code Patterns
+```bash
+# Good: Complete, tested command
+npm install package-name --save
+npm run build
+```
+
+```javascript
+// Good: Complete example with imports and realistic usage
+const express = require('express');
+const app = express();
+
+app.get('/api/users', (req, res) => {
+  res.json({ users: ['alice', 'bob'] });
+});
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+### Anti-Patterns to Avoid
+- ❌ Incomplete code snippets without imports or context
+- ❌ Placeholder text like "your-api-key-here" without explanation
+- ❌ Commands that don't actually work as written
+- ❌ Examples using deprecated or outdated syntax
+
+## Project Type Specific Guidelines
+
+### Library/Package Documentation
+- Emphasize installation and basic usage heavily
+- Include comprehensive API documentation or links
+- Show integration examples with popular frameworks
+- Document all public methods, functions, or classes
+- Include troubleshooting section for common issues
+
+### Application Documentation
+- Include screenshots or demo links prominently
+- Provide deployment and configuration instructions
+- Document environment variables and settings
+- Show different usage scenarios or user workflows
+- Include system requirements and dependencies
+
+### CLI Tool Documentation
+- Show command examples with actual output
+- Document all available flags and options with descriptions
+- Include usage scenarios and common workflows
+- Provide installation verification commands
+- Add troubleshooting for common CLI issues
+
+## Contributing and Community Sections
+
+### Contributing Guidelines Requirements
+- Explain how to report bugs with issue template links
+- Provide development environment setup instructions
+- Document coding standards and style guidelines
+- Explain pull request process and requirements
+- Include testing requirements and how to run tests
+
+### Community Information Standards
+- Include license information with link to full text
+- Add code of conduct reference for open source projects
+- Credit major contributors and acknowledgments
+- Provide contact information or community links
+- Include security policy reference if applicable
+
+## Quality Assurance Standards
+
+### Content Verification Requirements
+- Test all installation instructions on clean environment
+- Verify all code examples compile and run correctly
+- Check all links are accessible and current
+- Ensure consistent formatting and style throughout
+- Update examples when dependencies or APIs change
+
+### Maintenance Guidelines
+- Keep README current with project changes
+- Update version numbers and compatibility information
+- Refresh screenshots and demo links regularly
+- Review and update contributing guidelines periodically
+- Maintain consistency with actual project behavior
+
+## AI Assistant Interaction Guidelines
+
+### Effective README Creation Requests
+When requesting README assistance:
+- Specify project type (library, application, CLI tool, etc.)
+- Mention target audience (beginners, developers, specific domain)
+- Include existing project structure and key files
+- Specify any special requirements or constraints
+
+### Iterative README Development
+- Start with essential sections (title, description, installation, basic usage)
+- Add comprehensive examples and documentation iteratively
+- Refine based on user feedback and common questions
+- Test README effectiveness with new users when possible
+
+### README Review Process
+When reviewing generated READMEs:
+- Verify all code examples work as written
+- Check that installation instructions are complete and accurate
+- Ensure appropriate depth for target audience
+- Confirm consistent formatting and professional presentation
+
+## Content Organization Patterns
+
+### Information Hierarchy
+Structure information by user journey:
+1. **Discovery**: Title, description, key features
+2. **Evaluation**: Screenshots, demos, comparison with alternatives
+3. **Getting Started**: Installation, basic usage, quick start guide
+4. **Learning**: Detailed examples, tutorials, best practices
+5. **Reference**: API documentation, configuration options, troubleshooting
+6. **Contributing**: Development setup, contribution guidelines, community info
+
+### Section Ordering Standards
+- Place most critical information first (installation, basic usage)
+- Group related information together (all usage examples in one section)
+- End with community and contribution information
+- Use consistent section naming across projects
+
+## Formatting and Style Guidelines
+
+### Markdown Best Practices
+- Use consistent heading styles and hierarchy
+- Include blank lines around code blocks and sections
+- Use proper list formatting with consistent indentation
+- Include alt text for images and meaningful link text
+- Test markdown rendering in target platforms (GitHub, GitLab, etc.)
+
+### Visual Design Principles
+- Use whitespace effectively to improve readability
+- Include visual breaks between major sections
+- Use code blocks, quotes, and emphasis strategically
+- Keep line length reasonable for easy reading
+- Ensure good contrast and accessibility
+
+## Checklist for README Quality
+
+**Essential Content:**
+- [ ] Clear project title and description
+- [ ] Complete installation instructions tested on clean system
+- [ ] Working basic usage example that new users can run
+- [ ] Link to additional documentation or resources
+- [ ] License and contributing information
+
+**Code Examples:**
+- [ ] All code examples tested and working
+- [ ] Proper syntax highlighting applied
+- [ ] Complete examples with necessary imports and setup
+- [ ] Realistic data and scenarios used
+- [ ] Expected output shown where helpful
+
+**Organization and Style:**
+- [ ] Logical information flow matching user journey
+- [ ] Consistent formatting and markdown style
+- [ ] Appropriate section depth for target audience
+- [ ] Professional presentation and tone
+- [ ] All links verified and accessible
+
+**Maintenance Considerations:**
+- [ ] Version information current and accurate
+- [ ] Examples compatible with documented versions
+- [ ] Screenshots and demos reflect current state
+- [ ] Contributing guidelines match actual process
+- [ ] Contact and community information up to date
+
+## Anti-Patterns in README Creation
+
+**Avoid These Common Mistakes:**
+
+**❌ Incomplete Installation Instructions:**
+```markdown
+# Too vague
+## Installation
+Just install the dependencies and run it.
+```
+
+**❌ Non-Working Code Examples:**
+```python
+# Missing imports, won't actually run
+result = awesome_function("test")
+print(result)
+```
+
+**❌ Overwhelming Wall of Text:**
+```markdown
+# No structure or breathing room
+This project does many things and here's everything about it in one giant paragraph that goes on and on without any breaks or organization making it very difficult to scan and find specific information that users need when they're trying to understand what this project does and how to use it...
+```
+
+**❌ Outdated or Incorrect Information:**
+```markdown
+# Information that doesn't match current project state
+This project requires Node.js 8+ (when it actually requires Node.js 16+)
+Run `npm start` to begin (when the actual command is `npm run dev`)
+```
+
+**❌ Missing Critical Information:**
+```markdown
+# Assumes too much knowledge
+## Usage
+Configure the settings and run the application.
+```
+
+---
+
+Following these rules ensures README files serve as effective project documentation that welcomes new users, provides clear guidance, and maintains professional standards across different project types and audiences.
+
+
 ## Source: global/security-ai.md
 
 
