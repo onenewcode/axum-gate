@@ -17,12 +17,11 @@ use axum::{
     routing::{get, post},
 };
 
+use axum_extra::extract::CookieJar;
 use axum_gate::{
-    auth::{Group, Role},
-    http::CookieJar,
-    integrations::jsonwebtoken::{DecodingKey, EncodingKey, Validation},
-    jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
-    prelude::{AccessPolicy, Account, Gate},
+    authz::AccessPolicy,
+    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
+    prelude::{Account, Gate, Group, Role},
 };
 
 use serde::{Deserialize, Serialize};
@@ -50,10 +49,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create JWT codec with proper shared secret
     let shared_secret = "my-super-secret-key-for-demo"; // In production, use a proper secret from env
     let jwt_options = JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Default::default(),
-        validation: Some(Validation::default()),
+        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(Default::default()),
+        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
     };
     let jwt_codec =
         Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(jwt_options));
@@ -274,7 +273,7 @@ async fn login_handler(
         info!("Successful login for user: {}", form.username);
 
         // Create a simple JWT cookie for demonstration
-        let cookie = axum_gate::http::cookie::Cookie::build(("my-app", "demo-token"))
+        let cookie = axum_gate::cookie::Cookie::build(("my-app", "demo-token"))
             .path("/")
             .http_only(true)
             .build();
@@ -306,7 +305,7 @@ async fn login_handler(
 
 async fn logout_handler(jar: CookieJar) -> Result<Response, StatusCode> {
     // Remove the authentication cookie
-    let cookie = axum_gate::http::cookie::Cookie::build(("my-app", ""))
+    let cookie = axum_gate::cookie::Cookie::build(("my-app", ""))
         .path("/")
         .http_only(true)
         .removal()

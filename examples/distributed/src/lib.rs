@@ -3,8 +3,8 @@
 //! This example shows how the new permission system works seamlessly across
 //! distributed nodes without any coordination or synchronization.
 
-use axum_gate::advanced::AsPermissionName;
-use axum_gate::auth::{PermissionId, Permissions};
+use axum_gate::permissions::AsPermissionName;
+use axum_gate::permissions::{PermissionId, Permissions};
 use axum_gate::validate_permissions;
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};

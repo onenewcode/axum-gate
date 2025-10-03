@@ -1,10 +1,9 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper};
 
-use axum_gate::auth::AccountInsertService;
-use axum_gate::integrations::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
-use axum_gate::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
+use axum_gate::accounts::AccountInsertService;
+use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, RegisteredClaims};
 use axum_gate::prelude::{Credentials, Group, Role};
-use axum_gate::storage::{MemoryAccountRepository, MemorySecretRepository};
+use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 
 use std::sync::Arc;
 
@@ -26,10 +25,10 @@ async fn main() {
     let shared_secret =
         dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
     let jwt_codec = Arc::new(JsonWebToken::new_with_options(JsonWebTokenOptions {
-        enc_key: EncodingKey::from_secret(shared_secret.as_bytes()),
-        dec_key: DecodingKey::from_secret(shared_secret.as_bytes()),
-        header: Some(Header::default()),
-        validation: Some(Validation::default()),
+        enc_key: axum_gate::jsonwebtoken::EncodingKey::from_secret(shared_secret.as_bytes()),
+        dec_key: axum_gate::jsonwebtoken::DecodingKey::from_secret(shared_secret.as_bytes()),
+        header: Some(axum_gate::jsonwebtoken::Header::default()),
+        validation: Some(axum_gate::jsonwebtoken::Validation::default()),
     }));
     debug!("JWT codec initialized.");
 
@@ -104,7 +103,7 @@ async fn main() {
                 let jwt_codec = Arc::clone(&jwt_codec);
                 let cookie_template = cookie_template.clone();
                 move |cookie_jar, Json(credentials): Json<Credentials<String>>| {
-                    axum_gate::auth::login(
+                    axum_gate::route_handlers::login(
                         cookie_jar,
                         credentials,
                         registered_claims,
@@ -118,7 +117,7 @@ async fn main() {
         )
         .route(
             "/logout",
-            get(move |cookie_jar| axum_gate::auth::logout(cookie_jar, cookie_template)),
+            get(move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
