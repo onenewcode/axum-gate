@@ -282,7 +282,6 @@ pub mod repositories;
 pub mod roles;
 pub mod route_handlers;
 pub mod secrets;
-pub mod static_token_authorized;
 pub mod verification_result;
 
 pub mod errors;

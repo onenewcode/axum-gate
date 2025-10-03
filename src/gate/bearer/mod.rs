@@ -72,11 +72,13 @@ use http::StatusCode;
 use tower::{Layer, Service};
 use tracing::{debug, trace, warn};
 
+pub use self::static_token_authorized::StaticTokenAuthorized;
 use crate::accounts::Account;
 use crate::authz::{AccessHierarchy, AccessPolicy, AuthorizationService};
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, JwtValidationResult, JwtValidationService, RegisteredClaims};
-use crate::static_token_authorized::StaticTokenAuthorized;
+
+mod static_token_authorized;
 
 /// JWT mode configuration (compile-time).
 #[derive(Clone)]

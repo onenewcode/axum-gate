@@ -11,7 +11,7 @@
 //!
 //! ```rust
 //! use axum::extract::Extension;
-//! use axum_gate::static_token_authorized::StaticTokenAuthorized;
+//! use axum_gate::gate::bearer::StaticTokenAuthorized;
 //!
 //! async fn handler(Extension(auth): Extension<StaticTokenAuthorized>) -> String {
 //!     if auth.is_authorized() {
