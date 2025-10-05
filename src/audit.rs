@@ -321,7 +321,7 @@ pub fn observe_authz_latency(start: Instant, outcome: AuthzOutcome) {
 /// # }
 /// ```
 pub mod prometheus_metrics {
-    use prometheus::{Counter, CounterVec, Histogram, HistogramOpts, HistogramVec, Registry};
+    use prometheus::{Counter, CounterVec, HistogramOpts, HistogramVec, Registry};
     use std::sync::OnceLock;
     use strum::AsRefStr;
 
@@ -404,8 +404,6 @@ pub mod prometheus_metrics {
         pub authz_decision_latency: HistogramVec,
         /// Histogram for JWT validation latency, labeled by outcome.
         pub jwt_validation_latency: HistogramVec,
-        /// Histogram of remaining JWT TTL in seconds at validation time (0 if expired or negative).
-        pub jwt_remaining_ttl: Histogram,
     }
 
     static METRICS: OnceLock<Metrics> = OnceLock::new();
@@ -493,15 +491,6 @@ pub mod prometheus_metrics {
             ]),
             &["outcome"],
         )?;
-        let jwt_remaining_ttl = Histogram::with_opts(
-            HistogramOpts::new(
-                "axum_gate_jwt_remaining_ttl_seconds",
-                "Remaining JWT time-to-live in seconds at validation (0 if expired)",
-            )
-            .buckets(vec![
-                0.0, 60.0, 300.0, 900.0, 3600.0, 14400.0, 86400.0, 604800.0,
-            ]),
-        )?;
 
         // Register metrics with the provided registry
         registry.register(Box::new(authz_authorized.clone()))?;
@@ -511,7 +500,6 @@ pub mod prometheus_metrics {
         registry.register(Box::new(account_insert_outcome.clone()))?;
         registry.register(Box::new(authz_decision_latency.clone()))?;
         registry.register(Box::new(jwt_validation_latency.clone()))?;
-        registry.register(Box::new(jwt_remaining_ttl.clone()))?;
 
         // Store metrics in static for global access
         let metrics = Metrics {
@@ -522,7 +510,6 @@ pub mod prometheus_metrics {
             account_insert_outcome,
             authz_decision_latency,
             jwt_validation_latency,
-            jwt_remaining_ttl,
         };
 
         let _ = METRICS.set(metrics);
@@ -542,14 +529,6 @@ pub mod prometheus_metrics {
             m.jwt_validation_latency
                 .with_label_values(&[outcome.as_label()])
                 .observe(elapsed);
-        }
-    }
-
-    /// Observe remaining JWT TTL (seconds). Provide 0 if already expired or negative.
-    pub fn observe_jwt_remaining_ttl(ttl_seconds: f64) {
-        if let Some(m) = metrics() {
-            let ttl = if ttl_seconds < 0.0 { 0.0 } else { ttl_seconds };
-            m.jwt_remaining_ttl.observe(ttl);
         }
     }
 }

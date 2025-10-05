@@ -14,15 +14,11 @@ use std::time::Instant;
 #[cfg(feature = "audit-logging")]
 use crate::audit;
 #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-use crate::audit::prometheus_metrics::{
-    JwtValidationOutcome, observe_jwt_remaining_ttl, observe_jwt_validation_latency,
-};
+use crate::audit::prometheus_metrics::{JwtValidationOutcome, observe_jwt_validation_latency};
 #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
 use crate::audit::{AuthzOutcome, observe_authz_latency};
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
-#[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-use chrono::Utc;
 use cookie::CookieBuilder;
 use http::StatusCode;
 use tower::Service;
@@ -204,14 +200,6 @@ where
             JwtValidationResult::Valid(jwt) => {
                 #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
                 observe_jwt_validation_latency(jwt_validation_start, JwtValidationOutcome::Valid);
-                #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
-                {
-                    // Compute remaining TTL (0 if already expired)
-                    let now = Utc::now().timestamp() as u64;
-                    let exp = jwt.registered_claims.expiration_time;
-                    let ttl = if exp > now { (exp - now) as f64 } else { 0.0 };
-                    observe_jwt_remaining_ttl(ttl);
-                }
                 jwt
             }
             JwtValidationResult::InvalidToken => {
