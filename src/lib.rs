@@ -257,6 +257,7 @@
 //! - **Deterministic hashing**: No coordination needed between distributed nodes
 //! - **Efficient storage**: Bitmap-based permission storage with fast lookups
 
+pub use axum_extra;
 pub use cookie;
 pub use jsonwebtoken;
 #[cfg(feature = "prometheus")]
