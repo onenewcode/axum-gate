@@ -290,9 +290,11 @@ pub mod errors;
 /// Common types and functions for quick imports.
 pub mod prelude {
     pub use crate::accounts::Account;
+    pub use crate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
     pub use crate::cookie_template::CookieTemplateBuilder;
     pub use crate::credentials::Credentials;
     pub use crate::gate::Gate;
     pub use crate::groups::Group;
+    pub use crate::jsonwebtoken::{DecodingKey, EncodingKey};
     pub use crate::roles::Role;
 }
