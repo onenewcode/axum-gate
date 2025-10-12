@@ -33,7 +33,7 @@ use std::future::Future;
 ///
 /// # Example (generic usage)
 /// ```rust
-
+///
 /// use axum_gate::accounts::Account;
 /// use axum_gate::prelude::{Role, Group};
 /// use axum_gate::accounts::AccountRepository;
