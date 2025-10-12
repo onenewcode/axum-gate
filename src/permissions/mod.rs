@@ -89,7 +89,48 @@
 //!     println!("Has admin access");
 //! }
 //! ```
-
+//!
+//! ## 5. Using Custom Enums with `AsPermissionName`
+//!
+//! Define your permissions as enums, implement `AsPermissionName` to map them to stable, readable names, and use them anywhere a permission is accepted.
+//!
+//! ```rust
+//! use axum_gate::authz::AccessPolicy;
+//! use axum_gate::permissions::{AsPermissionName, Permissions};
+//! use axum_gate::prelude::{Role, Group};
+//!
+//! #[derive(Debug)]
+//! enum Api {
+//!     Read,
+//!     Write,
+//! }
+//!
+//! #[derive(Debug)]
+//! enum AppPermission {
+//!     Api(Api),
+//!     System(&'static str),
+//! }
+//!
+//! // Map enums to stable permission names used across your app
+//! impl AsPermissionName for AppPermission {
+//!     fn as_permission_name(&self) -> String {
+//!         match self {
+//!             AppPermission::Api(api) => format!("api:{:?}", api).to_lowercase(),
+//!             AppPermission::System(s) => format!("system:{s}"),
+//!         }
+//!     }
+//! }
+//!
+//! // Grant/check with your enums
+//! let mut perms = Permissions::new();
+//! perms.grant(&AppPermission::Api(Api::Read));
+//! assert!(perms.has(&AppPermission::Api(Api::Read)));
+//!
+//! // Use in access policies
+//! let policy: AccessPolicy<Role, Group> =
+//!     AccessPolicy::require_permission(&AppPermission::Api(Api::Read));
+//! ```
+//
 pub use self::application_validator::ApplicationValidator;
 pub use self::as_permission_name::AsPermissionName;
 pub use self::collision_checker::PermissionCollisionChecker;
