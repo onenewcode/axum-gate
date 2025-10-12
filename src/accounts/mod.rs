@@ -243,6 +243,74 @@ where
     {
         self.permissions.revoke(permission);
     }
+
+    /// Returns true if this account has the given role.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
+    ///
+    /// let account = Account::<Role, Group>::new(
+    ///     "user@example.com",
+    ///     &[Role::User],
+    ///     &[Group::new("engineering")]
+    /// );
+    ///
+    /// assert!(account.has_role(&Role::User));
+    /// assert!(!account.has_role(&Role::Admin));
+    /// ```
+    pub fn has_role(&self, role: &R) -> bool {
+        self.roles.contains(role)
+    }
+
+    /// Returns true if this account is a member of the given group.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
+    ///
+    /// let account = Account::<Role, Group>::new(
+    ///     "user@example.com",
+    ///     &[Role::User],
+    ///     &[Group::new("engineering")]
+    /// );
+    ///
+    /// assert!(account.is_member_of(&Group::new("engineering")));
+    /// assert!(!account.is_member_of(&Group::new("marketing")));
+    /// ```
+    pub fn is_member_of(&self, group: &G) -> bool {
+        self.groups.contains(group)
+    }
+
+    /// Returns true if this account has the specified permission.
+    ///
+    /// Accepts any type that converts into `PermissionId` (e.g., `&str`, `PermissionId`).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use axum_gate::accounts::Account;
+    /// use axum_gate::prelude::{Role, Group};
+    /// use axum_gate::permissions::PermissionId;
+    ///
+    /// let mut account = Account::<Role, Group>::new("user@example.com", &[], &[]);
+    /// account.grant_permission("read:api");
+    /// account.grant_permission(PermissionId::from("write:docs"));
+    ///
+    /// assert!(account.has_permission("read:api"));
+    /// assert!(account.has_permission(PermissionId::from("write:docs")));
+    /// assert!(!account.has_permission("admin:system"));
+    /// ```
+    pub fn has_permission<P>(&self, permission: P) -> bool
+    where
+        P: Into<PermissionId>,
+    {
+        self.permissions.has(permission)
+    }
 }
 
 #[cfg(feature = "storage-seaorm")]
