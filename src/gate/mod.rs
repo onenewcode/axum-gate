@@ -145,11 +145,10 @@ impl Gate {
     /// This variant protects routes by expecting an `Authorization: Bearer <token>`
     /// header. Missing or invalid bearer tokens result in `401 Unauthorized`.
     ///
-    /// Like the cookie-based gate, it will support (once implemented) an
-    /// `allow_anonymous_with_optional_user()` (or similarly named) configuration
-    /// method to install `Option<Account<R,G>>` / `Option<RegisteredClaims>` in
-    /// request extensions without enforcing authorization (mirroring the cookie
-    /// gate's anonymous optional mode).
+    /// Optional mode is supported via `allow_anonymous_with_optional_user()`. In optional mode,
+    /// requests are always forwarded and the layer inserts `Option<Account<R, G>>` and
+    /// `Option<RegisteredClaims>` (Some only when the token is valid). You can also transition to
+    /// a static shared-secret mode via `.with_static_token("...")`.
     ///
     /// # Arguments
     /// * `issuer` - The JWT issuer identifier for your application

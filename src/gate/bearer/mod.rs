@@ -6,7 +6,7 @@
 //!
 //! JWT Mode (BearerGate<_, _, _, JwtConfig<_, _>>):
 //!   - with_policy(...)
-//!   - require_login()            (only when using crate::auth::Role/Group)
+//!   - require_login()            (requires R: Default; baseline role + supervisors)
 //!   - allow_anonymous_with_optional_user()
 //!   - with_static_token(token)   (transitions to static token mode)
 //!
@@ -21,10 +21,10 @@
 //!       * StaticTokenAuthorized(bool)
 //!
 //! Strict Mode Semantics:
-//!   - JWT strict: validates Authorization: Bearer `<jwt>`, enforces AccessPolicy
-//!     inserts Account<R,G> & RegisteredClaims on success, 401 otherwise
-//!   - Static token strict: requires Authorization: Bearer <exact_token>, inserts
-//!     StaticTokenAuthorized(true) on success, 401 otherwise
+//!   - JWT strict: validates Authorization: Bearer `<jwt>`, enforces AccessPolicy;
+//!     inserts `Account<R,G>` and `RegisteredClaims` on success, 401 otherwise
+//!   - Static token strict: requires `Authorization: Bearer <exact_token>`;
+//!     inserts `StaticTokenAuthorized(true)` on success, 401 otherwise
 //!
 //! Example (JWT strict):
 //! ```ignore
@@ -47,7 +47,7 @@
 //!
 //! Static token optional:
 //! ```ignore
-//! use axum_gate::infrastructure::web::gate::bearer::StaticTokenAuthorized;
+//! use axum_gate::gate::bearer::StaticTokenAuthorized;
 //! let gate = Gate::bearer("svc-a", codec)
 //!     .with_static_token("shared-secret")
 //!     .allow_anonymous_with_optional_user(); // installs StaticTokenAuthorized(bool)
@@ -143,12 +143,12 @@ where
         self
     }
 
-    /// Configure the gate to allow any authenticated user: the baseline role (least privileged,
-    /// provided by `Default::default()`) and all roles with higher privilege (per ordering where
-    /// higher privilege > lower privilege).
+    /// Configure the gate to allow any authenticated user: the baseline role (least
+    /// privileged) from `Default::default()` and all supervisor roles as defined by
+    /// your `AccessHierarchy`.
     ///
-    /// This is equivalent to: `with_policy(AccessPolicy::require_role_or_supervisor(R::default()))`
-    /// but more ergonomic and generic over any role type implementing `Default + Ord`.
+    /// Equivalent to `with_policy(AccessPolicy::require_role_or_supervisor(R::default()))`.
+    /// Requires `R: Default`.
     pub fn require_login(mut self) -> Self
     where
         R: Default,

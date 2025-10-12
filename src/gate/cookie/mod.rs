@@ -104,7 +104,7 @@ where
     /// This configures the gate to **SKIP ALL authentication and authorization checks**.
     /// Every request is forwarded. The middleware will insert two extensions:
     /// - `Option<Account<R, G>>`
-    /// - `Option<crate::jwt::RegisteredClaims>`
+    /// - `Option<crate::codecs::jwt::RegisteredClaims>`
     ///
     /// They are `Some(..)` only if a valid authentication cookie with a decodable JWT
     /// is present; otherwise they are `None`.
