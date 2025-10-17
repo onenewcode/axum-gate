@@ -558,15 +558,17 @@ mod tests {
     use crate::groups::Group;
     use crate::roles::Role;
 
+    type BearerGateJsonwebtoken = BearerGate<
+        JsonWebToken<JwtClaims<Account<Role, Group>>>,
+        Role,
+        Group,
+        JwtConfig<Role, Group>,
+    >;
+
     #[test]
     fn jwt_gate_initial_deny_all() {
         let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-        let gate: BearerGate<
-            JsonWebToken<JwtClaims<Account<Role, Group>>>,
-            Role,
-            Group,
-            JwtConfig<Role, Group>,
-        > = BearerGate::new_with_codec("issuer", codec);
+        let gate: BearerGateJsonwebtoken = BearerGate::new_with_codec("issuer", codec);
         assert!(gate.mode.policy.denies_all());
         assert!(!gate.mode.optional);
     }
