@@ -6,11 +6,11 @@ license = "MIT"
 
 
 [dependencies]
-axum = "0.8.3"
+axum = { workspace = true }
 axum-gate = { path = "../../", features = ["storage-surrealdb"] }
-chrono = { version = "0.4" }
-dotenvy = "0.15"
-surrealdb = { version = "2", features = ["kv-mem"] }
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+surrealdb = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

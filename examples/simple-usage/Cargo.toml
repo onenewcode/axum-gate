@@ -6,11 +6,11 @@ license = "MIT"
 
 
 [dependencies]
-axum = "0.8.3"
-axum-extra = { version = "0.10", features = ["cookie"] }
+axum = { workspace = true }
+axum-extra = { workspace = true }
 axum-gate = { path = "../../" }
-chrono = { version = "0.4" }
-serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
+chrono = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

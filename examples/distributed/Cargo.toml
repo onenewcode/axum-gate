@@ -13,17 +13,14 @@ name = "consumer_node"
 path = "src/bin/consumer_node.rs"
 
 [dependencies]
-axum = "0.8.3"
+axum = { workspace = true }
 axum-gate = { path = "../../" }
-chrono = "0.4.41"
-dotenvy = "0.15"
-roaring = "0.10"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-strum = { version = "0.26", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
-
-[profile.dev]
-debug = false
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+roaring = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
