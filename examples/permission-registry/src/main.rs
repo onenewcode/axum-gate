@@ -9,12 +9,11 @@
 //! system without replacing it, providing human-readable permission names
 //! when needed while maintaining the performance benefits of ID-based storage.
 
-use axum_gate::accounts::Account;
 use axum_gate::permissions::{
     mapping::{PermissionMapping, PermissionMappingRepository},
-    PermissionId, Permissions,
+    Permissions,
 };
-use axum_gate::prelude::{Group, Role};
+use axum_gate::prelude::{Account, Group, PermissionId, Role};
 use axum_gate::repositories::memory::MemoryPermissionMappingRepository;
 use std::sync::Arc;
 use tracing::{info, warn};
