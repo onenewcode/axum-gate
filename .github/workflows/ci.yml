@@ -1,0 +1,377 @@
+name: CI
+
+on:
+    push:
+        branches: [nightly]
+    pull_request:
+
+permissions:
+    contents: read
+
+env:
+    CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+    RUSTFLAGS: -D warnings
+
+jobs:
+    fmt:
+        name: Format check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable) with rustfmt
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: rustfmt
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: rustfmt --check
+              run: cargo fmt --all -- --check
+
+    clippy:
+        name: Clippy (all targets, all features)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable) with clippy
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: clippy
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: cargo clippy
+              run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+    test-core:
+        name: Core test matrix
+        needs: [fmt, clippy]
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: no_features
+                      cmd: cargo test --workspace --no-default-features
+                    - name: default_features
+                      cmd: cargo test --workspace
+                    - name: all_features
+                      cmd: cargo test --workspace --all-features
+                    - name: insecure_fast_hash
+                      cmd: cargo test --workspace --no-default-features --features insecure-fast-hash
+                    - name: storage_surrealdb
+                      cmd: cargo test --workspace --no-default-features --features storage-surrealdb
+                    - name: storage_seaorm
+                      cmd: cargo test --workspace --no-default-features --features storage-seaorm
+                    - name: all_storage_features
+                      cmd: cargo test --workspace --no-default-features --features storage-surrealdb,storage-seaorm
+                    - name: fast_hash_with_surrealdb
+                      cmd: cargo test --workspace --no-default-features --features insecure-fast-hash,storage-surrealdb
+                    - name: fast_hash_with_seaorm
+                      cmd: cargo test --workspace --no-default-features --features insecure-fast-hash,storage-seaorm
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Rust version
+              run: |
+                  rustc --version
+                  cargo --version
+            - name: Run ${{ matrix.name }}
+              run: ${{ matrix.cmd }}
+
+    test-integration:
+        name: Integration tests (all features)
+        needs: [test-core]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: cargo test --test '*'
+              run: cargo test --workspace --all-features --test '*'
+
+    test-doc:
+        name: Doc tests (all features)
+        needs: [test-core]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: cargo test --doc
+              run: cargo test --workspace --all-features --doc
+
+    msrv:
+        name: MSRV check (1.86)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (1.86)
+              uses: dtolnay/rust-toolchain@1.86.0
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: rustc/cargo version
+              run: |
+                  rustc --version
+                  cargo --version
+            - name: cargo check (all features)
+              run: cargo check --workspace --all-features
+            - name: cargo test (all features)
+              run: cargo test --workspace --all-features
+
+    stable-build:
+        name: Stable build/test (allow failure)
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: cargo check (all features)
+              run: cargo check --workspace --all-features
+            - name: cargo test (all features)
+              run: cargo test --workspace --all-features
+
+    benches:
+        name: Benches (allowed to fail)
+        if: github.ref == 'refs/heads/nightly' || github.event_name == 'pull_request'
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: cargo test --benches
+              run: cargo test --workspace --all-features --benches
+
+    audit:
+        name: cargo-audit
+        needs: [test-integration, test-doc]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Install cargo-audit
+              run: cargo install cargo-audit
+            - name: Run cargo audit
+              run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2024-0436
+
+    deny:
+        name: cargo-deny
+        needs: [test-integration, test-doc]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Install cargo-deny
+              run: cargo install cargo-deny
+            - name: Run cargo deny
+              run: cargo deny check
+
+    semver-checks:
+        name: cargo-semver-checks
+        if: github.ref == 'refs/heads/nightly' || github.event_name == 'pull_request'
+        needs: [test-integration, test-doc]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Install cargo-semver-checks
+              run: cargo install cargo-semver-checks
+            - name: Run cargo semver-checks
+              run: cargo semver-checks check-release
+
+    examples:
+        name: Examples matrix
+        needs: [test-integration, test-doc]
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - pkg: simple-usage-example
+                      all_features: true
+                    - pkg: custom-roles-example
+                      all_features: true
+                    - pkg: distributed
+                      all_features: true
+                    - pkg: permission-validation-example
+                      all_features: true
+                    - pkg: rate-limiting-example
+                      all_features: true
+                    - pkg: sea-orm-example
+                      all_features: false
+                    - pkg: surrealdb-example
+                      all_features: false
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: cargo check -p ${{ matrix.pkg }}
+              run: cargo check -p ${{ matrix.pkg }}
+            - name: cargo test -p ${{ matrix.pkg }}
+              shell: bash
+              run: |
+                  if [ "${{ matrix.all_features }}" = "true" ]; then
+                    cargo test -p "${{ matrix.pkg }}" --all-features
+                  else
+                    cargo test -p "${{ matrix.pkg }}"
+                  fi
+
+    coverage:
+        name: Coverage (tarpaulin)
+        if: github.ref == 'refs/heads/nightly'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Install Rust (stable)
+              uses: dtolnay/rust-toolchain@stable
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Install tarpaulin
+              run: cargo install cargo-tarpaulin
+            - name: Run tarpaulin (cobertura)
+              run: cargo tarpaulin --workspace --all-features --out cobertura
+            - name: Upload cobertura.xml
+              uses: actions/upload-artifact@v4
+              with:
+                  name: coverage-cobertura
+                  path: cobertura.xml
