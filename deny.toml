@@ -1,5 +1,5 @@
 [licenses]
-allow = ["MIT", "Apache-2.0", "Unicode-3.0", "ISC", "BSD-3-Clause", "BSD-2-Clause", "Unlicense", "MPL-2.0", "Zlib", "CC0-1.0", "CDLA-Permissive-2.0", "BUSL-1.1"]
+allow = ["MIT", "Apache-2.0", "Unicode-3.0", "ISC", "BSD-3-Clause", "BSD-2-Clause", "Unlicense", "MPL-2.0", "Zlib", "CC0-1.0", "CDLA-Permissive-2.0", "BUSL-1.1", "OpenSSL"]
 
 [advisories]
 # Temporarily ignore unmaintained advisory for paste (brought in transitively by surrealdb -> rmp).
