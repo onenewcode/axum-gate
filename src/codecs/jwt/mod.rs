@@ -267,24 +267,21 @@ where
     /// Returns an error if the header stored in [JsonWebToken] does not match the decoded value.
     /// The header can be retrieved from [JsonWebToken::header].
     fn decode(&self, encoded_value: &[u8]) -> Result<Self::Payload> {
-        let claims = jsonwebtoken::decode::<Self::Payload>(
-            &String::from_utf8_lossy(encoded_value),
-            &self.dec_key,
-            &self.validation,
-        )
-        .map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Jwt {
-                operation: JwtOperation::Decode,
-                message: format!("JWT decoding failed: {e}"),
-                token_preview: Some(
-                    String::from_utf8_lossy(encoded_value)
-                        .chars()
-                        .take(20)
-                        .collect::<String>()
-                        + "...",
-                ),
-            })
-        })?;
+        let claims =
+            jsonwebtoken::decode::<Self::Payload>(&encoded_value, &self.dec_key, &self.validation)
+                .map_err(|e| {
+                    Error::Infrastructure(InfrastructureError::Jwt {
+                        operation: JwtOperation::Decode,
+                        message: format!("JWT decoding failed: {e}"),
+                        token_preview: Some(
+                            String::from_utf8_lossy(encoded_value)
+                                .chars()
+                                .take(20)
+                                .collect::<String>()
+                                + "...",
+                        ),
+                    })
+                })?;
 
         if self.header != claims.header {
             return Err(Error::Infrastructure(InfrastructureError::Jwt {
