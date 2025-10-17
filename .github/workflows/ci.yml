@@ -368,10 +368,10 @@ jobs:
                   restore-keys: ${{ runner.os }}-cargo-
             - name: Install tarpaulin
               run: cargo install cargo-tarpaulin
-            - name: Run tarpaulin (cobertura)
-              run: cargo tarpaulin --workspace --all-features --out cobertura
-            - name: Upload cobertura.xml
+            - name: Run tarpaulin (markdown)
+              run: cargo tarpaulin --workspace --all-features --out Markdown
+            - name: Upload tarpaulin-report.md
               uses: actions/upload-artifact@v4
               with:
-                  name: coverage-cobertura
-                  path: cobertura.xml
+                  name: coverage-markdown
+                  path: tarpaulin-report.md

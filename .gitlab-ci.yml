@@ -248,13 +248,11 @@ coverage:
     stage: test
     script:
         - cargo install cargo-tarpaulin
-        - cargo tarpaulin --workspace --all-features --out xml
+        - cargo tarpaulin --workspace --all-features --out Markdown
     coverage: '/(\d+\.\d+)% coverage/'
     artifacts:
-        reports:
-            coverage_report:
-                coverage_format: cobertura
-                path: cobertura.xml
+        paths:
+            - tarpaulin-report.md
     allow_failure: true
     only:
         - nightly
