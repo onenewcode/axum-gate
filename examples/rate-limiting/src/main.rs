@@ -18,11 +18,7 @@ use axum::{
 };
 
 use axum_extra::extract::CookieJar;
-use axum_gate::{
-    authz::AccessPolicy,
-    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims},
-    prelude::{Account, Gate, Group, Role},
-};
+use axum_gate::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
