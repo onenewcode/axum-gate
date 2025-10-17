@@ -80,6 +80,36 @@
 //!         AccessPolicy::<Role, Group>::require_permission(PermissionId::from("read:api"))
 //!     );
 //! ```
+//! ## Bearer Gate (JWT)
+//! Strict bearer (JWT) example:
+//! ```rust
+//! # use axum::{routing::get, Router};
+//! # use axum_gate::authz::AccessPolicy;
+//! # use axum_gate::accounts::Account;
+//! # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::{Gate, Role, Group};
+//! # use std::sync::Arc;
+//! # async fn handler() {}
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let app = Router::<()>::new()
+//!     .route("/admin", get(handler))
+//!     .layer(
+//!         Gate::bearer("my-app", Arc::clone(&jwt))
+//!             .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin))
+//!     );
+//! ```
+//!
+//! Optional user context (never blocks; handlers must enforce access):
+//! ```rust
+//! # use axum_gate::accounts::Account;
+//! # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
+//! # use axum_gate::prelude::{Gate, Role, Group};
+//! # use std::sync::Arc;
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let gate = Gate::bearer("my-app", jwt).allow_anonymous_with_optional_user();
+//! // Inserts Option<Account<Role, Group>> and Option<RegisteredClaims> into request extensions.
+//! ```
+//!
 use self::cookie::CookieGate;
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
