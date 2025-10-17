@@ -24,9 +24,6 @@
 //! use axum::{routing::get, Router};
 //! use axum_gate::prelude::*;
 //! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, JsonWebTokenOptions};
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::accounts::Account;
 //! use std::sync::Arc;
 //!
 //! #[tokio::main]
@@ -62,8 +59,7 @@
 //!
 //! ### Role-Based Access
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::prelude::{Role, Group, AccessPolicy};
 //!
 //! // Single role requirement
 //! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
@@ -78,8 +74,7 @@
 //!
 //! ### Group-Based Access
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::prelude::{Role, Group, AccessPolicy};
 //!
 //! let policy = AccessPolicy::<Role, Group>::require_group(Group::new("engineering"))
 //!     .or_require_group(Group::new("management"));
@@ -87,9 +82,7 @@
 //!
 //! ### Permission-Based Access
 //! ```rust
-//! use axum_gate::authz::AccessPolicy;
-//! use axum_gate::permissions::PermissionId;
-//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::prelude::{Role, Group, AccessPolicy, PermissionId};
 //!
 //! // Validate permissions at compile-time (checks for hash collisions)
 //! axum_gate::validate_permissions!["read:api", "write:api", "admin:system"];
@@ -101,8 +94,6 @@
 //! ### Convenient Login Check
 //! ```rust
 //! use axum_gate::prelude::*;
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
-//! use axum_gate::accounts::Account;
 //! use std::sync::Arc;
 //!
 //! # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
@@ -119,8 +110,7 @@
 //! ```rust
 //! use axum::{routing::get, Router, extract::Extension};
 //! use axum_gate::prelude::*;
-//! use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims, RegisteredClaims};
-//! use axum_gate::accounts::Account;
+//! use axum_gate::codecs::jwt::RegisteredClaims;
 //! use std::sync::Arc;
 //!
 //! async fn homepage(
@@ -146,9 +136,9 @@
 //! ## Account Management
 //!
 //! ```rust
-//! use axum_gate::accounts::{AccountInsertService, Account};
+//! use axum_gate::accounts::AccountInsertService;
 //! use axum_gate::permissions::Permissions;
-//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::prelude::{Role, Group, Account};
 //! use axum_gate::repositories::memory::{MemoryAccountRepository, MemorySecretRepository};
 //! use std::sync::Arc;
 //!
@@ -218,9 +208,8 @@
 //!
 //! ```rust
 //! use axum::extract::Extension;
-//! use axum_gate::accounts::Account;
 //! use axum_gate::codecs::jwt::RegisteredClaims;
-//! use axum_gate::prelude::{Role, Group};
+//! use axum_gate::prelude::{Account, Role, Group};
 //!
 //! async fn profile_handler(
 //!     Extension(user): Extension<Account<Role, Group>>,
@@ -292,11 +281,13 @@ pub mod errors;
 /// Common types and functions for quick imports.
 pub mod prelude {
     pub use crate::accounts::Account;
+    pub use crate::authz::AccessPolicy;
     pub use crate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
     pub use crate::cookie_template::CookieTemplateBuilder;
     pub use crate::credentials::Credentials;
     pub use crate::gate::Gate;
     pub use crate::groups::Group;
     pub use crate::jsonwebtoken::{DecodingKey, EncodingKey};
+    pub use crate::permissions::PermissionId;
     pub use crate::roles::Role;
 }
