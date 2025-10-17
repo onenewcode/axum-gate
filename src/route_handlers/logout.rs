@@ -1,5 +1,5 @@
 use crate::authn::LogoutService;
-use crate::cookie::CookieBuilder;
+use cookie::CookieBuilder;
 
 use axum_extra::extract::CookieJar;
 

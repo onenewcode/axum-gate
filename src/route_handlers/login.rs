@@ -3,9 +3,9 @@ use crate::authn::{LoginResult, LoginService};
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
-use crate::cookie::CookieBuilder;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
+use cookie::CookieBuilder;
 
 use std::sync::Arc;
 

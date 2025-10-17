@@ -3,8 +3,8 @@ pub(crate) mod cookie_service;
 use self::cookie_service::CookieGateService;
 use crate::authz::{AccessHierarchy, AccessPolicy};
 use crate::codecs::Codec;
-use crate::cookie::CookieBuilder;
 use crate::cookie_template::CookieTemplateBuilder;
+use cookie::CookieBuilder;
 
 use std::sync::Arc;
 
@@ -235,7 +235,6 @@ mod tests {
     use crate::roles::Role;
 
     use crate::codecs::jwt::{JsonWebToken, JwtClaims};
-    use crate::cookie::{self, CookieBuilder};
     use std::sync::Arc;
 
     #[test]
@@ -301,7 +300,7 @@ mod tests {
         let _gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec)
             .configure_cookie_template(|tpl| {
                 tpl.name("configured-cookie")
-                    .persistent(cookie::time::Duration::hours(2))
+                    .persistent(::cookie::time::Duration::hours(2))
             });
 
         // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
