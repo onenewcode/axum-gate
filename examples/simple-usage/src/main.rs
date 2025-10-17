@@ -7,10 +7,9 @@ use axum_extra::extract::CookieJar;
 use axum_gate::cookie;
 use axum_gate::{
     accounts::AccountInsertService,
-    authz::AccessPolicy,
-    codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
+    codecs::jwt::RegisteredClaims,
     cookie_template::CookieTemplateBuilder,
-    prelude::{Account, Credentials, Gate, Group, Role},
+    prelude::*,
     repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
     route_handlers::{login, logout},
 };
