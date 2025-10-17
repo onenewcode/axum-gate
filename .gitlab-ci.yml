@@ -153,7 +153,7 @@ cargo_semver_checks:
     allow_failure: false
     only:
         - merge_requests
-        - main
+        - nightly
 
 # Example compilation and basic tests
 examples_simple_usage:
@@ -239,7 +239,7 @@ bench_tests:
         - cargo test --workspace --all-features --benches
     allow_failure: true
     only:
-        - main
+        - nightly
         - merge_requests
 
 # Coverage report (optional)
@@ -257,4 +257,4 @@ coverage:
                 path: cobertura.xml
     allow_failure: true
     only:
-        - main
+        - nightly
