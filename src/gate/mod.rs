@@ -106,7 +106,7 @@
 //! # use axum_gate::prelude::{Gate, Role, Group};
 //! # use std::sync::Arc;
 //! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-//! let gate = Gate::bearer("my-app", jwt).allow_anonymous_with_optional_user();
+//! let gate = Gate::bearer::<JsonWebToken<JwtClaims<Account<Role, Group>>>, R, G>("my-app", jwt).allow_anonymous_with_optional_user();
 //! // Inserts Option<Account<Role, Group>> and Option<RegisteredClaims> into request extensions.
 //! ```
 //!
