@@ -7,216 +7,83 @@ This example demonstrates how to use `axum-gate` within a distributed system whe
 - **Zero-Sync Permissions**: No coordination required between distributed nodes
 - **Type-Safe Nested Enums**: Organized permission structure with compile-time safety
 - **Strum Integration**: Automatic serialization/deserialization support
-- **Performance Optimized**: High-performance permission checking with roaring bitmaps
+- **Performance Optimized**: High-performance permission checking with roaring bitmaps (64-bit `RoaringTreemap`)
 - **Collision Resistant**: SHA-256 based deterministic permission IDs
 
 ## Architecture
 
-The example consists of three components:
+The example consists of two nodes:
 
 1. **Auth Node** (`auth_node.rs`) - Issues JWT tokens with permission bitmaps
 2. **Consumer Node** (`consumer_node.rs`) - Validates permissions without coordination
-3. **Demo** (`demo.rs`) - Demonstrates the zero-sync permission system
 
-## Permission Structure
+## How to Run and Test with Insomnia/Postman
 
-The permissions are organized using nested enums for better type safety and categorization:
+This example is intended to be exercised using an external HTTP client such as Insomnia, Postman, or curl.
 
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize, Display, EnumString, EnumIter)]
-pub enum AppPermissions {
-    Repository(RepositoryPermission),
-    Api(ApiPermission),
-    System(SystemPermission),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Display, EnumString, EnumIter)]
-pub enum RepositoryPermission {
-    Read,
-    Write,
-    Delete,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Display, EnumString, EnumIter)]
-pub enum ApiPermission {
-    Read,
-    Write,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Display, EnumString, EnumIter)]
-pub enum SystemPermission {
-    Admin,
-}
-```
-
-## Usage Examples
-
-### Granting Permissions
-
-```rust
-use distributed::{AppPermissions, RepositoryPermission, ApiPermission, PermissionHelper};
-
-let mut user_permissions = RoaringBitmap::new();
-
-// Grant specific permission
-PermissionHelper::grant_permission(
-    &mut user_permissions,
-    &AppPermissions::Repository(RepositoryPermission::Read)
-);
-
-// Grant category permissions
-PermissionHelper::grant_repository_access(&mut user_permissions); // read + write
-PermissionHelper::grant_api_access(&mut user_permissions); // read + write
-PermissionHelper::grant_admin_access(&mut user_permissions); // all permissions
-```
-
-### Checking Permissions
-
-```rust
-// Direct permission check
-let can_read = PermissionHelper::has_permission(
-    &user.permissions,
-    &AppPermissions::Repository(RepositoryPermission::Read)
-);
-
-// Helper methods
-let can_access_repo = PermissionHelper::can_access_repository(&user.permissions);
-let can_modify_repo = PermissionHelper::can_modify_repository(&user.permissions);
-let is_admin = PermissionHelper::is_admin(&user.permissions);
-```
-
-### Using with Axum Gates
-
-```rust
-use axum_gate::{Gate, PermissionId};
-
-let app = Router::new()
-    .route("/api/data", get(get_data))
-    .layer(
-        Gate::new_cookie(issuer, jwt_codec)
-            .grant_permission(PermissionId::from(
-                AppPermissions::Api(ApiPermission::Read).as_str()
-            ))
-    );
-```
-
-### Serialization with Strum
-
-```rust
-// Convert to string
-let perm = AppPermissions::Repository(RepositoryPermission::Read);
-let as_string = perm.to_string(); // "repository(read)"
-
-// Parse from string
-let from_string = AppPermissions::from_str("repository(read)").unwrap();
-
-// JSON serialization
-let json = serde_json::to_string(&perm).unwrap();
-let deserialized: AppPermissions = serde_json::from_str(&json).unwrap();
-```
-
-### Iteration Support
-
-```rust
-// Iterate over permission categories
-for perm in AppPermissions::all_repository() {
-    println!("Repository permission: {}", perm.as_str());
-}
-
-for perm in RepositoryPermission::iter() {
-    println!("Repository action: {}", perm);
-}
-```
-
-## Running the Example
-
-### Prerequisites
-
-Create a `.env` file in the distributed example directory:
+1) Prerequisites
+- Rust toolchain installed
+- Create an `.env` file in this directory with a strong shared secret:
 
 ```env
 AXUM_GATE_SHARED_SECRET=your-super-secret-key-here-make-it-long-and-random
 ```
 
-### Demo
-
-Run the comprehensive demo to see the nested enum permission system in action:
-
-```bash
-cargo run --bin demo
-```
-
-### Auth Node
-
-Start the authentication server:
+2) Start the Auth Node
 
 ```bash
 cargo run --bin auth_node
 ```
 
-The auth node runs on `http://127.0.0.1:3000` and provides:
-- `POST /login` - Authenticate and receive JWT with permission bitmap
-- `GET /logout` - Clear authentication cookie
+The auth node listens on http://127.0.0.1:3000.
 
-Pre-configured users:
-- `admin@example.com` / `admin_password` - Full admin permissions
-- `reporter@example.com` / `reporter_password` - Repository read/write access
-- `user@example.com` / `user_password` - API read access only
-
-### Consumer Node
-
-Start the consumer server:
+3) Start the Consumer Node (in a separate shell)
 
 ```bash
 cargo run --bin consumer_node
 ```
 
-The consumer node runs on `http://127.0.0.1:3001` and provides:
-- `/` - Public endpoint
-- `/permissions` - Shows user's permission analysis (requires API read)
-- `/user` - User-only endpoint
-- `/reporter` - Reporter-only endpoint
-- `/admin` - Admin-only endpoint
-- `/secret-admin-group` - Admin group-only endpoint
+The consumer node listens on http://127.0.0.1:3001.
 
-## Key Benefits
+4) Obtain a Session Cookie (POST /login on Auth Node)
 
-✓ **Zero Coordination**: No synchronization required between nodes
-✓ **Type Safety**: Compile-time validation of permission usage
-✓ **High Performance**: Optimized bitmap operations
-✓ **Deterministic**: Same permission always generates same ID
-✓ **Collision Resistant**: SHA-256 based permission IDs
-✓ **Serializable**: Full strum integration for easy persistence
-✓ **Organized**: Logical permission categorization
-✓ **Iterator Support**: Easy bulk operations on permission sets
+- URL: http://127.0.0.1:3000/login
+- Method: POST
+- Headers: Content-Type: application/json
+- Body (choose one of the pre-configured users):
 
-## Architecture Advantages
-
-### Traditional Distributed Auth
-- Requires permission synchronization across nodes
-- Network calls for permission updates
-- Complex deployment coordination
-- Risk of permission inconsistencies
-
-### Axum-Gate Zero-Sync with Nested Enums
-- No synchronization required
-- Zero network overhead for permission checks
-- Instant deployment across all nodes
-- Type-safe permission management
-- Automatic serialization support
-- Organized permission structure
-
-## Testing
-
-Run the test suite:
-
-```bash
-cargo test
+```json
+{ "id": "admin@example.com", "secret": "admin_password" }
 ```
 
-The tests verify:
-- Deterministic permission ID generation
-- Enum serialization/deserialization
-- Permission checking logic
-- Helper function behavior
-- Category-based permission operations
+```json
+{ "id": "reporter@example.com", "secret": "reporter_password" }
+```
+
+```json
+{ "id": "user@example.com", "secret": "user_password" }
+```
+
+- On success, the response sets an HttpOnly authentication cookie. Configure your client to preserve cookies between requests.
+
+5) Call Consumer Endpoints with the Cookie
+
+Use the same client session (cookies preserved) to call:
+
+- http://127.0.0.1:3001/               (public)
+- http://127.0.0.1:3001/permissions    (requires API read permission)
+- http://127.0.0.1:3001/user           (User role)
+- http://127.0.0.1:3001/reporter       (Reporter role)
+- http://127.0.0.1:3001/admin          (Admin role)
+- http://127.0.0.1:3001/secret-admin-group (group "admin")
+
+6) Logout (optional)
+
+- URL: http://127.0.0.1:3000/logout
+- Method: GET
+- Clears the authentication cookie.
+
+Notes
+- The JWT is stored in a secure HttpOnly cookie using `CookieTemplateBuilder::recommended()` defaults.
+- Access is enforced via `Gate::cookie(...).with_policy(AccessPolicy::...)` on the consumer node.
+- Permissions use 64-bit deterministic IDs and can be passed to `require_permission(...)` as strings or enums that implement `AsPermissionName`.

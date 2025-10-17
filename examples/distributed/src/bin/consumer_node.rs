@@ -1,9 +1,6 @@
 use distributed::{ApiPermission, AppPermissions, PermissionHelper, RepositoryPermission};
 
-use axum_gate::authz::AccessPolicy;
-use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
-use axum_gate::permissions::PermissionId;
-use axum_gate::prelude::{Account, Gate, Group, Role};
+use axum_gate::prelude::*;
 
 use std::sync::Arc;
 
@@ -138,8 +135,8 @@ async fn main() {
             get(permissions).layer(
                 Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
-                    .with_policy(AccessPolicy::require_permission(PermissionId::from(
-                        AppPermissions::Api(ApiPermission::Read).as_str(),
+                    .with_policy(AccessPolicy::require_permission(&AppPermissions::Api(
+                        ApiPermission::Read,
                     ))),
             ),
         )
