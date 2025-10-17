@@ -253,7 +253,6 @@ pub use cookie;
 pub use jsonwebtoken;
 #[cfg(feature = "prometheus")]
 pub use prometheus;
-pub use serde_json;
 pub use uuid;
 
 pub mod accounts;
