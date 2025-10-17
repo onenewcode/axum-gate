@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-09-12
+## [1.0.0-rc.0] - 2025-10-22
 ### 🏗 Refactoring
 - **💥 BREAKING CHANGE:** Introduced hashing module [[0b5cb49]]
 
@@ -20,7 +20,214 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+### 📄 Documentation
+- Add missing documentation for prometheus_metrics module - Add comprehensive module-level documentation with usage examples - Document all enums (JwtInvalidKind, AccountDeleteOutcome, SecretRestored, AccountInsertOutcome) and their variants - Document Metrics struct and all its fields - Document metrics() function with return value explanations - Resolves all missing documentation errors (22 items) in audit.rs - Maintains compliance with #![deny(missing_docs)] lint [[cb4037c]]
+
+
+
 ### 📝 Other Changes
+- Added github workflow [[90dd0be]]
+
+- Updated gitlab-ci to nightly instead of main [[f21cb99]]
+
+- Resolved clippy error about type complexity [[9b1c43d]]
+
+- Updated Cargo.lock [[766db79]]
+
+- Switched from jsonwebtoken/rust_crypto to /aws_lc_rs to remove RSA (RUSTSEC-2023-0071) from dependencies [[6e2f7ff]]
+
+- Updated Cargo.lock [[4818596]]
+
+- Downgraded to v1.0.0-rc.0 [[d76fd46]]
+
+- Updated to latest jsonwebtoken dependency [[a1a88ae]]
+
+- Updated Cargo.lock [[68dd4f4]]
+
+- Restructured dependency organization [[41158f9]]
+
+- Updated .rules [[5837b67]]
+
+- Added bearer gate documentation to Gate [[e279caf]]
+
+- Added Account::has_role, is_member_of and has_permission convenience methods [[b19dcf3]]
+
+- Added example for custom enum permissions [[b04935f]]
+
+- Moved route_handlers to separate modules [[3fbaf9c]]
+
+- Removed clippy warnings [[b8e48e3]]
+
+- Updated README.md [[57f02c4]]
+
+- Updated to the latest state [[083523f]]
+
+- Removed unused doc folder [[19c8646]]
+
+- Updated prelude module [[7c0b85e]]
+
+- Now re-exporting axum_extra [[d4fd4e5]]
+
+- Updated .rules [[cbfc7b7]]
+
+- Revert "feat: Added metrics jwt_remaining_ttl_seconds" This reverts commit e5dce3d1f90ea2a8e3ee0f146d1010fca7bcbe9e. [[dc31802]]
+
+- Added metrics jwt_remaining_ttl_seconds [[e5dce3d]]
+
+- Added outcomes of JWT validation for latency labeling [[94d8e61]]
+
+- Integrated metrics to bearer gate, Added authz latency histogram [[955a22b]]
+
+- Merge branch 'refactor/category-domain-design' into 'nightly' Refactor/category domain design See merge request lprobst/axum-gate!2 [[5ebbaf6]]
+
+- Updated README.md [[af01808]]
+
+- Updated .rules [[e523190]]
+
+- Polished documentation and public API [[3413ff6]]
+
+- Moved static_token_authorized module to gate::bearer [[b4f278a]]
+
+- Moved as_permission_name module to permissions [[f4f3b75]]
+
+- Tests [[28fcce1]]
+
+- Updated .rules [[45209fa]]
+
+- Updated ruleset [[3bb4164]]
+
+- Updated documentation [[ed8da88]]
+
+- Errors now unified in errors module [[03d4cb8]]
+
+- Further refactoring, only errors left [[9c0b79a]]
+
+- Started moving to new structure [[f178687]]
+
+- Merge branch 'wip/permission-mapping-repository' into 'nightly' Wip/permission mapping repository See merge request lprobst/axum-gate!1 [[45446a5]]
+
+- Cargo clippy [[912c85b]]
+
+- Removed bulk demo as it is not implemented yet [[a6fd752]]
+
+- Removed comment [[524fbb0]]
+
+- Removed unnecessary sentence [[947c1d9]]
+
+- Updated documentation for Role [[1a9fa83]]
+
+- Missing demonstration of with_cookie_template [[7f5d2b7]]
+
+- Moved crate to workspace root [[605d07d]]
+
+- Fixed documentation warnings [[cef3f07]]
+
+- Doc-tests [[bcbbf22]]
+
+- Updated bearer gate implementation [[6ceab5e]]
+
+- Fixed clippy warnings [[6e66cdd]]
+
+- Removed documentation part of SurrealPermissionMapping [[a71de8a]]
+
+- Updated documentation for CookieGate::new_with_codec [[c20e742]]
+
+- Moved CookieGate and CookieService to cookie module [[a333143]]
+
+- Added optional user authentication configuration for Gate [[14e0f15]]
+
+- Re-added validation in new function, updated documentation [[29fabf5]]
+
+- Removed constructor that creates inconsistency [[e2d85d9]]
+
+- Removed unnecessary validation of PermissionId [[be80432]]
+
+- TableName is now gated to be only available when surrealdb or seaorm is activated [[8af96db]]
+
+- Applied clippy fix [[284f410]]
+
+- Unified TableNames for databases [[2b9bb0d]]
+
+- Updated table names for seaorm [[6d9b606]]
+
+- Added implementation of PermissionMappingRepository for seaorm [[baa9b10]]
+
+- Updated documentation for LoginService [[1e24b1a]]
+
+- Updated surrealdb repository implementation [[952731f]]
+
+- Updated .rules [[18c6b09]]
+
+- Updated DatabaseScope default [[7632352]]
+
+- Added PermissionMappingRepository implementation for surrealdb [[71b2b77]]
+
+- Added surrealdb best practices to .rules [[e6229b0]]
+
+- Simplified MemoryPermissionMapping implementation [[75785ff]]
+
+- Removed PermissionMapping::original_string [[d903556]]
+
+- Added PermissionMappingRepository to docs [[b37112d]]
+
+- Moved prometheus export to integrations module [[1c9db09]]
+
+- Updated .rules file [[2a7d8e4]]
+
+- Made rust-analyzer happy by adding type for .into() call [[b654824]]
+
+- Removed normalized string parameter from PermissionMapping::new [[d6c2750]]
+
+- All doc-tests are now running and passing [[b748825]]
+
+- Renamed `utils` module to `integrations` as it only contains third party code [[14b49f1]]
+
+- Updated Cargo.lock [[c981f4c]]
+
+- PermissionMappingRepository [[614089d]]
+
+- Updated Cargo.lock [[48d8e7f]]
+
+- Updated .rules file [[0bd7b9c]]
+
+- Added convenient method CookieGate::require_login [[b4be1f9]]
+
+- Updated .rules [[ee0375c]]
+
+- Updated MSRV in README.md to 1.86 [[f0654cd]]
+
+- Doctest in audit module [[59484d6]]
+
+- Updated flake version number [[629d52f]]
+
+- Updated SECURITY.md [[95a26e5]]
+
+- Updated .rules file [[5cc0875]]
+
+- Updated prometheus dependency [[eaf9c19]]
+
+- Removed clippy warnings [[2452594]]
+
+- Add Prometheus metrics feature, builder hooks, strum label enums, and example; re-export prometheus; instrument account insert success/failure [[78dae20]]
+
+- Updated SECURITY.md [[a84d2bb]]
+
+- Updated .rules file [[dd340dd]]
+
+- Updated version to v1.0.0-rc.1 [[1131e1c]]
+
+- Added additional JWT secret management section to README.md [[9eaf12e]]
+
+- Limited visibility of modules to crate where not inteded to bleed to the outside [[95f7edb]]
+
+- Removed Cargo.lock from .gitignore to ensure correct Nix build [[6f34fe2]]
+
+- Fixed doctests in advanced module [[8fbad7e]]
+
+- Added planned feature section [[ad4a982]]
+
+- Updated cliff.toml [[e1f0056]]
+
 - Redesigned cliff.toml [[1d3c29f]]
 
 - Added security audit status to README.md [[3729894]]
@@ -553,6 +760,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 🛳 Features
+- Add tracing-based audit logging gated behind feature - Introduce audit module with spans/events (request, authz, JWT issues, account lifecycle) - Instrument gate, login/logout handlers, and account services - Remove unused audit functions and simplify module-level cfg gating - No secrets logged; structured fields only; feature-off has zero overhead *(audit)*  [[3a87d25]]
+
 - Comprehensive security testing, code quality improvements, and documentation updates * Initial plan * Add comprehensive security tests and fix clippy warnings - Fixed all 10 clippy warnings for improved code quality - Added 44 new security-focused tests covering: * JWT manipulation and validation edge cases * Password hashing security and malformed input handling * Authorization bypass attempts and role escalation * Input validation against SQL injection and malformed data * Cookie security attributes and manipulation prevention * Storage layer isolation and concurrent access safety * Unicode/special character handling throughout system * Serialization security for sensitive data structures - Added timing attack awareness test (marked as ignore for CI stability) - Enhanced test coverage for edge cases and error conditions - All existing tests continue to pass Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Add comprehensive security documentation and fix README example - Added SECURITY.md with detailed security considerations and best practices - Fixed README.md example to use consistent field names (user_id vs account_id) - Documented password security, JWT security, cookie security, and authorization security - Added guidance on timing attack considerations and security best practices - Included testing instructions for security test suites - All documentation examples validated and working Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Address review comments: fix imports, remove unused code, use AccountDeleteService Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> --------- Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com> Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> [[7bc5e6e]]
 
 - **💥 BREAKING CHANGE:** Initial support for surrealdb [[f807944]]
