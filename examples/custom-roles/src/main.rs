@@ -1,3 +1,21 @@
+// Example: Custom roles, groups, and access policies
+//
+// Overview
+// - Roles: hierarchical permissions attached to an account (Novice < Experienced < Expert).
+// - Groups: coarse-grained memberships (Maintenance, Operations, Administration).
+// - AccessHierarchy: marks the role enum as ordered so "supervisors" (higher roles) can satisfy policies.
+//
+// Routes
+// - GET /admin -> requires the Expert role.
+// - GET /secret-admin-group -> requires membership in the Maintenance group.
+// - GET /reporter -> requires Experienced or any supervisor (i.e., Expert).
+// - GET /user -> requires Novice.
+// - POST /login -> authenticates JSON credentials and sets a signed, HttpOnly cookie.
+// - GET /logout -> clears the session cookie.
+//
+// Running
+// - Ensure AXUM_GATE_SHARED_SECRET is set (a .env is provided in this example).
+// - From this example directory, run: cargo run
 use axum_gate::accounts::AccountInsertService;
 use axum_gate::authz::{AccessHierarchy, AccessPolicy};
 use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
@@ -36,6 +54,9 @@ pub enum CustomRoleDefinition {
     Expert,
 }
 
+// Mark the enum as hierarchical so higher roles supervise lower ones.
+// With Novice < Experienced < Expert, "require_role_or_supervisor(Experienced)"
+// will grant access to both Experienced and Expert users.
 impl AccessHierarchy for CustomRoleDefinition {}
 
 /// A custom group definition.
@@ -98,6 +119,7 @@ async fn main() {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
+    // Load .env; AXUM_GATE_SHARED_SECRET must be set (and shared between login and verification).
     dotenvy::dotenv().expect("Could not read .env file.");
     let shared_secret =
         dotenvy::var("AXUM_GATE_SHARED_SECRET").expect("AXUM_GATE_SHARED_SECRET env var not set.");
@@ -116,6 +138,7 @@ async fn main() {
     let secrets_repository = Arc::new(MemorySecretRepository::from(vec![]));
     debug!("Secrets repository initialized.");
 
+    // Seed: admin has Expert role and belongs to Maintenance group.
     AccountInsertService::insert("admin@example.com", "admin_password")
         .with_roles(vec![CustomRoleDefinition::Expert])
         .with_groups(vec![CustomGroupDefinition::Maintenance])
@@ -127,6 +150,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted Admin.");
 
+    // Seed: reporter has Experienced role and belongs to Operations group.
     AccountInsertService::insert("reporter@example.com", "reporter_password")
         .with_roles(vec![CustomRoleDefinition::Experienced])
         .with_groups(vec![CustomGroupDefinition::Operations])
@@ -138,6 +162,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted Reporter.");
 
+    // Seed: user has Novice role and belongs to Administration group.
     AccountInsertService::insert("user@example.com", "user_password")
         .with_roles(vec![CustomRoleDefinition::Novice])
         .with_groups(vec![CustomGroupDefinition::Administration])
@@ -149,20 +174,21 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = axum_gate::cookie_template::CookieTemplateBuilder::recommended().build();
+    let cookie_template = axum_gate::cookie_template::CookieTemplateBuilder::recommended().build(); // secure defaults for the session cookie
 
     let app = Router::new()
         .route("/admin", get(admin))
         .layer(
             Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                 .with_cookie_template(cookie_template.clone())
-                .with_policy(AccessPolicy::require_role(CustomRoleDefinition::Expert)),
+                .with_policy(AccessPolicy::require_role(CustomRoleDefinition::Expert)), // /admin: requires Expert role
         )
         .route(
             "/secret-admin-group",
             get(admin_group).layer(
                 Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
+                    // /secret-admin-group: requires membership in the Maintenance group
                     .with_policy(AccessPolicy::require_group(
                         CustomGroupDefinition::Maintenance,
                     )),
@@ -173,6 +199,7 @@ async fn main() {
             get(reporter).layer(
                 Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
+                    // /reporter: allow Experienced OR any supervisor (Expert) via AccessHierarchy
                     .with_policy(AccessPolicy::require_role_or_supervisor(
                         CustomRoleDefinition::Experienced,
                     )),
@@ -183,11 +210,12 @@ async fn main() {
             get(user).layer(
                 Gate::cookie(ISSUER, Arc::clone(&jwt_codec))
                     .with_cookie_template(cookie_template.clone())
+                    // /user: requires Novice role
                     .with_policy(AccessPolicy::require_role(CustomRoleDefinition::Novice)),
             ),
         )
         .route(
-            "/login",
+            "/login", // POST: authenticate credentials and set a signed, HttpOnly cookie
             post({
                 let registered_claims = RegisteredClaims::new(
                     // same as in distributed example, so you can re-use the consumer_node
