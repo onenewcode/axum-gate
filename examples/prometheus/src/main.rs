@@ -103,7 +103,7 @@ async fn main() {
             "/",
             get(home_handler).layer(
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
-                    .with_policy(AccessPolicy::require_role_or_supervisor(Role::User))
+                    .allow_anonymous_with_optional_user()
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate Prometheus metrics
                     .configure_cookie_template(|tpl| tpl.name("prometheus-demo")),
             ),
