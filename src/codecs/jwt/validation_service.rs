@@ -126,12 +126,11 @@ mod tests {
 
         fn decode(&self, _data: &[u8]) -> crate::errors::Result<Self::Payload> {
             if self.should_fail_decode {
-                return Err(crate::errors::Error::Infrastructure(
-                    crate::errors::InfrastructureError::Jwt {
-                        operation: crate::errors::infrastructure::JwtOperation::Decode,
-                        message: "Mock decode failure".to_string(),
-                        token_preview: None,
-                    },
+                return Err(crate::errors::Error::Jwt(
+                    crate::errors::JwtError::processing(
+                        crate::errors::JwtOperation::Decode,
+                        "Mock decode failure",
+                    ),
                 ));
             }
 

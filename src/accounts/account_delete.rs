@@ -1,7 +1,7 @@
 use super::{Account, AccountRepository};
 use crate::authz::AccessHierarchy;
-use crate::errors::application::AccountOperation;
-use crate::errors::{ApplicationError, Error};
+use crate::errors::Error;
+use crate::errors::accounts::{AccountOperation, AccountsError};
 use crate::secrets::SecretRepository;
 
 use std::sync::Arc;
@@ -68,11 +68,11 @@ where
             error!(%user_id, %account_id, "Secret missing for account deletion attempt");
             #[cfg(feature = "audit-logging")]
             audit::account_delete_failure(user_id, account_id, None, "secret_missing");
-            return Err(Error::Application(ApplicationError::AccountService {
-                operation: AccountOperation::Delete,
-                message: "Secret not found".to_string(),
-                account_id: Some(account_id.to_string()),
-            }));
+            return Err(Error::Accounts(AccountsError::operation(
+                AccountOperation::Delete,
+                "Secret not found",
+                Some(account_id.to_string()),
+            )));
         };
         debug!(%user_id, %account_id, "Secret removed for account");
 
@@ -113,11 +113,11 @@ where
                 }
             }
 
-            return Err(Error::Application(ApplicationError::AccountService {
-                operation: AccountOperation::Delete,
-                message: "Account deletion failed".to_string(),
-                account_id: Some(account_id.to_string()),
-            }));
+            return Err(Error::Accounts(AccountsError::operation(
+                AccountOperation::Delete,
+                "Account deletion failed",
+                Some(account_id.to_string()),
+            )));
         }
 
         info!(%user_id, %account_id, "Account deletion succeeded");

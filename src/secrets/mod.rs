@@ -1,5 +1,6 @@
 //! Secrets hashing and verification models.
-use crate::errors::ports::{HashingOperation, PortError};
+use crate::errors::hashing::HashingOperation;
+use crate::errors::secrets::SecretError;
 use crate::errors::{Error, Result};
 use crate::hashing::{HashedValue, HashingService};
 use crate::verification_result::VerificationResult;
@@ -133,12 +134,12 @@ impl Secret {
         hasher: Hasher,
     ) -> Result<Self> {
         let secret = hasher.hash_value(plain_secret).map_err(|e| {
-            Error::Port(PortError::Hashing {
-                operation: HashingOperation::Hash,
-                message: e.to_string(),
-                algorithm: Some("Argon2".to_string()),
-                expected_format: Some("PHC".to_string()),
-            })
+            Error::Secrets(SecretError::hashing_with_context(
+                HashingOperation::Hash,
+                e.to_string(),
+                Some("Argon2".to_string()),
+                Some("PHC".to_string()),
+            ))
         })?;
         Ok(Self {
             account_id: *account_id,

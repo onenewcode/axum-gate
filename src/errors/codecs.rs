@@ -1,0 +1,492 @@
+#![deny(missing_docs)]
+
+//! Codec-category native errors.
+//!
+//! This module defines category-native errors for codecs and JWT processing,
+//! decoupled from the legacy layered naming. Use these types directly in
+//! codec/serialization and authentication token flows.
+//!
+//! # Overview
+//! - `CodecsError`: codec and serialization error enum
+//! - `JwtError`: JWT processing error enum
+//! - Operation enums: `CodecOperation`, `SerializationOperation`, `JwtOperation`
+//!
+//! # Examples
+//!
+//! Codec error:
+//! ```rust
+//! use axum_gate::errors::codecs::{CodecsError, CodecOperation};
+//! use axum_gate::errors::UserFriendlyError;
+//!
+//! let err = CodecsError::codec(CodecOperation::Encode, "failed to encode payload");
+//! assert!(err.user_message().contains("process your data"));
+//! assert!(err.developer_message().contains("Codec contract violation"));
+//! assert!(err.support_code().starts_with("CODEC-"));
+//! ```
+//!
+//! Serialization error:
+//! ```rust
+//! use axum_gate::errors::codecs::{CodecsError, SerializationOperation};
+//!
+//! let err = CodecsError::serialization(
+//!     SerializationOperation::SerializeJson,
+//!     "invalid structure",
+//!     Some("json".into()),
+//!     Some("claims".into()),
+//! );
+//! assert!(matches!(err.severity(), axum_gate::errors::ErrorSeverity::Error));
+//! ```
+//!
+//! JWT error:
+//! ```rust
+//! use axum_gate::errors::codecs::{JwtError, JwtOperation};
+//! use axum_gate::errors::UserFriendlyError;
+//!
+//! let err = JwtError::processing(JwtOperation::Encode, "jwt encoding failed");
+//! assert!(err.support_code().starts_with("JWT-ENCODE"));
+//! assert!(err.is_retryable());
+//! ```
+
+use crate::errors::{ErrorSeverity, UserFriendlyError};
+use std::collections::hash_map::DefaultHasher;
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use thiserror::Error;
+
+/// Codec operation types.
+#[derive(Debug, Clone)]
+pub enum CodecOperation {
+    /// Encode operation
+    Encode,
+    /// Decode operation
+    Decode,
+    /// Serialize operation
+    Serialize,
+    /// Deserialize operation
+    Deserialize,
+    /// Validate operation
+    Validate,
+}
+
+impl fmt::Display for CodecOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CodecOperation::Encode => write!(f, "encode"),
+            CodecOperation::Decode => write!(f, "decode"),
+            CodecOperation::Serialize => write!(f, "serialize"),
+            CodecOperation::Deserialize => write!(f, "deserialize"),
+            CodecOperation::Validate => write!(f, "validate"),
+        }
+    }
+}
+
+/// Serialization operation types.
+#[derive(Debug, Clone)]
+pub enum SerializationOperation {
+    /// Serialize to JSON
+    SerializeJson,
+    /// Deserialize from JSON
+    DeserializeJson,
+    /// Serialize to binary
+    SerializeBinary,
+    /// Deserialize from binary
+    DeserializeBinary,
+    /// Validate structure
+    ValidateStructure,
+}
+
+impl fmt::Display for SerializationOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SerializationOperation::SerializeJson => write!(f, "serialize_json"),
+            SerializationOperation::DeserializeJson => write!(f, "deserialize_json"),
+            SerializationOperation::SerializeBinary => write!(f, "serialize_binary"),
+            SerializationOperation::DeserializeBinary => write!(f, "deserialize_binary"),
+            SerializationOperation::ValidateStructure => write!(f, "validate_structure"),
+        }
+    }
+}
+
+/// JWT operation types.
+#[derive(Debug, Clone)]
+pub enum JwtOperation {
+    /// JWT encode operation
+    Encode,
+    /// JWT decode operation
+    Decode,
+    /// JWT validation operation
+    Validate,
+    /// JWT refresh operation
+    Refresh,
+    /// JWT revocation operation
+    Revoke,
+}
+
+impl fmt::Display for JwtOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            JwtOperation::Encode => write!(f, "encode"),
+            JwtOperation::Decode => write!(f, "decode"),
+            JwtOperation::Validate => write!(f, "validate"),
+            JwtOperation::Refresh => write!(f, "refresh"),
+            JwtOperation::Revoke => write!(f, "revoke"),
+        }
+    }
+}
+
+/// Codec-category native error type (codecs + serialization).
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum CodecsError {
+    /// Codec contract violation (encode/decode/serialize/deserialize/validate).
+    #[error("Codec error: {operation} - {message}")]
+    Codec {
+        /// The codec operation that failed.
+        operation: CodecOperation,
+        /// Description of the error (non-sensitive).
+        message: String,
+        /// The payload type being processed.
+        payload_type: Option<String>,
+        /// Expected format or structure.
+        expected_format: Option<String>,
+    },
+
+    /// Serialization/Deserialization error.
+    #[error("Serialization error: {operation} - {message}")]
+    Serialization {
+        /// The serialization operation that failed.
+        operation: SerializationOperation,
+        /// Description of the serialization error (non-sensitive).
+        message: String,
+        /// The data format being processed.
+        format: Option<String>,
+        /// The field that caused the error.
+        field: Option<String>,
+    },
+}
+
+impl CodecsError {
+    /// Create a codec error.
+    pub fn codec(operation: CodecOperation, message: impl Into<String>) -> Self {
+        CodecsError::Codec {
+            operation,
+            message: message.into(),
+            payload_type: None,
+            expected_format: None,
+        }
+    }
+
+    /// Create a codec error with format context.
+    pub fn codec_with_format(
+        operation: CodecOperation,
+        message: impl Into<String>,
+        payload_type: Option<String>,
+        expected_format: Option<String>,
+    ) -> Self {
+        CodecsError::Codec {
+            operation,
+            message: message.into(),
+            payload_type,
+            expected_format,
+        }
+    }
+
+    /// Create a serialization error.
+    pub fn serialization(
+        operation: SerializationOperation,
+        message: impl Into<String>,
+        format: Option<String>,
+        field: Option<String>,
+    ) -> Self {
+        CodecsError::Serialization {
+            operation,
+            message: message.into(),
+            format,
+            field,
+        }
+    }
+
+    fn support_code_inner(&self) -> String {
+        let mut hasher = DefaultHasher::new();
+        match self {
+            CodecsError::Codec {
+                operation,
+                payload_type,
+                ..
+            } => {
+                format!("CODEC-{}-{:X}", operation.to_string().to_uppercase(), {
+                    format!("{:?}{:?}", operation, payload_type).hash(&mut hasher);
+                    hasher.finish() % 10000
+                })
+            }
+            CodecsError::Serialization {
+                operation, format, ..
+            } => {
+                format!("SERIAL-{}-{:X}", operation.to_string().to_uppercase(), {
+                    format!("{:?}{:?}", operation, format).hash(&mut hasher);
+                    hasher.finish() % 10000
+                })
+            }
+        }
+    }
+}
+
+impl UserFriendlyError for CodecsError {
+    fn user_message(&self) -> String {
+        match self {
+            CodecsError::Codec { operation, .. } => match operation {
+                CodecOperation::Encode | CodecOperation::Serialize => {
+                    "We couldn't process your data in the required format. Please check your input and try again.".to_string()
+                }
+                CodecOperation::Decode | CodecOperation::Deserialize => {
+                    "We received data in an unexpected format. This might be a temporary issue - please try again.".to_string()
+                }
+                CodecOperation::Validate => {
+                    "The data format couldn't be validated. Please check that all information is entered correctly.".to_string()
+                }
+            },
+            CodecsError::Serialization { operation, .. } => match operation {
+                SerializationOperation::SerializeJson | SerializationOperation::SerializeBinary => {
+                    "We couldn't save your data in the required format. Please try again.".to_string()
+                }
+                SerializationOperation::DeserializeJson
+                | SerializationOperation::DeserializeBinary => {
+                    "We received data in an unexpected format. Please refresh the page and try again.".to_string()
+                }
+                SerializationOperation::ValidateStructure => {
+                    "The data structure couldn't be validated. Please check your input and try again.".to_string()
+                }
+            },
+        }
+    }
+
+    fn developer_message(&self) -> String {
+        match self {
+            CodecsError::Codec {
+                operation,
+                message,
+                payload_type,
+                expected_format,
+            } => {
+                let payload_context = payload_type
+                    .as_ref()
+                    .map(|pt| format!(" [Payload: {}]", pt))
+                    .unwrap_or_default();
+                let format_context = expected_format
+                    .as_ref()
+                    .map(|ef| format!(" [Expected: {}]", ef))
+                    .unwrap_or_default();
+                format!(
+                    "Codec contract violation during {} operation: {}{}{}",
+                    operation, message, payload_context, format_context
+                )
+            }
+            CodecsError::Serialization {
+                operation,
+                message,
+                format,
+                field,
+            } => {
+                let format_context = format
+                    .as_ref()
+                    .map(|f| format!(" [Format: {}]", f))
+                    .unwrap_or_default();
+                let field_context = field
+                    .as_ref()
+                    .map(|f| format!(" [Field: {}]", f))
+                    .unwrap_or_default();
+                format!(
+                    "Serialization contract violation during {} operation: {}{}{}",
+                    operation, message, format_context, field_context
+                )
+            }
+        }
+    }
+
+    fn support_code(&self) -> String {
+        self.support_code_inner()
+    }
+
+    fn severity(&self) -> ErrorSeverity {
+        match self {
+            CodecsError::Codec { operation, .. } => match operation {
+                CodecOperation::Encode | CodecOperation::Decode => ErrorSeverity::Error,
+                CodecOperation::Serialize | CodecOperation::Deserialize => ErrorSeverity::Error,
+                CodecOperation::Validate => ErrorSeverity::Warning,
+            },
+            CodecsError::Serialization { .. } => ErrorSeverity::Error,
+        }
+    }
+
+    fn suggested_actions(&self) -> Vec<String> {
+        match self {
+            CodecsError::Codec { operation, .. } => match operation {
+                CodecOperation::Encode | CodecOperation::Serialize => vec![
+                    "Check that all required fields are filled out correctly".to_string(),
+                    "Ensure special characters are properly formatted".to_string(),
+                    "Try simplifying your input and gradually add complexity".to_string(),
+                    "Contact support if data formatting requirements are unclear".to_string(),
+                ],
+                CodecOperation::Decode | CodecOperation::Deserialize => vec![
+                    "This is likely a temporary system issue".to_string(),
+                    "Try refreshing the page and repeating your action".to_string(),
+                    "Clear your browser cache if the problem persists".to_string(),
+                    "Contact support if you continue receiving malformed data".to_string(),
+                ],
+                CodecOperation::Validate => vec![
+                    "Review all input fields for formatting errors".to_string(),
+                    "Ensure required fields are not empty".to_string(),
+                    "Check for special characters that might not be allowed".to_string(),
+                    "Refer to our formatting guidelines or contact support".to_string(),
+                ],
+            },
+            CodecsError::Serialization { .. } => vec![
+                "This is typically a temporary system issue".to_string(),
+                "Try your request again in a few minutes".to_string(),
+                "Refresh the page and ensure you have the latest version".to_string(),
+                "Contact support if data processing errors continue".to_string(),
+            ],
+        }
+    }
+
+    fn is_retryable(&self) -> bool {
+        match self {
+            CodecsError::Codec { operation, .. } => match operation {
+                CodecOperation::Encode | CodecOperation::Serialize => true, // user can fix input
+                CodecOperation::Decode | CodecOperation::Deserialize => true, // may be temporary
+                CodecOperation::Validate => true,                           // user can correct
+            },
+            CodecsError::Serialization { .. } => true, // often temporary
+        }
+    }
+}
+
+/// JWT-category native error type.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum JwtError {
+    /// JWT processing failure.
+    #[error("JWT error: {operation} - {message}")]
+    Processing {
+        /// The JWT operation that failed.
+        operation: JwtOperation,
+        /// Description of the failure (non-sensitive).
+        message: String,
+        /// The token that caused the error (truncated for security).
+        token_preview: Option<String>,
+    },
+}
+
+impl JwtError {
+    /// Create a JWT processing error.
+    pub fn processing(operation: JwtOperation, message: impl Into<String>) -> Self {
+        JwtError::Processing {
+            operation,
+            message: message.into(),
+            token_preview: None,
+        }
+    }
+
+    /// Create a JWT processing error with token preview.
+    pub fn processing_with_preview(
+        operation: JwtOperation,
+        message: impl Into<String>,
+        token_preview: Option<String>,
+    ) -> Self {
+        JwtError::Processing {
+            operation,
+            message: message.into(),
+            token_preview,
+        }
+    }
+
+    fn support_code_inner(&self) -> String {
+        match self {
+            JwtError::Processing { operation, .. } => {
+                format!("JWT-{}", operation.to_string().to_uppercase())
+            }
+        }
+    }
+}
+
+impl UserFriendlyError for JwtError {
+    fn user_message(&self) -> String {
+        match self {
+            JwtError::Processing { operation, .. } => match operation {
+                JwtOperation::Encode | JwtOperation::Refresh => {
+                    "We're having trouble with the authentication system. Please try signing in again.".to_string()
+                }
+                JwtOperation::Decode | JwtOperation::Validate => {
+                    "Your session appears to be invalid. Please sign in again to continue.".to_string()
+                }
+                JwtOperation::Revoke => {
+                    "We couldn't complete the sign-out process. You may already be signed out.".to_string()
+                }
+            },
+        }
+    }
+
+    fn developer_message(&self) -> String {
+        match self {
+            JwtError::Processing {
+                operation,
+                message,
+                token_preview,
+            } => {
+                let token_context = token_preview
+                    .as_ref()
+                    .map(|t| format!(" [Token Preview: {}]", t))
+                    .unwrap_or_default();
+                format!(
+                    "JWT {} operation failed: {}{}",
+                    operation, message, token_context
+                )
+            }
+        }
+    }
+
+    fn support_code(&self) -> String {
+        self.support_code_inner()
+    }
+
+    fn severity(&self) -> ErrorSeverity {
+        match self {
+            JwtError::Processing { operation, .. } => match operation {
+                JwtOperation::Encode | JwtOperation::Refresh => ErrorSeverity::Error,
+                _ => ErrorSeverity::Warning,
+            },
+        }
+    }
+
+    fn suggested_actions(&self) -> Vec<String> {
+        match self {
+            JwtError::Processing { operation, .. } => match operation {
+                JwtOperation::Encode | JwtOperation::Refresh => vec![
+                    "Try signing in again".to_string(),
+                    "Clear your browser cookies and try again".to_string(),
+                    "Contact support if you cannot sign in after multiple attempts".to_string(),
+                ],
+                JwtOperation::Decode | JwtOperation::Validate => vec![
+                    "Sign out completely and sign back in".to_string(),
+                    "Clear your browser cache and cookies".to_string(),
+                    "Try using a different browser or incognito mode".to_string(),
+                ],
+                JwtOperation::Revoke => vec![
+                    "You may already be signed out successfully".to_string(),
+                    "Clear your browser data to ensure complete sign-out".to_string(),
+                    "Close all browser windows for security".to_string(),
+                ],
+            },
+        }
+    }
+
+    fn is_retryable(&self) -> bool {
+        match self {
+            JwtError::Processing { operation, .. } => match operation {
+                JwtOperation::Encode | JwtOperation::Refresh => true, // user can retry auth
+                JwtOperation::Revoke => false,                        // revocation is final
+                _ => true,
+            },
+        }
+    }
+}

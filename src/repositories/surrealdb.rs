@@ -6,7 +6,7 @@ use crate::accounts::AccountRepository;
 use crate::authz::AccessHierarchy;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use crate::errors::infrastructure::{DatabaseOperation, InfrastructureError};
+use crate::errors::repositories::{DatabaseError, DatabaseOperation};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
 use crate::hashing::argon2::Argon2Hasher;
@@ -95,12 +95,12 @@ where
             .use_db(&self.scope_settings.database)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Connect,
-                    message: format!("Failed to set namespace/database: {}", e),
-                    table: None,
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Connect,
+                    format!("Failed to set namespace/database: {}", e),
+                    None,
+                    None,
+                ))
             })
     }
 }
@@ -121,12 +121,12 @@ where
             ))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query account by user_id: {}", e),
-                    table: Some(self.scope_settings.accounts.clone()),
-                    record_id: Some(user_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query account by user_id: {}", e),
+                    Some(self.scope_settings.accounts.clone()),
+                    Some(user_id.to_string()),
+                ))
             })?;
         Ok(db_account)
     }
@@ -142,12 +142,12 @@ where
             .content(account)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Insert,
-                    message: format!("Could not insert account: {}", e),
-                    table: Some(self.scope_settings.accounts.clone()),
-                    record_id: Some(user_id),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Could not insert account: {}", e),
+                    Some(self.scope_settings.accounts.clone()),
+                    Some(user_id),
+                ))
             })?;
         Ok(db_account)
     }
@@ -162,12 +162,12 @@ where
             ))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete account: {}", e),
-                    table: Some(self.scope_settings.accounts.clone()),
-                    record_id: Some(user_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete account: {}", e),
+                    Some(self.scope_settings.accounts.clone()),
+                    Some(user_id.to_string()),
+                ))
             })?;
         Ok(db_account)
     }
@@ -198,12 +198,12 @@ where
             .content(secret)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Insert,
-                    message: format!("Failed to store secret: {}", e),
-                    table: Some(self.scope_settings.credentials.clone()),
-                    record_id: Some(account_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to store secret: {}", e),
+                    Some(self.scope_settings.credentials.clone()),
+                    Some(account_id.to_string()),
+                ))
             })?;
         Ok(db_credentials.is_some())
     }
@@ -212,12 +212,12 @@ where
         self.use_ns_db().await?;
         let record_id = RecordId::from_table_key(self.scope_settings.credentials.clone(), *id);
         let result: Option<Secret> = self.db.delete(record_id).await.map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Delete,
-                message: format!("Failed to delete and return secret: {}", e),
-                table: Some(self.scope_settings.credentials.clone()),
-                record_id: Some(id.to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Delete,
+                format!("Failed to delete and return secret: {}", e),
+                Some(self.scope_settings.credentials.clone()),
+                Some(id.to_string()),
+            ))
         })?;
         Ok(result)
     }
@@ -234,12 +234,12 @@ where
             .content(secret)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Update,
-                    message: format!("Failed to update secret: {}", e),
-                    table: Some(self.scope_settings.credentials.clone()),
-                    record_id: Some(account_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Update,
+                    format!("Failed to update secret: {}", e),
+                    Some(self.scope_settings.credentials.clone()),
+                    Some(account_id.to_string()),
+                ))
             })?;
         Ok(())
     }
@@ -265,21 +265,21 @@ where
             .bind(("record_id", record_id))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to check user existence: {}", e),
-                    table: Some(self.scope_settings.credentials.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to check user existence: {}", e),
+                    Some(self.scope_settings.credentials.clone()),
+                    None,
+                ))
             })?;
 
         let stored_secret: Option<String> = exists_response.take(0).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Query,
-                message: format!("Failed to extract secret: {}", e),
-                table: Some(self.scope_settings.credentials.clone()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Query,
+                format!("Failed to extract secret: {}", e),
+                Some(self.scope_settings.credentials.clone()),
+                None,
+            ))
         })?;
 
         // Step 2: Select hash to verify against (always perform verification)
@@ -299,21 +299,21 @@ where
             .bind(("request_secret", credentials.secret))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to verify credentials: {}", e),
-                    table: Some(self.scope_settings.credentials.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to verify credentials: {}", e),
+                    Some(self.scope_settings.credentials.clone()),
+                    None,
+                ))
             })?;
 
         let hash_matches: Option<bool> = verify_response.take(0).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Query,
-                message: format!("Failed to extract verification result: {}", e),
-                table: Some(self.scope_settings.credentials.clone()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Query,
+                format!("Failed to extract verification result: {}", e),
+                Some(self.scope_settings.credentials.clone()),
+                None,
+            ))
         })?;
 
         // Step 4: Constant-time combination: success only if user exists AND hash matches
@@ -381,12 +381,12 @@ where
         // Validate the mapping first
         if let Err(e) = mapping.validate() {
             // Treat validation failures as infrastructure-safe errors for this backend
-            return Err(Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Insert,
-                message: format!("Invalid permission mapping: {}", e),
-                table: Some(self.scope_settings.permission_mappings.clone()),
-                record_id: None,
-            }));
+            return Err(Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Invalid permission mapping: {}", e),
+                Some(self.scope_settings.permission_mappings.clone()),
+                None,
+            )));
         }
 
         self.use_ns_db().await?;
@@ -400,20 +400,20 @@ where
             .bind(("pid", mapping.permission_id().as_u64().to_string()))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to check existing mapping by id: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: Some(mapping.permission_id().as_u64().to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to check existing mapping by id: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    Some(mapping.permission_id().as_u64().to_string()),
+                ))
             })?;
         let exists_by_id: Vec<SurrealPermissionMapping> = res_id.take(0).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Query,
-                message: format!("Failed to extract existing mapping by id: {}", e),
-                table: Some(self.scope_settings.permission_mappings.clone()),
-                record_id: Some(mapping.permission_id().as_u64().to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Query,
+                format!("Failed to extract existing mapping by id: {}", e),
+                Some(self.scope_settings.permission_mappings.clone()),
+                Some(mapping.permission_id().as_u64().to_string()),
+            ))
         })?;
         if !exists_by_id.is_empty() {
             return Ok(None);
@@ -426,12 +426,12 @@ where
         );
         let exists_by_string: Option<SurrealPermissionMapping> =
             self.db.select(&record_id).await.map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to check existing mapping by string: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to check existing mapping by string: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
         if exists_by_string.is_some() {
             return Ok(None);
@@ -444,23 +444,23 @@ where
             .content(SurrealPermissionMapping::from(mapping))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Insert,
-                    message: format!("Failed to store permission mapping: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to store permission mapping: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
 
         let stored = match stored_spm {
             Some(spm) => {
                 let dom = PermissionMapping::try_from(spm).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Insert,
-                        message: format!("Failed to convert stored permission mapping: {}", e),
-                        table: Some(self.scope_settings.permission_mappings.clone()),
-                        record_id: None,
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Insert,
+                        format!("Failed to convert stored permission mapping: {}", e),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        None,
+                    ))
                 })?;
                 Some(dom)
             }
@@ -482,21 +482,21 @@ where
             .bind(("pid", id.as_u64().to_string()))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete permission mapping by id: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: Some(id.as_u64().to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete permission mapping by id: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    Some(id.as_u64().to_string()),
+                ))
             })?;
 
         let removed: Vec<SurrealPermissionMapping> = res.take(0).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Delete,
-                message: format!("Failed to extract deleted permission mapping: {}", e),
-                table: Some(self.scope_settings.permission_mappings.clone()),
-                record_id: Some(id.as_u64().to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Delete,
+                format!("Failed to extract deleted permission mapping: {}", e),
+                Some(self.scope_settings.permission_mappings.clone()),
+                Some(id.as_u64().to_string()),
+            ))
         })?;
 
         removed
@@ -504,12 +504,12 @@ where
             .next()
             .map(|spm| {
                 PermissionMapping::try_from(spm).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Delete,
-                        message: format!("Failed to convert deleted permission mapping: {}", e),
-                        table: Some(self.scope_settings.permission_mappings.clone()),
-                        record_id: Some(id.as_u64().to_string()),
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Delete,
+                        format!("Failed to convert deleted permission mapping: {}", e),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        Some(id.as_u64().to_string()),
+                    ))
                 })
             })
             .transpose()
@@ -535,21 +535,21 @@ where
             .bind(("ns", normalized))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete permission mapping by string: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete permission mapping by string: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
 
         let removed: Vec<SurrealPermissionMapping> = res.take(0).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Delete,
-                message: format!("Failed to extract deleted permission mapping: {}", e),
-                table: Some(self.scope_settings.permission_mappings.clone()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Delete,
+                format!("Failed to extract deleted permission mapping: {}", e),
+                Some(self.scope_settings.permission_mappings.clone()),
+                None,
+            ))
         })?;
 
         removed
@@ -557,12 +557,12 @@ where
             .next()
             .map(|spm| {
                 PermissionMapping::try_from(spm).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Delete,
-                        message: format!("Failed to convert deleted permission mapping: {}", e),
-                        table: Some(self.scope_settings.permission_mappings.clone()),
-                        record_id: None,
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Delete,
+                        format!("Failed to convert deleted permission mapping: {}", e),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        None,
+                    ))
                 })
             })
             .transpose()
@@ -580,21 +580,21 @@ where
             .bind(("pid", id.as_u64().to_string()))
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query permission mapping by id: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query permission mapping by id: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
 
         let found: Vec<SurrealPermissionMapping> = res.take(0).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Query,
-                message: format!("Failed to extract permission mapping by id: {}", e),
-                table: Some(self.scope_settings.permission_mappings.clone()),
-                record_id: Some(id.as_u64().to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Query,
+                format!("Failed to extract permission mapping by id: {}", e),
+                Some(self.scope_settings.permission_mappings.clone()),
+                Some(id.as_u64().to_string()),
+            ))
         })?;
 
         found
@@ -602,12 +602,12 @@ where
             .next()
             .map(|spm| {
                 PermissionMapping::try_from(spm).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Query,
-                        message: format!("Failed to convert permission mapping: {}", e),
-                        table: Some(self.scope_settings.permission_mappings.clone()),
-                        record_id: Some(id.as_u64().to_string()),
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to convert permission mapping: {}", e),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        Some(id.as_u64().to_string()),
+                    ))
                 })
             })
             .transpose()
@@ -628,23 +628,23 @@ where
 
         let mapping_spm: Option<SurrealPermissionMapping> =
             self.db.select(record_id).await.map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query permission mapping by string: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query permission mapping by string: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
 
         mapping_spm
             .map(|spm| {
                 PermissionMapping::try_from(spm).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Query,
-                        message: format!("Failed to convert permission mapping: {}", e),
-                        table: Some(self.scope_settings.permission_mappings.clone()),
-                        record_id: None,
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to convert permission mapping: {}", e),
+                        Some(self.scope_settings.permission_mappings.clone()),
+                        None,
+                    ))
                 })
             })
             .transpose()
@@ -658,23 +658,23 @@ where
             .select(self.scope_settings.permission_mappings.clone())
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to list permission mappings: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to list permission mappings: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
 
         let mut out = Vec::with_capacity(all_spm.len());
         for spm in all_spm {
             let dom = PermissionMapping::try_from(spm).map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to convert permission mapping: {}", e),
-                    table: Some(self.scope_settings.permission_mappings.clone()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to convert permission mapping: {}", e),
+                    Some(self.scope_settings.permission_mappings.clone()),
+                    None,
+                ))
             })?;
             out.push(dom);
         }

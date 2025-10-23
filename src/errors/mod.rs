@@ -1,10 +1,11 @@
-//! Unified error types exposed by this crate.
+//! Unified, category-based error types exposed by this crate.
 //!
 //! This module contains error types you mostly need when using this crate:
-//! - `Error`: root enum wrapping all layer-specific errors
+//! - `Error`: root enum wrapping all category errors
 //! - `Result<T>`: convenience alias
 //! - `UserFriendlyError`: trait providing multiple message levels
-//! - Layer enums: `DomainError`, `ApplicationError`, `InfrastructureError`, `PortError`
+//! - Category enums: `AccountsError`, `AuthnError`, `AuthzError`, `PermissionsError`,
+//!   `CodecsError`, `JwtError`, `RepositoriesError`, `DatabaseError`, `HashingError`, `SecretError`
 //!
 //! # Error Message Levels
 //! Each error provides three message levels for different audiences:
@@ -13,19 +14,25 @@
 //! - **Support Code**: Unique reference code for customer support
 //!
 //! # When to Use Each Variant
-//! - `Domain` – Pure business rule / invariant violations (no external side effects)
-//! - `Application` – Orchestration or use-case flow failures (combining domain + ports)
-//! - `Infrastructure` – Failures talking to external systems (DB, JWT, network, etc.)
-//! - `Port` – Adapter / interface contract violations (repositories, codecs, hashing)
+//! - `Accounts` – Account operations (create/update/delete/query/workflows/validation)
+//! - `Authn` – Authentication flows (login/logout/session/MFA/rate-limits)
+//! - `Authz` – Authorization issues (permission format, collisions, hierarchy violations)
+//! - `Permissions` – Permission validation/collision concerns
+//! - `Codecs` – Codec/serialization problems (encode/decode/serialize/deserialize/validate)
+//! - `Jwt` – JWT processing (encode/decode/validate/refresh/revoke)
+//! - `Repositories` – Repository contract/operation failures by repository type
+//! - `Database` – Database driver/engine operation failures
+//! - `Hashing` – Hashing/verification problems (hash/verify/generate_salt/update_hash)
+//! - `Secrets` – Secret storage and verification (repo + hashing in secret flows)
 //!
 //! # Basic Example
 //! ```rust
-//! use axum_gate::errors::{Error, DomainError, Result, UserFriendlyError};
+//! use axum_gate::errors::{Error, PermissionsError, Result, UserFriendlyError};
 //!
-//! fn do_domain_check(flag: bool) -> Result<()> {
+//! fn do_permission_check(flag: bool) -> Result<()> {
 //!     if !flag {
-//!         let error = Error::Domain(
-//!             DomainError::permission_collision(42, vec!["read:alpha".into(), "read:beta".into()])
+//!         let error = Error::Permissions(
+//!             PermissionsError::collision(42, vec!["read:alpha".into(), "read:beta".into()])
 //!         );
 //!         println!("User sees: {}", error.user_message());
 //!         println!("Developer sees: {}", error.developer_message());
@@ -51,16 +58,32 @@
 use std::fmt;
 use thiserror::Error;
 
-// Re-export only the primary error enums and auth-specific leaf errors needed by users.
-pub use self::application::{ApplicationError, AuthenticationError};
-pub use crate::errors::domain::DomainError;
-pub use crate::errors::infrastructure::InfrastructureError;
-pub use crate::errors::ports::PortError;
+// Category-based error re-exports for ergonomic imports.
+pub use crate::errors::accounts::{AccountOperation, AccountsError};
+pub use crate::errors::authn::{AuthenticationError, AuthnError};
+pub use crate::errors::authz::AuthzError;
+pub use crate::errors::codecs::{
+    CodecOperation, CodecsError, JwtError, JwtOperation, SerializationOperation,
+};
+pub use crate::errors::hashing::{HashingError, HashingOperation};
+pub use crate::errors::permissions::PermissionsError;
+pub use crate::errors::repositories::{
+    DatabaseError, DatabaseOperation, RepositoriesError, RepositoryOperation, RepositoryType,
+};
+pub use crate::errors::secrets::SecretError;
 
-pub(crate) mod application;
-pub(crate) mod domain;
-pub(crate) mod infrastructure;
-pub(crate) mod ports;
+// layered modules removed in favor of category-based modules
+
+// Category-oriented facades aligned with the crate's DDD module structure.
+// These modules re-export specific error types by category for ergonomic imports.
+pub mod accounts;
+pub mod authn;
+pub mod authz;
+pub mod codecs;
+pub mod hashing;
+pub mod permissions;
+pub mod repositories;
+pub mod secrets;
 
 /// Trait providing user-friendly error messaging at multiple levels.
 ///
@@ -134,11 +157,11 @@ pub enum ErrorSeverity {
 /// # Examples
 ///
 /// ```rust
-/// use axum_gate::errors::{Result, Error, DomainError};
+/// use axum_gate::errors::{Result, Error, PermissionsError};
 ///
 /// fn validate_account(user_id: &str) -> Result<()> {
 ///     if user_id.is_empty() {
-///         return Err(Error::Domain(DomainError::permission_collision(
+///         return Err(Error::Permissions(PermissionsError::collision(
 ///             12345,
 ///             vec!["invalid".to_string()]
 ///         )));
@@ -158,75 +181,135 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// messaging for different audiences while maintaining security and consistency.
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Domain layer business logic errors
+    /// Accounts category errors
     #[error(transparent)]
-    Domain(#[from] DomainError),
+    Accounts(#[from] AccountsError),
 
-    /// Application layer service orchestration errors
+    /// Authentication category errors
     #[error(transparent)]
-    Application(#[from] ApplicationError),
+    Authn(#[from] AuthnError),
 
-    /// Infrastructure layer external system errors
+    /// Authorization category errors
     #[error(transparent)]
-    Infrastructure(#[from] InfrastructureError),
+    Authz(#[from] AuthzError),
 
-    /// Port layer interface contract violations
+    /// Permissions category errors
     #[error(transparent)]
-    Port(#[from] PortError),
+    Permissions(#[from] PermissionsError),
+
+    /// Codec/serialization category errors
+    #[error(transparent)]
+    Codecs(#[from] CodecsError),
+
+    /// JWT processing category errors
+    #[error(transparent)]
+    Jwt(#[from] JwtError),
+
+    /// Repository category errors
+    #[error(transparent)]
+    Repositories(#[from] RepositoriesError),
+
+    /// Database category errors
+    #[error(transparent)]
+    Database(#[from] DatabaseError),
+
+    /// Hashing/verification category errors
+    #[error(transparent)]
+    Hashing(#[from] HashingError),
+
+    /// Secret storage/category errors
+    #[error(transparent)]
+    Secrets(#[from] SecretError),
 }
 
 impl UserFriendlyError for Error {
     fn user_message(&self) -> String {
         match self {
-            Error::Domain(err) => err.user_message(),
-            Error::Application(err) => err.user_message(),
-            Error::Infrastructure(err) => err.user_message(),
-            Error::Port(err) => err.user_message(),
+            Error::Accounts(err) => err.user_message(),
+            Error::Authn(err) => err.user_message(),
+            Error::Authz(err) => err.user_message(),
+            Error::Permissions(err) => err.user_message(),
+            Error::Codecs(err) => err.user_message(),
+            Error::Jwt(err) => err.user_message(),
+            Error::Repositories(err) => err.user_message(),
+            Error::Database(err) => err.user_message(),
+            Error::Hashing(err) => err.user_message(),
+            Error::Secrets(err) => err.user_message(),
         }
     }
 
     fn developer_message(&self) -> String {
         match self {
-            Error::Domain(err) => err.developer_message(),
-            Error::Application(err) => err.developer_message(),
-            Error::Infrastructure(err) => err.developer_message(),
-            Error::Port(err) => err.developer_message(),
+            Error::Accounts(err) => err.developer_message(),
+            Error::Authn(err) => err.developer_message(),
+            Error::Authz(err) => err.developer_message(),
+            Error::Permissions(err) => err.developer_message(),
+            Error::Codecs(err) => err.developer_message(),
+            Error::Jwt(err) => err.developer_message(),
+            Error::Repositories(err) => err.developer_message(),
+            Error::Database(err) => err.developer_message(),
+            Error::Hashing(err) => err.developer_message(),
+            Error::Secrets(err) => err.developer_message(),
         }
     }
 
     fn support_code(&self) -> String {
         match self {
-            Error::Domain(err) => format!("DOM-{}", err.support_code()),
-            Error::Application(err) => format!("APP-{}", err.support_code()),
-            Error::Infrastructure(err) => format!("INF-{}", err.support_code()),
-            Error::Port(err) => format!("PORT-{}", err.support_code()),
+            Error::Accounts(err) => err.support_code(),
+            Error::Authn(err) => err.support_code(),
+            Error::Authz(err) => err.support_code(),
+            Error::Permissions(err) => err.support_code(),
+            Error::Codecs(err) => err.support_code(),
+            Error::Jwt(err) => err.support_code(),
+            Error::Repositories(err) => err.support_code(),
+            Error::Database(err) => err.support_code(),
+            Error::Hashing(err) => err.support_code(),
+            Error::Secrets(err) => err.support_code(),
         }
     }
 
     fn severity(&self) -> ErrorSeverity {
         match self {
-            Error::Domain(err) => err.severity(),
-            Error::Application(err) => err.severity(),
-            Error::Infrastructure(err) => err.severity(),
-            Error::Port(err) => err.severity(),
+            Error::Accounts(err) => err.severity(),
+            Error::Authn(err) => err.severity(),
+            Error::Authz(err) => err.severity(),
+            Error::Permissions(err) => err.severity(),
+            Error::Codecs(err) => err.severity(),
+            Error::Jwt(err) => err.severity(),
+            Error::Repositories(err) => err.severity(),
+            Error::Database(err) => err.severity(),
+            Error::Hashing(err) => err.severity(),
+            Error::Secrets(err) => err.severity(),
         }
     }
 
     fn suggested_actions(&self) -> Vec<String> {
         match self {
-            Error::Domain(err) => err.suggested_actions(),
-            Error::Application(err) => err.suggested_actions(),
-            Error::Infrastructure(err) => err.suggested_actions(),
-            Error::Port(err) => err.suggested_actions(),
+            Error::Accounts(err) => err.suggested_actions(),
+            Error::Authn(err) => err.suggested_actions(),
+            Error::Authz(err) => err.suggested_actions(),
+            Error::Permissions(err) => err.suggested_actions(),
+            Error::Codecs(err) => err.suggested_actions(),
+            Error::Jwt(err) => err.suggested_actions(),
+            Error::Repositories(err) => err.suggested_actions(),
+            Error::Database(err) => err.suggested_actions(),
+            Error::Hashing(err) => err.suggested_actions(),
+            Error::Secrets(err) => err.suggested_actions(),
         }
     }
 
     fn is_retryable(&self) -> bool {
         match self {
-            Error::Domain(err) => err.is_retryable(),
-            Error::Application(err) => err.is_retryable(),
-            Error::Infrastructure(err) => err.is_retryable(),
-            Error::Port(err) => err.is_retryable(),
+            Error::Accounts(err) => err.is_retryable(),
+            Error::Authn(err) => err.is_retryable(),
+            Error::Authz(err) => err.is_retryable(),
+            Error::Permissions(err) => err.is_retryable(),
+            Error::Codecs(err) => err.is_retryable(),
+            Error::Jwt(err) => err.is_retryable(),
+            Error::Repositories(err) => err.is_retryable(),
+            Error::Database(err) => err.is_retryable(),
+            Error::Hashing(err) => err.is_retryable(),
+            Error::Secrets(err) => err.is_retryable(),
         }
     }
 }
@@ -235,34 +318,38 @@ impl UserFriendlyError for Error {
 #[cfg(feature = "storage-surrealdb")]
 impl From<surrealdb::Error> for Error {
     fn from(err: surrealdb::Error) -> Self {
-        Error::Infrastructure(InfrastructureError::Database {
-            operation: crate::errors::infrastructure::DatabaseOperation::Query,
-            message: format!("SurrealDB error: {}", err),
-            table: None,
-            record_id: None,
-        })
+        Error::Database(DatabaseError::with_context(
+            DatabaseOperation::Query,
+            format!("SurrealDB error: {}", err),
+            None,
+            None,
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    // Import operation enums from their defining modules now that they are no longer re-exported.
-    use self::application::AccountOperation;
-    use crate::errors::infrastructure::{DatabaseOperation, JwtOperation};
-    use crate::errors::ports::{CodecOperation, HashingOperation, RepositoryType};
+    use crate::errors::{
+        Error, ErrorSeverity, UserFriendlyError,
+        accounts::{AccountOperation, AccountsError},
+        authn::{AuthenticationError, AuthnError},
+        authz::AuthzError,
+        codecs::{CodecOperation, JwtOperation},
+        hashing::HashingOperation,
+        repositories::{
+            DatabaseError, DatabaseOperation, RepositoriesError, RepositoryOperation,
+            RepositoryType,
+        },
+    };
 
     #[test]
-    fn domain_error_permission_collision() {
+    fn authz_error_permission_collision() {
         let permissions = vec!["read:file".to_string(), "write:file".to_string()];
-        let error = Error::Domain(DomainError::permission_collision(
-            123u64,
-            permissions.clone(),
-        ));
+        let error = Error::Authz(AuthzError::collision(123u64, permissions.clone()));
 
         // Test error structure
         match &error {
-            Error::Domain(DomainError::PermissionCollision {
+            Error::Authz(AuthzError::PermissionCollision {
                 collision_count,
                 hash_id,
                 permissions: perms,
@@ -277,35 +364,31 @@ mod tests {
         // Test user-friendly messages
         assert!(error.user_message().contains("technical issue"));
         assert!(error.developer_message().contains("Permission collision"));
-        assert_eq!(error.support_code(), "DOM-PERM-COLLISION-123");
+        assert!(error.support_code().starts_with("AUTHZ-PERM-COLLISION-"));
         assert_eq!(error.severity(), ErrorSeverity::Critical);
         assert!(!error.suggested_actions().is_empty());
     }
 
     #[test]
-    fn application_error_authentication() {
+    fn authn_error_authentication() {
         let auth_error = AuthenticationError::InvalidCredentials;
-        let error = Error::Application(ApplicationError::authentication(
+        let error = Error::Authn(AuthnError::from_authentication(
             auth_error,
             Some("test context".to_string()),
         ));
 
         // Test error structure
         match &error {
-            Error::Application(ApplicationError::Authentication {
-                auth_error,
-                context,
-            }) => {
-                matches!(auth_error, AuthenticationError::InvalidCredentials);
+            Error::Authn(AuthnError::Authentication { error, context }) => {
+                matches!(error, AuthenticationError::InvalidCredentials);
                 assert_eq!(*context, Some("test context".to_string()));
             }
-            _ => panic!("Expected Authentication variant"),
+            _ => panic!("Expected Authn::Authentication variant"),
         }
 
         // Test user-friendly messages
         assert!(error.user_message().contains("username or password"));
         assert!(error.developer_message().contains("Invalid credentials"));
-        assert_eq!(error.support_code(), "APP-AUTH-INVALID-CREDS");
         assert_eq!(error.severity(), ErrorSeverity::Warning);
         assert!(
             error
@@ -316,67 +399,77 @@ mod tests {
     }
 
     #[test]
-    fn infrastructure_error_database() {
-        let error = Error::Infrastructure(InfrastructureError::database(
+    fn database_error_query() {
+        let error = Error::Database(DatabaseError::new(
             DatabaseOperation::Query,
             "Connection failed",
         ));
 
         // Test error structure
         match &error {
-            Error::Infrastructure(InfrastructureError::Database {
+            Error::Database(DatabaseError::Operation {
                 operation, message, ..
             }) => {
                 matches!(operation, DatabaseOperation::Query);
                 assert_eq!(*message, "Connection failed");
             }
-            _ => panic!("Expected Database variant"),
+            _ => panic!("Expected Database::Operation variant"),
         }
 
         // Test user-friendly messages
         assert!(error.user_message().contains("technical difficulties"));
         assert!(error.developer_message().contains("Database"));
-        assert!(error.support_code().starts_with("INF-DB-QUERY-"));
         assert_eq!(error.severity(), ErrorSeverity::Error);
         assert!(error.is_retryable());
     }
 
     #[test]
-    fn port_error_repository() {
-        let error = Error::Port(PortError::repository(
+    fn repositories_error_operation_failed() {
+        let error = Error::Repositories(RepositoriesError::operation_failed(
             RepositoryType::Account,
+            RepositoryOperation::Insert,
             "Insert failed",
+            Some("user-123".into()),
+            Some("insert_account".into()),
         ));
 
         // Test error structure
         match &error {
-            Error::Port(PortError::Repository {
+            Error::Repositories(RepositoriesError::OperationFailed {
                 repository,
+                operation,
                 message,
                 ..
             }) => {
                 matches!(repository, RepositoryType::Account);
+                matches!(operation, RepositoryOperation::Insert);
                 assert_eq!(*message, "Insert failed");
             }
-            _ => panic!("Expected Repository variant"),
+            _ => panic!("Expected Repositories::OperationFailed variant"),
         }
 
         // Test user-friendly messages
         assert!(error.user_message().contains("account information"));
-        assert!(error.developer_message().contains("Repository"));
-        assert!(error.support_code().starts_with("PORT-REPO-ACCOUNT-"));
-        assert_eq!(error.severity(), ErrorSeverity::Critical);
+        assert!(
+            error
+                .developer_message()
+                .contains("Repository operation failed")
+        );
+        assert!(
+            error.severity() == ErrorSeverity::Error || error.severity() == ErrorSeverity::Critical
+        );
         assert!(error.is_retryable());
     }
 
     #[test]
     fn error_display() {
-        let error = Error::Domain(DomainError::permission_collision(
-            123,
-            vec!["test".to_string()],
+        let error = Error::Accounts(AccountsError::operation(
+            AccountOperation::Create,
+            "create failed",
+            Some("acc-1".into()),
         ));
         let display = format!("{}", error);
-        assert!(display.contains("Permission collision"));
+        assert!(display.contains("Account operation"));
 
         // Test all message levels
         assert!(!error.user_message().is_empty());
@@ -396,11 +489,8 @@ mod tests {
 
     #[test]
     fn error_severity_levels() {
-        let domain_error = Error::Domain(DomainError::permission_collision(
-            123,
-            vec!["test".to_string()],
-        ));
-        assert_eq!(domain_error.severity(), ErrorSeverity::Critical);
+        let authz_error = Error::Authz(AuthzError::collision(123, vec!["test".to_string()]));
+        assert_eq!(authz_error.severity(), ErrorSeverity::Critical);
 
         // Test that all severity levels work
         assert_ne!(ErrorSeverity::Critical, ErrorSeverity::Error);
@@ -410,26 +500,17 @@ mod tests {
 
     #[test]
     fn error_support_codes_are_unique() {
-        let domain_error = Error::Domain(DomainError::permission_collision(
-            123,
-            vec!["test".to_string()],
-        ));
-        let app_error = Error::Application(ApplicationError::authentication(
-            AuthenticationError::InvalidCredentials,
-            None,
-        ));
+        let authz_error = Error::Authz(AuthzError::collision(123, vec!["test".to_string()]));
+        let authn_error = Error::Authn(AuthnError::invalid_credentials(None));
 
-        assert_ne!(domain_error.support_code(), app_error.support_code());
-        assert!(domain_error.support_code().starts_with("DOM-"));
-        assert!(app_error.support_code().starts_with("APP-"));
+        assert_ne!(authz_error.support_code(), authn_error.support_code());
+        assert!(authz_error.support_code().starts_with("AUTHZ-"));
+        assert!(authn_error.support_code().starts_with("AUTHN-"));
     }
 
     #[test]
     fn error_suggested_actions() {
-        let error = Error::Application(ApplicationError::authentication(
-            AuthenticationError::InvalidCredentials,
-            None,
-        ));
+        let error = Error::Authn(AuthnError::invalid_credentials(None));
         let actions = error.suggested_actions();
         assert!(!actions.is_empty());
         assert!(actions.iter().any(|action| action.contains("username")

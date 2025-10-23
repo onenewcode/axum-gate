@@ -1,5 +1,5 @@
 use super::{PermissionCollisionChecker, ValidationReport};
-use crate::errors::domain::DomainError;
+use crate::errors::permissions::PermissionsError;
 use crate::errors::{Error, Result};
 use tracing::info;
 
@@ -164,7 +164,7 @@ impl ApplicationValidator {
     pub fn validate(self) -> Result<ValidationReport> {
         let mut checker = PermissionCollisionChecker::new(self.permissions);
         let report = checker.validate().map_err(|e| {
-            Error::Domain(DomainError::permission_collision(
+            Error::Permissions(PermissionsError::collision(
                 0,
                 vec![format!("Permission validation process failed: {}", e)],
             ))

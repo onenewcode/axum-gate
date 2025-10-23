@@ -1,8 +1,9 @@
 //! JWT infrastructure components.
 //!
 use super::Codec;
-use crate::errors::infrastructure::JwtOperation;
-use crate::errors::{Error, InfrastructureError, Result};
+use crate::errors::JwtError;
+use crate::errors::JwtOperation;
+use crate::errors::{Error, Result};
 use crate::jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 pub use validation_result::JwtValidationResult;
 pub use validation_service::JwtValidationService;
@@ -253,11 +254,10 @@ where
     fn encode(&self, payload: &Self::Payload) -> Result<Vec<u8>> {
         let web_token =
             jsonwebtoken::encode(&self.header, payload, &self.enc_key).map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Jwt {
-                    operation: JwtOperation::Encode,
-                    message: format!("JWT encoding failed: {e}"),
-                    token_preview: None,
-                })
+                Error::Jwt(JwtError::processing(
+                    JwtOperation::Encode,
+                    format!("JWT encoding failed: {e}"),
+                ))
             })?;
         Ok(web_token.as_bytes().to_vec())
     }
@@ -270,26 +270,24 @@ where
         let claims =
             jsonwebtoken::decode::<Self::Payload>(&encoded_value, &self.dec_key, &self.validation)
                 .map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Jwt {
-                        operation: JwtOperation::Decode,
-                        message: format!("JWT decoding failed: {e}"),
-                        token_preview: Some(
+                    Error::Jwt(JwtError::processing_with_preview(
+                        JwtOperation::Decode,
+                        format!("JWT decoding failed: {e}"),
+                        Some(
                             String::from_utf8_lossy(encoded_value)
                                 .chars()
                                 .take(20)
                                 .collect::<String>()
                                 + "...",
                         ),
-                    })
+                    ))
                 })?;
 
         if self.header != claims.header {
-            return Err(Error::Infrastructure(InfrastructureError::Jwt {
-                operation: JwtOperation::Validate,
-                message: "Header of the decoded value does not match the one used for encoding"
-                    .to_string(),
-                token_preview: None,
-            }));
+            return Err(Error::Jwt(JwtError::processing(
+                JwtOperation::Validate,
+                "Header of the decoded value does not match the one used for encoding".to_string(),
+            )));
         }
 
         Ok(claims.claims)
