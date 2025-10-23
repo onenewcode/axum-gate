@@ -50,10 +50,6 @@ pub enum AccountOperation {
     Delete,
     /// Query/read account operation
     Query,
-    /// Activate account operation
-    Activate,
-    /// Deactivate account operation
-    Deactivate,
 }
 
 impl fmt::Display for AccountOperation {
@@ -63,8 +59,6 @@ impl fmt::Display for AccountOperation {
             AccountOperation::Update => write!(f, "update"),
             AccountOperation::Delete => write!(f, "delete"),
             AccountOperation::Query => write!(f, "query"),
-            AccountOperation::Activate => write!(f, "activate"),
-            AccountOperation::Deactivate => write!(f, "deactivate"),
         }
     }
 }
@@ -202,8 +196,8 @@ impl UserFriendlyError for AccountsError {
                 AccountOperation::Update => "We couldn't update your account settings. Please try again, or contact support if you continue to experience issues.".to_string(),
                 AccountOperation::Delete => "We couldn't delete your account at this time. Please try again later, or contact our support team for assistance.".to_string(),
                 AccountOperation::Query => "We're having trouble accessing your account information. Please refresh the page or try signing in again.".to_string(),
-                AccountOperation::Activate => "We couldn't activate your account. Please check your email for activation instructions or contact our support team.".to_string(),
-                AccountOperation::Deactivate => "We couldn't deactivate your account right now. Please try again later or contact support for assistance.".to_string(),
+
+
             },
             AccountsError::Validation { field, expected, .. } => {
                 let field_friendly = field.replace('_', " ").to_lowercase();
@@ -318,15 +312,6 @@ impl UserFriendlyError for AccountsError {
                     "Refresh the page or try signing out and back in".to_string(),
                     "Clear your browser cache and cookies".to_string(),
                     "Try accessing your account from a different device or browser".to_string(),
-                ],
-                AccountOperation::Activate => vec![
-                    "Check your email for the account activation link".to_string(),
-                    "Ensure you clicked the most recent activation link".to_string(),
-                    "Contact support if you haven't received an activation email".to_string(),
-                ],
-                AccountOperation::Deactivate => vec![
-                    "Try again in a few minutes".to_string(),
-                    "Contact support if you need immediate account deactivation".to_string(),
                 ],
             },
             AccountsError::Validation { expected, .. } => {

@@ -58,12 +58,6 @@ pub enum CodecOperation {
     Encode,
     /// Decode operation
     Decode,
-    /// Serialize operation
-    Serialize,
-    /// Deserialize operation
-    Deserialize,
-    /// Validate operation
-    Validate,
 }
 
 impl fmt::Display for CodecOperation {
@@ -71,9 +65,6 @@ impl fmt::Display for CodecOperation {
         match self {
             CodecOperation::Encode => write!(f, "encode"),
             CodecOperation::Decode => write!(f, "decode"),
-            CodecOperation::Serialize => write!(f, "serialize"),
-            CodecOperation::Deserialize => write!(f, "deserialize"),
-            CodecOperation::Validate => write!(f, "validate"),
         }
     }
 }
@@ -85,10 +76,6 @@ pub enum SerializationOperation {
     SerializeJson,
     /// Deserialize from JSON
     DeserializeJson,
-    /// Serialize to binary
-    SerializeBinary,
-    /// Deserialize from binary
-    DeserializeBinary,
     /// Validate structure
     ValidateStructure,
 }
@@ -98,8 +85,6 @@ impl fmt::Display for SerializationOperation {
         match self {
             SerializationOperation::SerializeJson => write!(f, "serialize_json"),
             SerializationOperation::DeserializeJson => write!(f, "deserialize_json"),
-            SerializationOperation::SerializeBinary => write!(f, "serialize_binary"),
-            SerializationOperation::DeserializeBinary => write!(f, "deserialize_binary"),
             SerializationOperation::ValidateStructure => write!(f, "validate_structure"),
         }
     }
@@ -114,10 +99,6 @@ pub enum JwtOperation {
     Decode,
     /// JWT validation operation
     Validate,
-    /// JWT refresh operation
-    Refresh,
-    /// JWT revocation operation
-    Revoke,
 }
 
 impl fmt::Display for JwtOperation {
@@ -126,8 +107,6 @@ impl fmt::Display for JwtOperation {
             JwtOperation::Encode => write!(f, "encode"),
             JwtOperation::Decode => write!(f, "decode"),
             JwtOperation::Validate => write!(f, "validate"),
-            JwtOperation::Refresh => write!(f, "refresh"),
-            JwtOperation::Revoke => write!(f, "revoke"),
         }
     }
 }
@@ -233,22 +212,18 @@ impl UserFriendlyError for CodecsError {
     fn user_message(&self) -> String {
         match self {
             CodecsError::Codec { operation, .. } => match operation {
-                CodecOperation::Encode | CodecOperation::Serialize => {
+                CodecOperation::Encode => {
                     "We couldn't process your data in the required format. Please check your input and try again.".to_string()
                 }
-                CodecOperation::Decode | CodecOperation::Deserialize => {
+                CodecOperation::Decode => {
                     "We received data in an unexpected format. This might be a temporary issue - please try again.".to_string()
-                }
-                CodecOperation::Validate => {
-                    "The data format couldn't be validated. Please check that all information is entered correctly.".to_string()
                 }
             },
             CodecsError::Serialization { operation, .. } => match operation {
-                SerializationOperation::SerializeJson | SerializationOperation::SerializeBinary => {
+                SerializationOperation::SerializeJson => {
                     "We couldn't save your data in the required format. Please try again.".to_string()
                 }
-                SerializationOperation::DeserializeJson
-                | SerializationOperation::DeserializeBinary => {
+                SerializationOperation::DeserializeJson => {
                     "We received data in an unexpected format. Please refresh the page and try again.".to_string()
                 }
                 SerializationOperation::ValidateStructure => {
@@ -309,8 +284,6 @@ impl UserFriendlyError for CodecsError {
         match self {
             CodecsError::Codec { operation, .. } => match operation {
                 CodecOperation::Encode | CodecOperation::Decode => ErrorSeverity::Error,
-                CodecOperation::Serialize | CodecOperation::Deserialize => ErrorSeverity::Error,
-                CodecOperation::Validate => ErrorSeverity::Warning,
             },
             CodecsError::Serialization { .. } => ErrorSeverity::Error,
         }
@@ -319,30 +292,23 @@ impl UserFriendlyError for CodecsError {
     fn suggested_actions(&self) -> Vec<String> {
         match self {
             CodecsError::Codec { operation, .. } => match operation {
-                CodecOperation::Encode | CodecOperation::Serialize => vec![
+                CodecOperation::Encode => vec![
                     "Check that all required fields are filled out correctly".to_string(),
                     "Ensure special characters are properly formatted".to_string(),
                     "Try simplifying your input and gradually add complexity".to_string(),
                     "Contact support if data formatting requirements are unclear".to_string(),
                 ],
-                CodecOperation::Decode | CodecOperation::Deserialize => vec![
+                CodecOperation::Decode => vec![
                     "This is likely a temporary system issue".to_string(),
                     "Try refreshing the page and repeating your action".to_string(),
                     "Clear your browser cache if the problem persists".to_string(),
                     "Contact support if you continue receiving malformed data".to_string(),
                 ],
-                CodecOperation::Validate => vec![
-                    "Review all input fields for formatting errors".to_string(),
-                    "Ensure required fields are not empty".to_string(),
-                    "Check for special characters that might not be allowed".to_string(),
-                    "Refer to our formatting guidelines or contact support".to_string(),
-                ],
             },
             CodecsError::Serialization { .. } => vec![
                 "This is typically a temporary system issue".to_string(),
                 "Try your request again in a few minutes".to_string(),
-                "Refresh the page and ensure you have the latest version".to_string(),
-                "Contact support if data processing errors continue".to_string(),
+                "If the problem persists, contact support with the reference code".to_string(),
             ],
         }
     }
@@ -350,9 +316,8 @@ impl UserFriendlyError for CodecsError {
     fn is_retryable(&self) -> bool {
         match self {
             CodecsError::Codec { operation, .. } => match operation {
-                CodecOperation::Encode | CodecOperation::Serialize => true, // user can fix input
-                CodecOperation::Decode | CodecOperation::Deserialize => true, // may be temporary
-                CodecOperation::Validate => true,                           // user can correct
+                CodecOperation::Encode => true, // user can fix input
+                CodecOperation::Decode => true, // may be temporary
             },
             CodecsError::Serialization { .. } => true, // often temporary
         }
@@ -411,14 +376,11 @@ impl UserFriendlyError for JwtError {
     fn user_message(&self) -> String {
         match self {
             JwtError::Processing { operation, .. } => match operation {
-                JwtOperation::Encode | JwtOperation::Refresh => {
+                JwtOperation::Encode => {
                     "We're having trouble with the authentication system. Please try signing in again.".to_string()
                 }
                 JwtOperation::Decode | JwtOperation::Validate => {
                     "Your session appears to be invalid. Please sign in again to continue.".to_string()
-                }
-                JwtOperation::Revoke => {
-                    "We couldn't complete the sign-out process. You may already be signed out.".to_string()
                 }
             },
         }
@@ -450,7 +412,7 @@ impl UserFriendlyError for JwtError {
     fn severity(&self) -> ErrorSeverity {
         match self {
             JwtError::Processing { operation, .. } => match operation {
-                JwtOperation::Encode | JwtOperation::Refresh => ErrorSeverity::Error,
+                JwtOperation::Encode => ErrorSeverity::Error,
                 _ => ErrorSeverity::Warning,
             },
         }
@@ -459,7 +421,7 @@ impl UserFriendlyError for JwtError {
     fn suggested_actions(&self) -> Vec<String> {
         match self {
             JwtError::Processing { operation, .. } => match operation {
-                JwtOperation::Encode | JwtOperation::Refresh => vec![
+                JwtOperation::Encode => vec![
                     "Try signing in again".to_string(),
                     "Clear your browser cookies and try again".to_string(),
                     "Contact support if you cannot sign in after multiple attempts".to_string(),
@@ -469,11 +431,6 @@ impl UserFriendlyError for JwtError {
                     "Clear your browser cache and cookies".to_string(),
                     "Try using a different browser or incognito mode".to_string(),
                 ],
-                JwtOperation::Revoke => vec![
-                    "You may already be signed out successfully".to_string(),
-                    "Clear your browser data to ensure complete sign-out".to_string(),
-                    "Close all browser windows for security".to_string(),
-                ],
             },
         }
     }
@@ -481,8 +438,7 @@ impl UserFriendlyError for JwtError {
     fn is_retryable(&self) -> bool {
         match self {
             JwtError::Processing { operation, .. } => match operation {
-                JwtOperation::Encode | JwtOperation::Refresh => true, // user can retry auth
-                JwtOperation::Revoke => false,                        // revocation is final
+                JwtOperation::Encode => true, // user can retry auth
                 _ => true,
             },
         }

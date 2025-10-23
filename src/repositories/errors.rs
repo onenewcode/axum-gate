@@ -87,14 +87,10 @@ pub enum RepositoryOperation {
     Insert,
     /// Fetch single record by key
     Get,
-    /// Fetch multiple records or pages
-    List,
     /// Update/patch existing record
     Update,
     /// Delete/remove record
     Delete,
-    /// Upsert/merge record
-    Upsert,
 }
 
 impl fmt::Display for RepositoryOperation {
@@ -102,10 +98,8 @@ impl fmt::Display for RepositoryOperation {
         match self {
             RepositoryOperation::Insert => write!(f, "insert"),
             RepositoryOperation::Get => write!(f, "get"),
-            RepositoryOperation::List => write!(f, "list"),
             RepositoryOperation::Update => write!(f, "update"),
             RepositoryOperation::Delete => write!(f, "delete"),
-            RepositoryOperation::Upsert => write!(f, "upsert"),
         }
     }
 }

@@ -55,10 +55,6 @@ pub enum HashingOperation {
     Hash,
     /// Verify a plaintext value against an existing hash.
     Verify,
-    /// Generate a cryptographic salt for hashing.
-    GenerateSalt,
-    /// Update/rehash an existing hash (e.g., on policy upgrade).
-    UpdateHash,
 }
 
 impl fmt::Display for HashingOperation {
@@ -66,8 +62,6 @@ impl fmt::Display for HashingOperation {
         match self {
             HashingOperation::Hash => write!(f, "hash"),
             HashingOperation::Verify => write!(f, "verify"),
-            HashingOperation::GenerateSalt => write!(f, "generate_salt"),
-            HashingOperation::UpdateHash => write!(f, "update_hash"),
         }
     }
 }
@@ -150,8 +144,8 @@ impl HashingError {
     /// ```rust
     /// use axum_gate::errors::hashing::{HashingError, HashingOperation};
     /// let _err = HashingError::with_context(
-    ///     HashingOperation::UpdateHash,
-    ///     "policy upgrade rehash failed",
+    ///     HashingOperation::Verify,
+    ///     "verification failed",
     ///     Some("argon2id".into()),
     ///     Some("$argon2id$v=19$...".into()),
     /// );
@@ -200,14 +194,6 @@ impl UserFriendlyError for HashingError {
                     "We couldn't verify your credentials due to a technical issue. Please try signing in again."
                         .to_string()
                 }
-                HashingOperation::GenerateSalt => {
-                    "There's a problem with the security system setup. Please contact support."
-                        .to_string()
-                }
-                HashingOperation::UpdateHash => {
-                    "We couldn't update your security information. Please try again or contact support."
-                        .to_string()
-                }
             },
         }
     }
@@ -243,9 +229,8 @@ impl UserFriendlyError for HashingError {
     fn severity(&self) -> ErrorSeverity {
         match self {
             HashingError::Operation { operation, .. } => match operation {
-                HashingOperation::Hash | HashingOperation::GenerateSalt => ErrorSeverity::Critical,
+                HashingOperation::Hash => ErrorSeverity::Critical,
                 HashingOperation::Verify => ErrorSeverity::Critical,
-                HashingOperation::UpdateHash => ErrorSeverity::Error,
             },
         }
     }
@@ -253,7 +238,7 @@ impl UserFriendlyError for HashingError {
     fn suggested_actions(&self) -> Vec<String> {
         match self {
             HashingError::Operation { operation, .. } => match operation {
-                HashingOperation::Hash | HashingOperation::GenerateSalt => vec![
+                HashingOperation::Hash => vec![
                     "This is a critical security system error".to_string(),
                     "Contact our support team immediately".to_string(),
                     "Do not retry operations that involve password or secret changes".to_string(),
@@ -265,12 +250,6 @@ impl UserFriendlyError for HashingError {
                     "If you're certain your password is correct, contact support".to_string(),
                     "Try using password recovery if verification continues to fail".to_string(),
                 ],
-                HashingOperation::UpdateHash => vec![
-                    "Try updating your password again in a few minutes".to_string(),
-                    "Ensure your new password meets all security requirements".to_string(),
-                    "Contact support if password updates continue to fail".to_string(),
-                    "Consider using a different device or browser".to_string(),
-                ],
             },
         }
     }
@@ -278,9 +257,8 @@ impl UserFriendlyError for HashingError {
     fn is_retryable(&self) -> bool {
         match self {
             HashingError::Operation { operation, .. } => match operation {
-                HashingOperation::Hash | HashingOperation::GenerateSalt => false, // critical system condition
+                HashingOperation::Hash => false,  // critical system condition
                 HashingOperation::Verify => true, // user can retry with correct credentials
-                HashingOperation::UpdateHash => true, // user can retry password update
             },
         }
     }

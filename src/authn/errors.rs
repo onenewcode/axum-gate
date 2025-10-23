@@ -31,7 +31,6 @@
 //! let _ = AuthnError::invalid_credentials(Some("signin".into()));
 //! let _ = AuthnError::session_expired(None);
 //! let _ = AuthnError::account_locked(Some("too many attempts".into()));
-//! let _ = AuthnError::mfa_required(None);
 //! let _ = AuthnError::rate_limit_exceeded(None);
 //! ```
 
@@ -55,10 +54,6 @@ pub enum AuthenticationError {
     /// Account locked due to security policy
     #[error("Account temporarily locked")]
     AccountLocked,
-
-    /// Multi-factor authentication required
-    #[error("Multi-factor authentication required")]
-    MfaRequired,
 
     /// Authentication rate limit exceeded
     #[error("Too many authentication attempts")]
@@ -104,11 +99,6 @@ impl AuthnError {
         Self::from_authentication(AuthenticationError::AccountLocked, context)
     }
 
-    /// Multi-factor authentication is required to proceed.
-    pub fn mfa_required(context: Option<String>) -> Self {
-        Self::from_authentication(AuthenticationError::MfaRequired, context)
-    }
-
     /// Authentication rate limit has been exceeded.
     pub fn rate_limit_exceeded(context: Option<String>) -> Self {
         Self::from_authentication(AuthenticationError::RateLimitExceeded, context)
@@ -120,7 +110,7 @@ impl AuthnError {
                 AuthenticationError::InvalidCredentials => "AUTHN-INVALID-CREDS".to_string(),
                 AuthenticationError::SessionExpired => "AUTHN-SESSION-EXPIRED".to_string(),
                 AuthenticationError::AccountLocked => "AUTHN-ACCOUNT-LOCKED".to_string(),
-                AuthenticationError::MfaRequired => "AUTHN-MFA-REQUIRED".to_string(),
+
                 AuthenticationError::RateLimitExceeded => "AUTHN-RATE-LIMITED".to_string(),
             },
         }
@@ -140,9 +130,7 @@ impl UserFriendlyError for AuthnError {
                 AuthenticationError::AccountLocked => {
                     "Your account has been temporarily locked for security reasons. Please try again later or contact our support team.".to_string()
                 }
-                AuthenticationError::MfaRequired => {
-                    "Additional verification is required to sign in. Please complete the multi-factor authentication process.".to_string()
-                }
+
                 AuthenticationError::RateLimitExceeded => {
                     "Too many sign-in attempts detected. Please wait a few minutes before trying again.".to_string()
                 }
@@ -172,7 +160,7 @@ impl UserFriendlyError for AuthnError {
                 AuthenticationError::AccountLocked => ErrorSeverity::Critical,
                 AuthenticationError::InvalidCredentials => ErrorSeverity::Warning,
                 AuthenticationError::SessionExpired => ErrorSeverity::Info,
-                AuthenticationError::MfaRequired => ErrorSeverity::Error,
+
                 AuthenticationError::RateLimitExceeded => ErrorSeverity::Error,
             },
         }
@@ -199,11 +187,7 @@ impl UserFriendlyError for AuthnError {
                     "Review our security policies to understand account lockout procedures"
                         .to_string(),
                 ],
-                AuthenticationError::MfaRequired => vec![
-                    "Complete the multi-factor authentication step".to_string(),
-                    "Check your phone or email for the verification code".to_string(),
-                    "Contact support if you're not receiving verification codes".to_string(),
-                ],
+
                 AuthenticationError::RateLimitExceeded => vec![
                     "Wait 5-10 minutes before trying to sign in again".to_string(),
                     "Use the 'Forgot Password' feature if you're unsure of your credentials"
@@ -220,7 +204,7 @@ impl UserFriendlyError for AuthnError {
                 AuthenticationError::InvalidCredentials => true,
                 AuthenticationError::SessionExpired => true,
                 AuthenticationError::AccountLocked => false, // time-based unlock
-                AuthenticationError::MfaRequired => true,
+
                 AuthenticationError::RateLimitExceeded => false, // time-based retry
             },
         }

@@ -201,8 +201,7 @@ impl UserFriendlyError for SecretError {
             SecretError::Hashing { operation, .. } => match operation {
                 HashingOperation::Hash => "There's an issue with the security processing system. Please try again in a moment.".to_string(),
                 HashingOperation::Verify => "We couldn't verify your credentials due to a technical issue. Please try signing in again.".to_string(),
-                HashingOperation::GenerateSalt => "There's a problem with the security system setup. Please contact support.".to_string(),
-                HashingOperation::UpdateHash => "We couldn't update your security information. Please try again or contact support.".to_string(),
+
             },
         }
     }
@@ -275,9 +274,8 @@ impl UserFriendlyError for SecretError {
             SecretError::NotFound { .. } => ErrorSeverity::Critical,
             SecretError::Constraint { .. } => ErrorSeverity::Error,
             SecretError::Hashing { operation, .. } => match operation {
-                HashingOperation::Hash | HashingOperation::GenerateSalt => ErrorSeverity::Critical,
+                HashingOperation::Hash => ErrorSeverity::Critical,
                 HashingOperation::Verify => ErrorSeverity::Critical,
-                HashingOperation::UpdateHash => ErrorSeverity::Error,
             },
         }
     }
@@ -300,7 +298,7 @@ impl UserFriendlyError for SecretError {
                 "Contact support if security constraints are unclear".to_string(),
             ],
             SecretError::Hashing { operation, .. } => match operation {
-                HashingOperation::Hash | HashingOperation::GenerateSalt => vec![
+                HashingOperation::Hash => vec![
                     "This is a critical security system error".to_string(),
                     "Contact our support team immediately".to_string(),
                     "Do not retry operations that involve password or secret changes".to_string(),
@@ -310,11 +308,6 @@ impl UserFriendlyError for SecretError {
                     "Ensure Caps Lock is not accidentally enabled".to_string(),
                     "If you're certain your password is correct, contact support".to_string(),
                     "Try using password recovery if verification continues to fail".to_string(),
-                ],
-                HashingOperation::UpdateHash => vec![
-                    "Try updating your password again in a few minutes".to_string(),
-                    "Ensure your new password meets all security requirements".to_string(),
-                    "Contact support if password updates continue to fail".to_string(),
                 ],
             },
         }
@@ -326,9 +319,8 @@ impl UserFriendlyError for SecretError {
             SecretError::NotFound { .. } => false,
             SecretError::Constraint { .. } => false,
             SecretError::Hashing { operation, .. } => match operation {
-                HashingOperation::Hash | HashingOperation::GenerateSalt => false,
+                HashingOperation::Hash => false,
                 HashingOperation::Verify => true, // user can correct input
-                HashingOperation::UpdateHash => true, // may succeed on retry
             },
         }
     }
