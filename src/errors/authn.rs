@@ -1,43 +1,40 @@
 #![deny(missing_docs)]
-
-/*!
-Authentication-category native errors.
-
-This module defines category-native errors for authentication (authn) flows
-(login, logout, session renewal), decoupled from the legacy layered naming.
-It reuses the existing `AuthenticationError` variants as the leaf error kinds.
-
-# Overview
-
-- `AuthnError`: category-native error enum for authentication flows
-- `AuthenticationError`: reused leaf error variants describing authn failures
-
-# Examples
-
-Basic construction and user-facing message extraction:
-
-```rust
-use axum_gate::errors::authn::{AuthnError, AuthenticationError};
-use axum_gate::errors::UserFriendlyError;
-
-let err = AuthnError::from_authentication(AuthenticationError::InvalidCredentials, Some("login form".into()));
-assert!(err.user_message().contains("username or password"));
-assert!(err.developer_message().contains("Authentication failure"));
-assert!(err.support_code().starts_with("AUTHN-"));
-```
-
-Convenience constructors:
-
-```rust
-use axum_gate::errors::authn::AuthnError;
-
-let _ = AuthnError::invalid_credentials(Some("signin".into()));
-let _ = AuthnError::session_expired(None);
-let _ = AuthnError::account_locked(Some("too many attempts".into()));
-let _ = AuthnError::mfa_required(None);
-let _ = AuthnError::rate_limit_exceeded(None);
-```
-*/
+//! Authentication-category native errors.
+//!
+//! This module defines category-native errors for authentication (authn) flows
+//! (login, logout, session renewal), decoupled from the legacy layered naming.
+//! It reuses the existing `AuthenticationError` variants as the leaf error kinds.
+//!
+//! # Overview
+//!
+//! - `AuthnError`: category-native error enum for authentication flows
+//! - `AuthenticationError`: reused leaf error variants describing authn failures
+//!
+//! # Examples
+//!
+//! Basic construction and user-facing message extraction:
+//!
+//! ```rust
+//! use axum_gate::errors::authn::{AuthnError, AuthenticationError};
+//! use axum_gate::errors::UserFriendlyError;
+//!
+//! let err = AuthnError::from_authentication(AuthenticationError::InvalidCredentials, Some("login form//! ".into()));
+//! assert!(err.user_message().contains("username or password"));
+//! assert!(err.developer_message().contains("Authentication failure"));
+//! assert!(err.support_code().starts_with("AUTHN-"));
+//! ```
+//!
+//! Convenience constructors:
+//!
+//! ```rust
+//! use axum_gate::errors::authn::AuthnError;
+//!
+//! let _ = AuthnError::invalid_credentials(Some("signin".into()));
+//! let _ = AuthnError::session_expired(None);
+//! let _ = AuthnError::account_locked(Some("too many attempts".into()));
+//! let _ = AuthnError::mfa_required(None);
+//! let _ = AuthnError::rate_limit_exceeded(None);
+//! ```
 
 use crate::errors::{ErrorSeverity, UserFriendlyError};
 
