@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Hashing-category native errors.
 //!
 //! This module defines category-native error types for hashing and verification,

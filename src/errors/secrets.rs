@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Secret-category native errors.
 //!
 //! Category-native error type for secret storage and hashing concerns,

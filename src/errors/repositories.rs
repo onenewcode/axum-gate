@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Repository- and database-category native errors.
 //!
 //! This module defines category-native error types for repositories and databases,

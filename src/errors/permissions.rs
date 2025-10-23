@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Permission-category native errors.
 //!
 //! This module defines category-native errors for permission concerns

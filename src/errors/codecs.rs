@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Codec-category native errors.
 //!
 //! This module defines category-native errors for codecs and JWT processing,

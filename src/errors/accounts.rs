@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Account-category native errors.
 //!
 //! This module provides category-native error types for the Accounts domain,

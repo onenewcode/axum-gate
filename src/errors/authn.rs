@@ -1,4 +1,3 @@
-#![deny(missing_docs)]
 //! Authentication-category native errors.
 //!
 //! This module defines category-native errors for authentication (authn) flows

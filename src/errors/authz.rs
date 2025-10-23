@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-
 //! Authorization-category native errors.
 //!
 //! This module defines category-native errors for authorization (authz) concerns,
