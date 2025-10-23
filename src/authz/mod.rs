@@ -66,3 +66,5 @@ pub use access_hierarchy::AccessHierarchy;
 pub use access_policy::AccessPolicy;
 pub use access_scope::AccessScope;
 pub use authorization_service::AuthorizationService;
+pub mod errors;
+pub use errors::AuthzError;

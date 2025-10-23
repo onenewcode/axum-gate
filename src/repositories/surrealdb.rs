@@ -6,13 +6,13 @@ use crate::accounts::AccountRepository;
 use crate::authz::AccessHierarchy;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use crate::errors::repositories::{DatabaseError, DatabaseOperation};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
 use crate::hashing::argon2::Argon2Hasher;
 use crate::permissions::PermissionId;
 use crate::permissions::mapping::PermissionMapping;
 use crate::permissions::mapping::PermissionMappingRepository;
+use crate::repositories::{DatabaseError, DatabaseOperation};
 use crate::secrets::{Secret, SecretRepository};
 use crate::verification_result::VerificationResult;
 

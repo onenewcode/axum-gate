@@ -2,7 +2,7 @@
 //!
 //! This module defines category-native errors for permission concerns
 //! (format validation, collision detection, and access hierarchy issues),
-//! decoupled from the legacy layered naming.
+//! Use these errors directly in handlers, services, and middleware.
 //!
 //! # Overview
 //!
@@ -52,8 +52,8 @@ use thiserror::Error;
 
 /// Category-native permission errors.
 ///
-/// These errors model permission-related problems independent of any hexagonal
-/// layers. Use directly in permission validation and authorization flows.
+/// These errors model permission-related problems.
+/// Use directly in permission validation and authorization flows.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum PermissionsError {

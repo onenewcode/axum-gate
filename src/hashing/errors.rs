@@ -1,8 +1,8 @@
 //! Hashing-category native errors.
 //!
 //! This module defines category-native error types for hashing and verification,
-//! decoupled from the legacy layered naming. Use these types directly in hashing
-//! services, password verification, and secret management flows.
+//! used directly in handlers, services, and middleware for hashing,
+//! password verification, and secret management flows.
 //!
 //! # Overview
 //!

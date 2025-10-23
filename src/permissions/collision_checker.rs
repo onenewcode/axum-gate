@@ -1,6 +1,6 @@
 use super::{PermissionCollision, PermissionId, ValidationReport};
-use crate::errors::permissions::PermissionsError;
 use crate::errors::{Error, Result};
+use crate::permissions::PermissionsError;
 use std::collections::HashMap;
 
 /// Low-level permission collision checker for runtime validation and analysis.

@@ -127,8 +127,8 @@ mod tests {
         fn decode(&self, _data: &[u8]) -> crate::errors::Result<Self::Payload> {
             if self.should_fail_decode {
                 return Err(crate::errors::Error::Jwt(
-                    crate::errors::JwtError::processing(
-                        crate::errors::JwtOperation::Decode,
+                    crate::codecs::JwtError::processing(
+                        crate::codecs::JwtOperation::Decode,
                         "Mock decode failure",
                     ),
                 ));

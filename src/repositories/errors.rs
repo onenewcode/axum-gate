@@ -1,8 +1,8 @@
 //! Repository- and database-category native errors.
 //!
 //! This module defines category-native error types for repositories and databases,
-//! decoupled from hexagonal/layered naming. Use these types directly across
-//! adapters, ports, and services when dealing with repository or database failures.
+//! used directly in handlers, services, and repositories when dealing with
+//! repository or database failures.
 //!
 //! # Overview
 //!

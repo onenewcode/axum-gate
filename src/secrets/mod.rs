@@ -1,9 +1,10 @@
 //! Secrets hashing and verification models.
-use crate::errors::hashing::HashingOperation;
-use crate::errors::secrets::SecretError;
+use crate::hashing::HashingOperation;
+pub mod errors;
 use crate::errors::{Error, Result};
 use crate::hashing::{HashedValue, HashingService};
 use crate::verification_result::VerificationResult;
+pub use errors::SecretError;
 pub use secret_repository::SecretRepository;
 
 use serde::{Deserialize, Serialize};

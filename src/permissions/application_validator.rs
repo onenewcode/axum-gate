@@ -1,6 +1,6 @@
 use super::{PermissionCollisionChecker, ValidationReport};
-use crate::errors::permissions::PermissionsError;
 use crate::errors::{Error, Result};
+use crate::permissions::PermissionsError;
 use tracing::info;
 
 /// High-level builder pattern validator for application startup validation.

@@ -22,9 +22,9 @@
 //! ⚠ The `DevFast` preset MUST NOT be used in production; it exists only to keep debug builds
 //! responsive. When you explicitly construct a hasher, choose an appropriate security profile.
 use super::HashedValue;
-use crate::errors::hashing::{HashingError, HashingOperation};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
+use crate::hashing::{HashingError, HashingOperation};
 use crate::verification_result::VerificationResult;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version};

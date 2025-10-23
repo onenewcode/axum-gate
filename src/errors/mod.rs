@@ -59,31 +59,21 @@ use std::fmt;
 use thiserror::Error;
 
 // Category-based error re-exports for ergonomic imports.
-pub use crate::errors::accounts::{AccountOperation, AccountsError};
-pub use crate::errors::authn::{AuthenticationError, AuthnError};
-pub use crate::errors::authz::AuthzError;
-pub use crate::errors::codecs::{
+pub use crate::accounts::errors::{AccountOperation, AccountsError};
+pub use crate::authn::errors::{AuthenticationError, AuthnError};
+pub use crate::authz::errors::AuthzError;
+pub use crate::codecs::errors::{
     CodecOperation, CodecsError, JwtError, JwtOperation, SerializationOperation,
 };
-pub use crate::errors::hashing::{HashingError, HashingOperation};
-pub use crate::errors::permissions::PermissionsError;
-pub use crate::errors::repositories::{
+pub use crate::hashing::errors::{HashingError, HashingOperation};
+pub use crate::permissions::errors::PermissionsError;
+pub use crate::repositories::errors::{
     DatabaseError, DatabaseOperation, RepositoriesError, RepositoryOperation, RepositoryType,
 };
-pub use crate::errors::secrets::SecretError;
-
-// layered modules removed in favor of category-based modules
+pub use crate::secrets::errors::SecretError;
 
 // Category-oriented facades aligned with the crate's DDD module structure.
 // These modules re-export specific error types by category for ergonomic imports.
-pub mod accounts;
-pub mod authn;
-pub mod authz;
-pub mod codecs;
-pub mod hashing;
-pub mod permissions;
-pub mod repositories;
-pub mod secrets;
 
 /// Trait providing user-friendly error messaging at multiple levels.
 ///
@@ -330,16 +320,9 @@ impl From<surrealdb::Error> for Error {
 #[cfg(test)]
 mod tests {
     use crate::errors::{
-        Error, ErrorSeverity, UserFriendlyError,
-        accounts::{AccountOperation, AccountsError},
-        authn::{AuthenticationError, AuthnError},
-        authz::AuthzError,
-        codecs::{CodecOperation, JwtOperation},
-        hashing::HashingOperation,
-        repositories::{
-            DatabaseError, DatabaseOperation, RepositoriesError, RepositoryOperation,
-            RepositoryType,
-        },
+        AccountOperation, AccountsError, AuthenticationError, AuthnError, AuthzError,
+        CodecOperation, DatabaseError, DatabaseOperation, Error, ErrorSeverity, HashingOperation,
+        JwtOperation, RepositoriesError, RepositoryOperation, RepositoryType, UserFriendlyError,
     };
 
     #[test]

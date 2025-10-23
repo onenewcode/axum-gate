@@ -1,10 +1,10 @@
 //! Secret-category native errors.
 //!
 //! Category-native error type for secret storage and hashing concerns,
-//! aligning with the crate's categorical, domain-driven structure and
-//! decoupled from layered/hexagonal naming.
+//! aligning with the crate's categorical, domain-driven structure.
+//! Use these errors directly in handlers, services, and repositories.
 //!
-// //! Overview
+//! # Overview
 //! - `SecretError`: category-native error enum for repository and hashing flows
 //! - Uses `RepositoryOperation` and `RepositoryType::Secret` for repo context
 //! - Uses `HashingOperation` for hashing context
@@ -36,9 +36,9 @@
 //! );
 //! ```
 
-use crate::errors::hashing::HashingOperation;
-use crate::errors::repositories::{RepositoryOperation, RepositoryType};
 use crate::errors::{ErrorSeverity, UserFriendlyError};
+use crate::hashing::HashingOperation;
+use crate::repositories::{RepositoryOperation, RepositoryType};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use thiserror::Error;

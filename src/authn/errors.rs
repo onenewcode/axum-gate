@@ -1,7 +1,7 @@
 //! Authentication-category native errors.
 //!
 //! This module defines category-native errors for authentication (authn) flows
-//! (login, logout, session renewal), decoupled from the legacy layered naming.
+//! (login, logout, session renewal) used directly in handlers, services, and middleware.
 //! It reuses the existing `AuthenticationError` variants as the leaf error kinds.
 //!
 //! # Overview

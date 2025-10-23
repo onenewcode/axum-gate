@@ -13,7 +13,6 @@ use crate::authz::AccessHierarchy;
 use crate::comma_separated_value::CommaSeparatedValue;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use crate::errors::repositories::{DatabaseError, DatabaseOperation};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
 use crate::hashing::argon2::Argon2Hasher;
@@ -24,6 +23,7 @@ use crate::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,
     permission_mapping as seaorm_permission_mapping,
 };
+use crate::repositories::{DatabaseError, DatabaseOperation};
 use crate::secrets::Secret;
 use crate::secrets::SecretRepository;
 use crate::verification_result::VerificationResult;

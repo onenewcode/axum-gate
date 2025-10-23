@@ -1,7 +1,7 @@
 use super::{Account, AccountRepository};
+use crate::accounts::{AccountOperation, AccountsError};
 use crate::authz::AccessHierarchy;
 use crate::errors::Error;
-use crate::errors::accounts::{AccountOperation, AccountsError};
 use crate::secrets::SecretRepository;
 
 use std::sync::Arc;

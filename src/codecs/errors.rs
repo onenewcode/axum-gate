@@ -1,8 +1,8 @@
 //! Codec-category native errors.
 //!
-//! This module defines category-native errors for codecs and JWT processing,
-//! decoupled from the legacy layered naming. Use these types directly in
-//! codec/serialization and authentication token flows.
+//! This module defines category-native errors for codecs and JWT processing
+//! used directly in handlers, services, and middleware for codec/serialization
+//! and authentication token flows.
 //!
 //! # Overview
 //! - `CodecsError`: codec and serialization error enum

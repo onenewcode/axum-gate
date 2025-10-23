@@ -146,11 +146,13 @@ use serde::{Deserialize, Serialize};
 mod application_validator;
 mod as_permission_name;
 mod collision_checker;
+pub mod errors;
 pub mod mapping;
 mod permission_collision;
 mod permission_id;
 pub mod validate_permissions;
 mod validation_report;
+pub use errors::PermissionsError;
 
 /// A collection of permissions with efficient storage and fast operations.
 ///

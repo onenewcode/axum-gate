@@ -1,8 +1,7 @@
 //! Account-category native errors.
 //!
 //! This module provides category-native error types for the Accounts domain,
-//! decoupled from layered/hexagonal naming. Use these types directly in
-//! account-related services, repositories, and handlers.
+//! used directly in handlers, services, and repositories.
 //!
 //! # Overview
 //! - `AccountsError`: domain-specific error enum for account operations
