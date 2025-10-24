@@ -102,7 +102,8 @@
 //! // Allow any authenticated user (all roles: User, Reporter, Moderator, Admin)
 //! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt_codec)
 //!     .require_login()  // Convenience method for any logged-in user
-//!     .configure_cookie_template(|tpl| tpl.name("auth-token"));
+//!     .configure_cookie_template(|tpl| tpl.name("auth-token"))
+//!     .unwrap();
 //! ```
 //!
 //! ### Optional User Context (Anonymous Access)
