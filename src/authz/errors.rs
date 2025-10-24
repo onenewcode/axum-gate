@@ -3,7 +3,6 @@
 //! This module defines category-native errors for authorization (authz) concerns,
 //! including permission format validation, permission hash collisions, and access
 //! hierarchy violations. Use `AuthzError` directly in handlers, services, and middleware.
-//! This enum aligns with the crate's domain categories for clear, developer-focused usage.
 //!
 //! # Overview
 //! - `AuthzError`: category-native error enum for authorization
@@ -270,7 +269,3 @@ impl UserFriendlyError for AuthzError {
         }
     }
 }
-
-/* -------------------------------------------------------------------------- */
-/* Deprecated re-exports (migration aid)                                       */
-/* -------------------------------------------------------------------------- */

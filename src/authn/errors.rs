@@ -160,7 +160,6 @@ impl UserFriendlyError for AuthnError {
                 AuthenticationError::AccountLocked => ErrorSeverity::Critical,
                 AuthenticationError::InvalidCredentials => ErrorSeverity::Warning,
                 AuthenticationError::SessionExpired => ErrorSeverity::Info,
-
                 AuthenticationError::RateLimitExceeded => ErrorSeverity::Error,
             },
         }
@@ -187,7 +186,6 @@ impl UserFriendlyError for AuthnError {
                     "Review our security policies to understand account lockout procedures"
                         .to_string(),
                 ],
-
                 AuthenticationError::RateLimitExceeded => vec![
                     "Wait 5-10 minutes before trying to sign in again".to_string(),
                     "Use the 'Forgot Password' feature if you're unsure of your credentials"
@@ -204,7 +202,6 @@ impl UserFriendlyError for AuthnError {
                 AuthenticationError::InvalidCredentials => true,
                 AuthenticationError::SessionExpired => true,
                 AuthenticationError::AccountLocked => false, // time-based unlock
-
                 AuthenticationError::RateLimitExceeded => false, // time-based retry
             },
         }
