@@ -72,7 +72,6 @@ pub use crate::secrets::errors::SecretError;
 
 // Category-oriented facades aligned with the crate's DDD module structure.
 // These modules re-export specific error types by category for ergonomic imports.
-
 /// Trait providing user-friendly error messaging at multiple levels.
 ///
 /// This trait ensures all errors provide appropriate messages for different

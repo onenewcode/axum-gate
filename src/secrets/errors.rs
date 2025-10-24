@@ -26,7 +26,6 @@
 
 use crate::errors::{ErrorSeverity, UserFriendlyError};
 use crate::hashing::HashingOperation;
-// removed unused repository imports
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use thiserror::Error;
