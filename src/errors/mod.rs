@@ -314,6 +314,32 @@ impl From<surrealdb::Error> for Error {
     }
 }
 
+// External library error conversions
+impl From<argon2::Error> for Error {
+    fn from(err: argon2::Error) -> Self {
+        Error::Hashing(HashingError::with_context(
+            HashingOperation::Hash,
+            format!("Argon2 error: {}", err),
+            Some("Argon2id".to_string()),
+            None,
+        ))
+    }
+}
+
+// Map cookie template builder validation errors into the crate-wide Error type.
+// We categorize these as codec/format issues since they reflect invalid configuration
+// for building a Cookie (shape/format contract violation).
+impl From<crate::cookie_template::CookieTemplateBuilderError> for Error {
+    fn from(err: crate::cookie_template::CookieTemplateBuilderError) -> Self {
+        Error::Codecs(CodecsError::codec_with_format(
+            CodecOperation::Encode,
+            format!("Invalid cookie template configuration: {}", err),
+            Some("cookie::CookieBuilder".to_string()),
+            Some("Invalid cookie settings".to_string()),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::errors::{

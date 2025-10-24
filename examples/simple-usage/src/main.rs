@@ -5,6 +5,7 @@
 
 use axum_extra::extract::CookieJar;
 use axum_gate::cookie;
+use axum_gate::errors::Result;
 use axum_gate::{
     accounts::AccountInsertService,
     codecs::jwt::RegisteredClaims,
@@ -37,12 +38,12 @@ struct LoginForm {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     tracing_subscriber::fmt().init();
 
     // Set up storage (in-memory for this example)
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-    let secret_repo = Arc::new(MemorySecretRepository::default());
+    let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher()?);
 
     // Create some test users
     create_test_users(Arc::clone(&account_repo), Arc::clone(&secret_repo)).await;
@@ -66,7 +67,7 @@ async fn main() {
             get(admin_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
-                    .configure_cookie_template(|tpl| tpl.name("my-app")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
             ),
         )
         // Staff area - multiple roles allowed
@@ -77,7 +78,7 @@ async fn main() {
                     .with_policy(
                         AccessPolicy::require_role(Role::Admin).or_require_role(Role::Moderator),
                     )
-                    .configure_cookie_template(|tpl| tpl.name("my-app")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
             ),
         )
         // Engineering team area - group-based access
@@ -86,7 +87,7 @@ async fn main() {
             get(engineering_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_group(Group::new("engineering")))
-                    .configure_cookie_template(|tpl| tpl.name("my-app")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
             ),
         )
         // Any logged-in user
@@ -95,7 +96,7 @@ async fn main() {
             get(profile_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .require_login()
-                    .configure_cookie_template(|tpl| tpl.name("my-app")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
             ),
         )
         // Home page - unprotected, shows login form
@@ -106,7 +107,7 @@ async fn main() {
             get(dashboard_handler).layer(
                 Gate::cookie("my-app", Arc::clone(&jwt_codec))
                     .require_login()
-                    .configure_cookie_template(|tpl| tpl.name("my-app")),
+                    .configure_cookie_template(|tpl| tpl.name("my-app"))?,
             ),
         )
         // Authentication endpoints
@@ -145,6 +146,7 @@ async fn main() {
     axum::serve(listener, app)
         .await
         .expect("Failed to start server");
+    Ok(())
 }
 
 #[derive(Clone)]
@@ -514,7 +516,7 @@ async fn login_handler(
     State(state): State<AppState>,
     cookie_jar: CookieJar,
     Form(form_data): Form<LoginForm>,
-) -> Result<(CookieJar, Redirect), (StatusCode, Html<String>)> {
+) -> std::result::Result<(CookieJar, Redirect), (StatusCode, Html<String>)> {
     let credentials = Credentials::new(&form_data.username, &form_data.password);
     let registered_claims = RegisteredClaims::new(
         "my-app",

@@ -74,18 +74,16 @@ where
     S: Connection,
 {
     /// Creates a new repository that uses the given database connection limited by the given scope.
-    pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Self {
-        let hasher = Argon2Hasher::default();
+    pub fn new(db: Surreal<S>, scope_settings: DatabaseScope) -> Result<Self> {
+        let hasher = Argon2Hasher::new_recommended()?;
         // Panic on failure here is acceptable: construction failure indicates a
         // fundamental issue (e.g. RNG) and mirrors the in‑memory repo strategy.
-        let dummy_hash = hasher
-            .hash_value("dummy_password")
-            .expect("Failed to generate dummy Argon2 hash for SurrealDbRepository");
-        Self {
+        let dummy_hash = hasher.hash_value("dummy_password")?;
+        Ok(Self {
             db,
             scope_settings,
             dummy_hash,
-        }
+        })
     }
 
     /// Sets the correct namespace and database to use.
@@ -683,6 +681,7 @@ where
 }
 
 #[test]
+#[allow(clippy::unwrap_used)]
 fn secret_repository() {
     tokio_test::block_on(async move {
         use crate::hashing::argon2::Argon2Hasher;
@@ -691,12 +690,12 @@ fn secret_repository() {
         // create a repository
         let db = Surreal::new::<Mem>(()).await.unwrap();
         let scope = DatabaseScope::default();
-        let repo = SurrealDbRepository::new(db, scope);
+        let repo = SurrealDbRepository::new(db, scope).unwrap();
 
         repo.use_ns_db().await.unwrap();
 
         // create a secret
-        let hasher = Argon2Hasher::default();
+        let hasher = Argon2Hasher::new_recommended().unwrap();
         let secret = Secret::new(&Uuid::now_v7(), "my_secret", hasher).unwrap();
 
         // store it

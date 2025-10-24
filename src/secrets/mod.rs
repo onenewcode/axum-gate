@@ -39,7 +39,7 @@ mod secret_repository;
 /// // During registration
 /// let account_id = Uuid::now_v7();
 /// let user_password = "user_entered_password";
-/// let hasher = Argon2Hasher::default();
+/// let hasher = Argon2Hasher::new_recommended().unwrap();
 ///
 /// let secret = Secret::new(&account_id, user_password, hasher.clone())?;
 ///
@@ -122,7 +122,7 @@ impl Secret {
     /// # tokio_test::block_on(async {
     /// let account_id = Uuid::now_v7();
     /// let password = "user_password_123";
-    /// let hasher = Argon2Hasher::default();
+    /// let hasher = Argon2Hasher::new_recommended().unwrap();
     ///
     /// let secret = Secret::new(&account_id, password, hasher)?;
     /// // The plaintext password is now securely hashed and cannot be recovered
@@ -183,7 +183,7 @@ impl Secret {
     /// # tokio_test::block_on(async {
     /// // Typically this hash would come from your database
     /// let account_id = Uuid::now_v7();
-    /// let hasher = Argon2Hasher::default();
+    /// let hasher = Argon2Hasher::new_recommended().unwrap();
     /// let original_secret = Secret::new(&account_id, "password", hasher.clone())?;
     /// let stored_hash = &original_secret.secret;
     ///
@@ -243,7 +243,7 @@ impl Secret {
     /// # tokio_test::block_on(async {
     /// let account_id = Uuid::now_v7();
     /// let correct_password = "secure_password_123";
-    /// let hasher = Argon2Hasher::default();
+    /// let hasher = Argon2Hasher::new_recommended().unwrap();
     ///
     /// // Create secret during registration
     /// let secret = Secret::new(&account_id, correct_password, hasher.clone())?;
@@ -274,18 +274,23 @@ fn secret_verification() {
     let id = Uuid::now_v7();
     let correct_password = "admin_password";
     let wrong_password = "admin_wrong_password";
-    let secret = Secret::new(&id, correct_password, Argon2Hasher::default()).unwrap();
+    let secret = Secret::new(
+        &id,
+        correct_password,
+        Argon2Hasher::new_recommended().unwrap(),
+    )
+    .unwrap();
 
     assert_eq!(
         VerificationResult::Unauthorized,
         secret
-            .verify(wrong_password, Argon2Hasher::default())
+            .verify(wrong_password, Argon2Hasher::new_recommended().unwrap())
             .unwrap()
     );
     assert_eq!(
         VerificationResult::Ok,
         secret
-            .verify(correct_password, Argon2Hasher::default())
+            .verify(correct_password, Argon2Hasher::new_recommended().unwrap())
             .unwrap()
     );
 }

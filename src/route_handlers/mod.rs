@@ -57,7 +57,7 @@
 //!
 //! // Instantiate repositories and JWT codec for the example
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!
 //! // Build application state

@@ -34,7 +34,7 @@ async fn main() {
 
     let account_repository = Arc::new(MemoryAccountRepository::default());
     debug!("Account repository initialized.");
-    let secrets_repository = Arc::new(MemorySecretRepository::default());
+    let secrets_repository = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
     debug!("Secrets repository initialized.");
 
     // Create admin with all permissions using new zero-sync system

@@ -14,7 +14,7 @@
 //! use axum_gate::hashing::HashingService;
 //!
 //! // Default (build‑mode appropriate) hasher
-//! let hasher = Argon2Hasher::default();
+//! let hasher = Argon2Hasher::new_recommended().unwrap();
 //! let hash = hasher.hash_value("secret").unwrap();
 //! assert!(hasher.verify_value("secret", &hash).is_ok());
 //! ```
@@ -125,21 +125,31 @@ pub struct Argon2Hasher {
 }
 
 impl Argon2Hasher {
+    /// Creates a new instance with recommended settings based on the current build (dev/release).
+    pub fn new_recommended() -> Result<Self> {
+        if cfg!(debug_assertions) {
+            #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
+            {
+                return Self::dev_fast();
+            }
+        }
+        // Fallback / release: always high security
+        Self::high_security()
+    }
     /// Create from explicit configuration.
-    pub fn from_config(config: Argon2Config) -> Self {
+    pub fn from_config(config: Argon2Config) -> Result<Self> {
         let params = Params::new(
             config.memory_kib,
             config.time_cost,
             config.parallelism,
             None,
-        )
-        .unwrap();
+        )?;
         let engine = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-        Self { config, engine }
+        Ok(Self { config, engine })
     }
 
     /// Create from a preset.
-    pub fn from_preset(preset: Argon2Preset) -> Self {
+    pub fn from_preset(preset: Argon2Preset) -> Result<Self> {
         Self::from_config(preset.to_config())
     }
 
@@ -164,7 +174,7 @@ impl Argon2Hasher {
     /// and rainbow tables, suitable for protecting sensitive user credentials.
     ///
     /// **Performance:** Slowest option, designed for security over speed.
-    pub fn high_security() -> Self {
+    pub fn high_security() -> Result<Self> {
         Self::from_preset(Argon2Preset::HighSecurity)
     }
 
@@ -185,7 +195,7 @@ impl Argon2Hasher {
     /// while providing reasonable authentication response times.
     ///
     /// **Performance:** Moderate speed (~50-100ms), good balance of security and usability.
-    pub fn interactive() -> Self {
+    pub fn interactive() -> Result<Self> {
         Self::from_preset(Argon2Preset::Interactive)
     }
 
@@ -211,21 +221,8 @@ impl Argon2Hasher {
     /// This preset is only available in debug builds or when the `insecure-fast-hash`
     /// feature is explicitly enabled.
     #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
-    pub fn dev_fast() -> Self {
+    pub fn dev_fast() -> Result<Self> {
         Self::from_preset(Argon2Preset::DevFast)
-    }
-}
-
-impl Default for Argon2Hasher {
-    fn default() -> Self {
-        if cfg!(debug_assertions) {
-            #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
-            {
-                return Self::dev_fast();
-            }
-        }
-        // Fallback / release: always high security
-        Self::high_security()
     }
 }
 
@@ -270,7 +267,7 @@ mod tests {
 
     #[test]
     fn default_build_mode() {
-        let hasher = Argon2Hasher::default();
+        let hasher = Argon2Hasher::new_recommended().unwrap();
         let hash = hasher.hash_value("pw").unwrap();
         assert!(matches!(
             hasher.verify_value("pw", &hash),
@@ -286,7 +283,7 @@ mod tests {
             #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
             Argon2Preset::DevFast,
         ] {
-            let hasher = Argon2Hasher::from_preset(preset);
+            let hasher = Argon2Hasher::from_preset(preset).unwrap();
             let h = hasher.hash_value("secret").unwrap();
             assert_eq!(
                 VerificationResult::Ok,
@@ -305,7 +302,7 @@ mod tests {
             .with_memory_kib(48 * 1024)
             .with_time_cost(2)
             .with_parallelism(1);
-        let hasher = Argon2Hasher::from_config(cfg);
+        let hasher = Argon2Hasher::from_config(cfg).unwrap();
         let h = hasher.hash_value("abc").unwrap();
         assert!(matches!(
             hasher.verify_value("abc", &h),

@@ -328,7 +328,7 @@ mod tests {
         use crate::secrets::SecretRepository;
         // Setup
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-        let secret_repo = Arc::new(MemorySecretRepository::default());
+        let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 
@@ -341,7 +341,7 @@ mod tests {
         let secret = Secret::new(
             &stored_account.account_id,
             password,
-            Argon2Hasher::default(),
+            Argon2Hasher::new_recommended().unwrap(),
         )
         .expect("secret");
         secret_repo.store_secret(secret).await.unwrap();
@@ -518,7 +518,7 @@ mod tests {
     #[tokio::test]
     async fn test_login_result_no_user_enumeration() {
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-        let secret_repo = Arc::new(MemorySecretRepository::default());
+        let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let login_service = LoginService::new();
 

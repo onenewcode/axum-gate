@@ -95,15 +95,13 @@ pub struct SeaOrmRepository {
 
 impl SeaOrmRepository {
     /// Creates a new repository that uses the given database connection as backend.
-    pub fn new(db: &DatabaseConnection) -> Self {
-        let hasher = Argon2Hasher::default();
-        let dummy_hash = hasher
-            .hash_value("dummy_password")
-            .expect("Failed to generate dummy Argon2 hash");
-        Self {
+    pub fn new(db: &DatabaseConnection) -> Result<Self> {
+        let hasher = Argon2Hasher::new_recommended()?;
+        let dummy_hash = hasher.hash_value("dummy_password")?;
+        Ok(Self {
             db: db.clone(),
             dummy_hash,
-        }
+        })
     }
 }
 
@@ -325,7 +323,7 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
         };
 
         // Perform Argon2 verification locally (constant work)
-        let hasher = Argon2Hasher::default();
+        let hasher = Argon2Hasher::new_recommended()?;
         let hash_verification_result =
             hasher.verify_value(&credentials.secret, &stored_secret_str)?;
 

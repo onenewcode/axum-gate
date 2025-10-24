@@ -50,9 +50,9 @@ use uuid::Uuid;
 /// }
 ///
 /// // Usage
-/// let repo = MemorySecretRepository::default();
+/// let repo = MemorySecretRepository::new_with_argon2_hasher().unwrap();
 /// let account_id = Uuid::now_v7();
-/// let hasher = Argon2Hasher::default();
+/// let hasher = Argon2Hasher::new_recommended().unwrap();
 /// let secret = Secret::new(&account_id, "new_password", hasher).unwrap();
 /// rotate_secret(&repo, secret).unwrap();
 /// ```

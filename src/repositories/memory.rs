@@ -26,7 +26,7 @@
 //! # tokio_test::block_on(async {
 //! // Create repositories
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! let mapping_repo = Arc::new(MemoryPermissionMappingRepository::default());
 //!
 //! // Create an account
@@ -34,7 +34,7 @@
 //! let stored_account = account_repo.store_account(account).await.unwrap().unwrap();
 //!
 //! // Create corresponding secret
-//! let secret = Secret::new(&stored_account.account_id, "password", Argon2Hasher::default()).unwrap();
+//! let secret = Secret::new(&stored_account.account_id, "password", Argon2Hasher::new_recommended().unwrap()).unwrap();
 //! secret_repo.store_secret(secret).await.unwrap();
 //!
 //! // Query the account
@@ -59,7 +59,7 @@
 //! let account_repo = MemoryAccountRepository::from(accounts);
 //!
 //! let secrets = vec![/* your secrets */];
-//! let secret_repo = MemorySecretRepository::from(secrets);
+//! let secret_repo = MemorySecretRepository::try_from(secrets).unwrap();
 //! ```
 use crate::accounts::Account;
 use crate::accounts::AccountRepository;
@@ -198,11 +198,11 @@ where
 /// use uuid::Uuid;
 ///
 /// # tokio_test::block_on(async {
-/// let repo = MemorySecretRepository::default();
+/// let repo = MemorySecretRepository::new_with_argon2_hasher().unwrap();
 /// let account_id = Uuid::now_v7();
 ///
 /// // Store a secret (password hash)
-/// let secret = Secret::new(&account_id, "user_password", Argon2Hasher::default()).unwrap();
+/// let secret = Secret::new(&account_id, "user_password", Argon2Hasher::new_recommended().unwrap()).unwrap();
 /// repo.store_secret(secret).await.unwrap();
 ///
 /// // Verify credentials
@@ -224,45 +224,43 @@ where
 /// use uuid::Uuid;
 ///
 /// let secrets = vec![
-///     Secret::new(&Uuid::now_v7(), "admin_pass", Argon2Hasher::default()).unwrap(),
-///     Secret::new(&Uuid::now_v7(), "user_pass", Argon2Hasher::default()).unwrap(),
+///     Secret::new(&Uuid::now_v7(), "admin_pass", Argon2Hasher::new_recommended().unwrap()).unwrap(),
+///     Secret::new(&Uuid::now_v7(), "user_pass", Argon2Hasher::new_recommended().unwrap()).unwrap(),
 /// ];
-/// let repo = MemorySecretRepository::from(secrets);
+/// let repo = MemorySecretRepository::try_from(secrets).unwrap();
 /// ```
 #[derive(Clone)]
 pub struct MemorySecretRepository {
     store: Arc<RwLock<HashMap<Uuid, Secret>>>,
     /// Precomputed dummy hash produced with the same Argon2 preset that `Secret::new`
-    /// used (via `Argon2Hasher::default()`) in this build configuration. This keeps
+    /// used (via `Argon2Hasher::new_recommended()`) in this build configuration. This keeps
     /// timing of nonexistent-account verifications aligned with existing-account
     /// verifications to mitigate user enumeration via timing side channels.
     dummy_hash: String,
 }
 
-impl Default for MemorySecretRepository {
-    fn default() -> Self {
-        let hasher = Argon2Hasher::default();
-        let dummy_hash = hasher
-            .hash_value("dummy_password")
-            .expect("Failed to generate dummy hash");
-        Self {
+impl MemorySecretRepository {
+    /// Creates a new instance with [Argon2Hasher].
+    pub fn new_with_argon2_hasher() -> Result<Self> {
+        let hasher = Argon2Hasher::new_recommended()?;
+        let dummy_hash = hasher.hash_value("dummy_password")?;
+        Ok(Self {
             store: Arc::new(RwLock::new(HashMap::new())),
             dummy_hash,
-        }
+        })
     }
 }
 
-impl From<Vec<Secret>> for MemorySecretRepository {
-    fn from(value: Vec<Secret>) -> Self {
+impl TryFrom<Vec<Secret>> for MemorySecretRepository {
+    type Error = crate::errors::Error;
+    fn try_from(value: Vec<Secret>) -> Result<Self> {
         let mut store = HashMap::with_capacity(value.len());
         value.into_iter().for_each(|v| {
             store.insert(v.account_id, v);
         });
         let store = Arc::new(RwLock::new(store));
-        let dummy_hash = Argon2Hasher::default()
-            .hash_value("dummy_password")
-            .expect("Failed to generate dummy hash");
-        Self { store, dummy_hash }
+        let dummy_hash = Argon2Hasher::new_recommended()?.hash_value("dummy_password")?;
+        Ok(Self { store, dummy_hash })
     }
 }
 
@@ -328,7 +326,7 @@ impl CredentialsVerifier<Uuid> for MemorySecretRepository {
         };
 
         // ALWAYS perform Argon2 verification (constant time regardless of user existence)
-        let hasher = Argon2Hasher::default();
+        let hasher = Argon2Hasher::new_recommended()?;
         let hash_verification_result =
             hasher.verify_value(&credentials.secret, stored_secret_str)?;
 

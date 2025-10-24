@@ -59,7 +59,7 @@ async fn surrealdb_timing_symmetry() {
     // Prepare SurrealDB in-memory instance
     let db = Surreal::new::<Mem>(()).await.unwrap();
     let scope = DatabaseScope::default();
-    let repo = SurrealDbRepository::new(db, scope);
+    let repo = SurrealDbRepository::new(db, scope).unwrap();
 
     // Create & store an account + secret
     let existing_user = random_user_id();
@@ -71,7 +71,7 @@ async fn surrealdb_timing_symmetry() {
         .expect("stored account");
 
     let password = "correct_password";
-    let hasher = Argon2Hasher::default();
+    let hasher = Argon2Hasher::new_recommended().unwrap();
     let secret = Secret::new(&stored_account.account_id, password, hasher).expect("hash secret");
     repo.store_secret(secret).await.expect("store secret");
 
@@ -169,6 +169,7 @@ async fn surrealdb_timing_symmetry() {
 // SeaORM Timing Test
 //
 #[tokio::test]
+#[allow(clippy::unwrap_used)]
 async fn seaorm_timing_symmetry() {
     use axum_gate::repositories::sea_orm::SeaOrmRepository;
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
@@ -207,7 +208,7 @@ async fn seaorm_timing_symmetry() {
         return;
     }
 
-    let repo = SeaOrmRepository::new(&db);
+    let repo = SeaOrmRepository::new(&db).unwrap();
 
     // Create & store account + secret
     let existing_user = random_user_id();
@@ -225,7 +226,7 @@ async fn seaorm_timing_symmetry() {
     };
 
     let password = "correct_password";
-    let hasher = Argon2Hasher::default();
+    let hasher = Argon2Hasher::new_recommended().unwrap();
     let secret = match Secret::new(&stored_account.account_id, password, hasher) {
         Ok(s) => s,
         Err(e) => {

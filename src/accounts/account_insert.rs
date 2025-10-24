@@ -28,7 +28,7 @@ use tracing::debug;
 ///
 /// # tokio_test::block_on(async {
 /// let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-/// let secret_repo = Arc::new(MemorySecretRepository::default());
+/// let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 ///
 /// let account = AccountInsertService::insert("user@example.com", "secure_password")
 ///     .with_roles(vec![Role::User])
@@ -178,7 +178,7 @@ where
     ///
     /// # tokio_test::block_on(async {
     /// let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-    /// let secret_repo = Arc::new(MemorySecretRepository::default());
+    /// let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
     ///
     /// let result = AccountInsertService::insert("user@example.com", "password")
     ///     .with_roles(vec![Role::User])
@@ -222,7 +222,7 @@ where
         }
         debug!("Stored account in account repository.");
         let id = &account.account_id;
-        let secret = Secret::new(id, &self.secret, Argon2Hasher::default())?;
+        let secret = Secret::new(id, &self.secret, Argon2Hasher::new_recommended()?)?;
         if !secret_repository.store_secret(secret).await? {
             #[cfg(feature = "audit-logging")]
             {

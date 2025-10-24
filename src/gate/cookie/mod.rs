@@ -3,7 +3,7 @@ pub(crate) mod cookie_service;
 use self::cookie_service::CookieGateService;
 use crate::authz::{AccessHierarchy, AccessPolicy};
 use crate::codecs::Codec;
-use crate::cookie_template::CookieTemplateBuilder;
+use crate::cookie_template::{CookieTemplateBuilder, CookieTemplateBuilderError};
 use cookie::CookieBuilder;
 
 use std::sync::Arc;
@@ -140,13 +140,13 @@ where
     ///            .persistent(cookie::time::Duration::hours(12))
     ///     });
     /// ```
-    pub fn configure_cookie_template<F>(mut self, f: F) -> Self
+    pub fn configure_cookie_template<F>(mut self, f: F) -> Result<Self, CookieTemplateBuilderError>
     where
         F: FnOnce(CookieTemplateBuilder) -> CookieTemplateBuilder,
     {
         let template = f(CookieTemplateBuilder::recommended());
-        self.cookie_template = template.validate_and_build();
-        self
+        self.cookie_template = template.validate_and_build()?;
+        Ok(self)
     }
 
     /// Enables Prometheus metrics for audit logging.
@@ -294,6 +294,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn configure_cookie_template_uses_closure() {
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 
@@ -301,7 +302,8 @@ mod tests {
             .configure_cookie_template(|tpl| {
                 tpl.name("configured-cookie")
                     .persistent(::cookie::time::Duration::hours(2))
-            });
+            })
+            .unwrap();
 
         // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
         // The test verifies the method compiles and runs without error
@@ -326,11 +328,13 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unwrap_used)]
     fn require_login_can_be_chained_with_other_methods() {
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
         let gate: CookieGate<_, Role, Group> = Gate::cookie("test-app", jwt_codec)
             .require_login()
-            .configure_cookie_template(|tpl| tpl.name("custom-auth"));
+            .configure_cookie_template(|tpl| tpl.name("custom-auth"))
+            .unwrap();
 
         // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
         // The test verifies the method compiles and runs without error

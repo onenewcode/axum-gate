@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
-//#![deny(clippy::unwrap_used)]
-//#![deny(clippy::expect_used)]
+#![deny(unsafe_code)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
 
 //! # axum-gate
 //!
@@ -30,7 +31,7 @@
 //! async fn main() {
 //!     // Set up storage
 //!     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//!     let secret_repo = Arc::new(MemorySecretRepository::default());
+//!     let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //!
 //!     // Create JWT codec with persistent key for production
 //!     let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "dev-secret-key".to_string());
@@ -49,6 +50,7 @@
 //!             Gate::cookie::<_, Role, Group>("my-app", jwt_codec)
 //!                 .with_policy(AccessPolicy::require_role(Role::Admin))
 //!                 .configure_cookie_template(|tpl| tpl.name("auth-token"))
+//!                 .unwrap()
 //!         );
 //! }
 //!
@@ -144,7 +146,7 @@
 //!
 //! # tokio_test::block_on(async {
 //! # let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! # let secret_repo = Arc::new(MemorySecretRepository::default());
+//! # let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! // Create account with roles, groups, and permissions
 //! let account = AccountInsertService::insert("user@example.com", "password")
 //!     .with_roles(vec![Role::User])
@@ -164,7 +166,7 @@
 //! use std::sync::Arc;
 //!
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! ```
 //!
 //! ### SurrealDB (Feature: `storage-surrealdb`)

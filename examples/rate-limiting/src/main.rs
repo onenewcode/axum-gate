@@ -85,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .with_policy(
                                 AccessPolicy::require_role(Role::User).or_require_role(Role::Admin),
                             )
-                            .configure_cookie_template(|tpl| tpl.name("my-app")),
+                            .configure_cookie_template(|tpl| tpl.name("my-app"))?,
                     ),
             ),
         )
@@ -102,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .layer(
                         Gate::cookie("my-app", Arc::clone(&jwt_codec))
                             .with_policy(AccessPolicy::require_role(Role::Admin))
-                            .configure_cookie_template(|tpl| tpl.name("my-app")),
+                            .configure_cookie_template(|tpl| tpl.name("my-app"))?,
                     ),
             ),
         )

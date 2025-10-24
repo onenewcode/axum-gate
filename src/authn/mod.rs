@@ -29,7 +29,7 @@
 //! let claims = RegisteredClaims::new("my-app",
 //!     chrono::Utc::now().timestamp() as u64 + 3600);
 //!
-//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 //! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
 //!

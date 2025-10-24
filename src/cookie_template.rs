@@ -116,7 +116,7 @@ impl Default for CookieTemplateBuilder {
 }
 
 impl CookieTemplateBuilder {
-    /// Secure recommended defaults (alias of `Default::default()`).
+    /// Secure recommended defaults.
     #[must_use]
     pub fn recommended() -> Self {
         Self::default()
@@ -245,12 +245,7 @@ impl CookieTemplateBuilder {
 
         builder
     }
-}
 
-/// (Optional) Validate invariants before building.
-/// Currently trivial; reserved for future checks (e.g. enforcing `Secure` when
-/// `SameSite=None`).
-impl CookieTemplateBuilder {
     /// Validate the template configuration. Returns `Ok(())` if fine.
     pub fn validate(&self) -> Result<(), CookieTemplateBuilderError> {
         if self.same_site == SameSite::None && !self.secure {
@@ -260,11 +255,9 @@ impl CookieTemplateBuilder {
     }
 
     /// Validate then build. Panics if invalid (ergonomic for tests / examples / examples).
-    #[must_use]
-    pub fn validate_and_build(&self) -> CookieBuilder<'static> {
-        self.validate()
-            .expect("invalid CookieTemplateBuilder configuration");
-        self.build()
+    pub fn validate_and_build(&self) -> Result<CookieBuilder<'static>, CookieTemplateBuilderError> {
+        self.validate()?;
+        Ok(self.build())
     }
 }
 

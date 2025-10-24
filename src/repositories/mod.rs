@@ -18,7 +18,7 @@
 //! use std::sync::Arc;
 //!
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //! ```
 //!
 //! ## SurrealDB (Production)

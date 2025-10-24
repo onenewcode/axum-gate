@@ -17,7 +17,7 @@
 //! use axum_gate::hashing::{HashingService, argon2::Argon2Hasher};
 //! use axum_gate::verification_result::VerificationResult;
 //!
-//! let hasher = Argon2Hasher::default();
+//! let hasher = Argon2Hasher::new_recommended().unwrap();
 //!
 //! // Hash a password
 //! let hashed = hasher.hash_value("user_password").unwrap();
@@ -83,7 +83,7 @@ pub use errors::{HashingError, HashingOperation};
 /// ```rust
 /// use axum_gate::hashing::{argon2::Argon2Hasher, HashingService, HashedValue};
 ///
-/// let hasher = Argon2Hasher::default();
+/// let hasher = Argon2Hasher::new_recommended().unwrap();
 /// let hashed: HashedValue = hasher.hash_value("my_password").unwrap();
 ///
 /// // The hashed value is self-contained and can be stored directly

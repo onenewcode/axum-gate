@@ -105,7 +105,8 @@ async fn main() {
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .allow_anonymous_with_optional_user()
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate Prometheus metrics
-                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo")),
+                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
+                    .unwrap(),
             ),
         )
         .route("/login", post(login_handler))
@@ -118,7 +119,8 @@ async fn main() {
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role(Role::Admin))
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate Prometheus metrics
-                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo")),
+                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
+                    .unwrap(),
             ),
         )
         // Public area (accessible by authenticated users)
@@ -128,7 +130,8 @@ async fn main() {
                 Gate::cookie("prometheus-demo", Arc::clone(&jwt_codec))
                     .with_policy(AccessPolicy::require_role_or_supervisor(Role::Admin))
                     .with_prometheus_registry(&app_state.registry) // 🔍 Enable axum-gate metrics for this route too
-                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo")),
+                    .configure_cookie_template(|tpl| tpl.name("prometheus-demo"))
+                    .unwrap(),
             ),
         )
         .with_state(app_state);

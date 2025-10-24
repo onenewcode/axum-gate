@@ -268,7 +268,7 @@ async fn main() {
 
     let account_repository = Arc::new(MemoryAccountRepository::from(vec![]));
     debug!("Account repository initialized.");
-    let secrets_repository = Arc::new(MemorySecretRepository::from(vec![]));
+    let secrets_repository = Arc::new(MemorySecretRepository::try_from(vec![]).unwrap());
     debug!("Secrets repository initialized.");
 
     // Seed: admin has Expert role and belongs to Maintenance group.

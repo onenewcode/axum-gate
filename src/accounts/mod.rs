@@ -15,7 +15,7 @@
 //! # tokio_test::block_on(async {
 //! // Create repositories
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-//! let secret_repo = Arc::new(MemorySecretRepository::default());
+//! let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 //!
 //! // Create a new account
 //! let account = AccountInsertService::insert("user@example.com", "password")

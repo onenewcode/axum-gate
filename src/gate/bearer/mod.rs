@@ -300,6 +300,7 @@ where
         }
     }
 
+    #[allow(clippy::expect_used)]
     fn unauthorized() -> Response<Body> {
         Response::builder()
             .status(StatusCode::UNAUTHORIZED)
@@ -476,6 +477,7 @@ impl<S> StaticTokenService<S> {
         }
     }
 
+    #[allow(clippy::expect_used)]
     fn unauthorized() -> Response<Body> {
         Response::builder()
             .status(StatusCode::UNAUTHORIZED)

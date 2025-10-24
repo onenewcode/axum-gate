@@ -105,6 +105,7 @@ where
     }
 
     /// Used to return the unauthorized response.
+    #[allow(clippy::unwrap_used)]
     fn unauthorized() -> Response<Body> {
         Response::builder()
             .status(StatusCode::UNAUTHORIZED)

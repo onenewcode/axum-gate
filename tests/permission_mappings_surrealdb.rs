@@ -15,7 +15,7 @@ async fn surrealdb_permission_mapping_crud_and_queries() {
         .await
         .expect("Failed to create SurrealDB Mem engine");
     let scope = DatabaseScope::default();
-    let repo = SurrealDbRepository::new(db, scope);
+    let repo = SurrealDbRepository::new(db, scope).unwrap();
 
     // 1) Store a mapping
     let mapping = PermissionMapping::from("Read:API");
@@ -128,13 +128,14 @@ async fn surrealdb_permission_mapping_crud_and_queries() {
 }
 
 #[tokio::test]
+#[allow(clippy::unwrap_used)]
 async fn surrealdb_permission_mapping_uniqueness() {
     // Prepare SurrealDB in-memory instance and repository
     let db = Surreal::new::<Mem>(())
         .await
         .expect("Failed to create SurrealDB Mem engine");
     let scope = DatabaseScope::default();
-    let repo = SurrealDbRepository::new(db, scope);
+    let repo = SurrealDbRepository::new(db, scope).unwrap();
 
     // Store a mapping
     let m1 = PermissionMapping::from("Read:Api");
