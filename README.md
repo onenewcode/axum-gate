@@ -13,14 +13,12 @@ Flexible, type-safe authentication and authorization for Axum using JWTs.
 
 ## Install
 
-Axum 0.8, Tokio 1.
-
 ```toml
 [dependencies]
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-axum-gate = { version = "1.0.0-rc.1" }
+axum-gate = { version = "1.0.0-rc.0" }
 ```
 
 Optional features:
