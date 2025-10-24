@@ -72,7 +72,7 @@ async fn main() {
 
     // Set up storage (in-memory for this example)
     let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
-    let secret_repo = Arc::new(MemorySecretRepository::default());
+    let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());
 
     // Create some test users
     create_test_users(Arc::clone(&account_repo), Arc::clone(&secret_repo)).await;

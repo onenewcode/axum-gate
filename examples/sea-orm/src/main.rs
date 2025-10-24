@@ -55,7 +55,7 @@ async fn main() {
 
     setup_database_schema(&db).await;
 
-    let account_repository = Arc::new(SeaOrmRepository::new(&db));
+    let account_repository = Arc::new(SeaOrmRepository::new(&db).unwrap());
     debug!("Account repository initialized.");
     let secrets_repository = Arc::clone(&account_repository);
     debug!("Secrets repository initialized.");
