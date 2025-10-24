@@ -57,14 +57,8 @@ pub enum RepositoryType {
     Account,
     /// Secret repository
     Secret,
-    /// Session repository
-    Session,
-    /// Permission repository
-    Permission,
     /// Permission mapping repository
     PermissionMapping,
-    /// Audit log repository
-    AuditLog,
 }
 
 impl fmt::Display for RepositoryType {
@@ -72,10 +66,7 @@ impl fmt::Display for RepositoryType {
         match self {
             RepositoryType::Account => write!(f, "account"),
             RepositoryType::Secret => write!(f, "secret"),
-            RepositoryType::Session => write!(f, "session"),
-            RepositoryType::Permission => write!(f, "permission"),
             RepositoryType::PermissionMapping => write!(f, "permission_mapping"),
-            RepositoryType::AuditLog => write!(f, "audit_log"),
         }
     }
 }
@@ -231,25 +222,16 @@ impl UserFriendlyError for RepositoriesError {
             RepositoriesError::OperationFailed { repository, .. } => match repository {
                 RepositoryType::Account => "We're having trouble accessing your account information. Please try refreshing the page or signing in again.".to_string(),
                 RepositoryType::Secret => "There's an issue with the security system. Please try again or contact support if the problem continues.".to_string(),
-                RepositoryType::Session => "Your session information couldn't be processed. Please sign in again to continue.".to_string(),
-                RepositoryType::Permission => "We're having trouble verifying your permissions. Please try again or contact your administrator.".to_string(),
-                RepositoryType::AuditLog => "There's an issue with the activity logging system. Your action may not have been recorded, but it was likely completed successfully.".to_string(),
                 RepositoryType::PermissionMapping => "We're having trouble with the permission system. Your permissions are still active, but some features might not display correctly.".to_string(),
             },
             RepositoriesError::NotFound { repository, .. } => match repository {
                 RepositoryType::Account => "We couldn't find an account with the requested identifier.".to_string(),
                 RepositoryType::Secret => "We couldn't find the requested security information.".to_string(),
-                RepositoryType::Session => "We couldn't find a session for your request. Please sign in again.".to_string(),
-                RepositoryType::Permission => "We couldn't find the requested permission.".to_string(),
-                RepositoryType::AuditLog => "We couldn't find the requested activity record.".to_string(),
                 RepositoryType::PermissionMapping => "We couldn't find the requested permission mapping.".to_string(),
             },
             RepositoriesError::Constraint { repository, .. } => match repository {
                 RepositoryType::Account => "We couldn't complete this request due to an account constraint. Please review your input and try again.".to_string(),
                 RepositoryType::Secret => "We couldn't complete this request due to a security constraint. Please try again later.".to_string(),
-                RepositoryType::Session => "We couldn't complete this request due to a session constraint. Please sign in again.".to_string(),
-                RepositoryType::Permission => "We couldn't complete this request due to a permission constraint. Contact your administrator if needed.".to_string(),
-                RepositoryType::AuditLog => "We couldn't record this action due to a logging constraint. Your action may still have completed successfully.".to_string(),
                 RepositoryType::PermissionMapping => "We couldn't update the permission mapping due to a constraint. Your permissions remain unchanged.".to_string(),
             },
         }
@@ -320,7 +302,7 @@ impl UserFriendlyError for RepositoriesError {
                 _ => ErrorSeverity::Error,
             },
             RepositoriesError::NotFound { repository, .. } => match repository {
-                RepositoryType::Account | RepositoryType::Session => ErrorSeverity::Warning,
+                RepositoryType::Account => ErrorSeverity::Warning,
                 _ => ErrorSeverity::Info,
             },
             RepositoriesError::Constraint { repository, .. } => match repository {
@@ -343,11 +325,6 @@ impl UserFriendlyError for RepositoriesError {
                     "Try your request again".to_string(),
                     "Contact support if the problem persists".to_string(),
                 ],
-                (RepositoryType::Session, RepositoryOperation::Get) => vec![
-                    "Sign out completely and sign back in".to_string(),
-                    "Clear all browser data for this site".to_string(),
-                    "Try using an incognito/private window".to_string(),
-                ],
                 (RepositoryType::Secret, _) => vec![
                     "Do not retry password or secret operations repeatedly".to_string(),
                     "Contact support if security operations continue to fail".to_string(),
@@ -363,10 +340,6 @@ impl UserFriendlyError for RepositoriesError {
                     "Verify the account identifier is correct".to_string(),
                     "Ensure you are signed in with the correct account".to_string(),
                     "Contact support if the account should exist".to_string(),
-                ],
-                RepositoryType::Session => vec![
-                    "Sign in again to create a new session".to_string(),
-                    "Clear browser cookies and try again".to_string(),
                 ],
                 _ => vec![
                     "Verify the requested identifier is correct".to_string(),
