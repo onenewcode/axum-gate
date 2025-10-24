@@ -33,7 +33,7 @@
 //! use axum_gate::errors::hashing::{HashingError, HashingOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
-////! let err = HashingError::with_context(
+//! let err = HashingError::with_context(
 //!     HashingOperation::Verify,
 //!     "password verification failed",
 //!     Some("argon2id".into()),
