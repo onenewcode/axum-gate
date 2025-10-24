@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0-rc.0] - 2025-10-22
+## [1.0.0-rc.0] - 2025-10-24
 ### 🏗 Refactoring
 - **💥 BREAKING CHANGE:** Introduced hashing module [[0b5cb49]]
 
@@ -26,6 +26,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
+- Updated README.md [[c96b048]]
+
+- Added unwrap to convenient login check example [[47faa87]]
+
+- Extended prelude by RegisteredClaims and Permissions [[2e26d5e]]
+
+- Moved prelude to separate file [[2745a14]]
+
+- Now using cookie library directly instead of re-export [[5ac5c80]]
+
+- Removed serde_json re-export [[0b6b666]]
+
+- Updated surrealdb example imports [[364fa7c]]
+
+- Updated imports in simple-usage example [[8f194bd]]
+
+- Updated sea-orm example [[478ee83]]
+
+- Updated rate-limiting example [[80cb059]]
+
+- Updated permission-registry example [[068f24f]]
+
+- Updated distributed example [[ec5f393]]
+
+- Updated import statements at crate level [[5a09b63]]
+
+- Merge branch 'refactor/errors-module' into 'nightly' refactor: Updated errors module to the ddd structure See merge request lprobst/axum-gate!5 [[d3a7510]]
+
+- Doc-tests [[d73f335]]
+
+- Removed unnecessary slashes in documentation [[2bda856]]
+
+- Removed unnecessary blank line [[9208a25]]
+
+- Applied clippy fix [[5468aa5]]
+
+- Removed unused variants of secrets::errors [[055de11]]
+
+- Removed unused variants in permissions::errors [[7613bea]]
+
+- Removed unused variants in accounts::errors [[798bb92]]
+
+- Removed unused codecs errors [[597f119]]
+
+- Removed unused variants in authz::errors [[a001f20]]
+
+- Removed unused variants in authn errors [[fc89157]]
+
+- Removed some leftovers [[f32a9fb]]
+
+- Removed unused variants of repository errors [[77e6e24]]
+
+- Removed unused error variants [[9dc9bfb]]
+
+- Moved error modules to the top level categories [[a9609e3]]
+
+- Removed unnecessary deny missing docs attributes [[9dc15c3]]
+
+- Wrong module documentation of errors::authn [[c9a1a51]]
+
+- Updated errors module to the ddd structure [[d9c3da1]]
+
+- Updated custom-roles example [[3b34498]]
+
+- Added some comments to the custom-roles example [[b9b8f7c]]
+
+- Prometheus example [[e57fbab]]
+
+- CI workflows [[0c5ce13]]
+
+- Doc-test [[a1b08a8]]
+
+- Added type hint to Gate documentation example [[eaa1b53]]
+
+- Updated CHANGELOG.md [[709ba89]]
+
 - Added github workflow [[90dd0be]]
 
 - Updated gitlab-ci to nightly instead of main [[f21cb99]]
@@ -760,6 +836,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 🛳 Features
+- **💥 BREAKING CHANGE:** Added deny unwrap, expect and unsafe code [[71de97c]]
+
 - Add tracing-based audit logging gated behind feature - Introduce audit module with spans/events (request, authz, JWT issues, account lifecycle) - Instrument gate, login/logout handlers, and account services - Remove unused audit functions and simplify module-level cfg gating - No secrets logged; structured fields only; feature-off has zero overhead *(audit)*  [[3a87d25]]
 
 - Comprehensive security testing, code quality improvements, and documentation updates * Initial plan * Add comprehensive security tests and fix clippy warnings - Fixed all 10 clippy warnings for improved code quality - Added 44 new security-focused tests covering: * JWT manipulation and validation edge cases * Password hashing security and malformed input handling * Authorization bypass attempts and role escalation * Input validation against SQL injection and malformed data * Cookie security attributes and manipulation prevention * Storage layer isolation and concurrent access safety * Unicode/special character handling throughout system * Serialization security for sensitive data structures - Added timing attack awareness test (marked as ignore for CI stability) - Enhanced test coverage for edge cases and error conditions - All existing tests continue to pass Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Add comprehensive security documentation and fix README example - Added SECURITY.md with detailed security considerations and best practices - Fixed README.md example to use consistent field names (user_id vs account_id) - Documented password security, JWT security, cookie security, and authorization security - Added guidance on timing attack considerations and security best practices - Included testing instructions for security test suites - All documentation examples validated and working Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Address review comments: fix imports, remove unused code, use AccountDeleteService Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> --------- Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com> Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> [[7bc5e6e]]
