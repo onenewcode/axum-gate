@@ -161,10 +161,9 @@ impl UserFriendlyError for AccountsError {
 
     fn is_retryable(&self) -> bool {
         match self {
-            AccountsError::Operation { operation, .. } => match operation {
-                AccountOperation::Delete => false,
-                _ => true,
-            },
+            AccountsError::Operation { operation, .. } => {
+                !matches!(operation, AccountOperation::Delete)
+            }
         }
     }
 }
