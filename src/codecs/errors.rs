@@ -7,7 +7,7 @@
 //! # Overview
 //! - `CodecsError`: codec and serialization error enum
 //! - `JwtError`: JWT processing error enum
-//! - Operation enums: `CodecOperation`, `SerializationOperation`, `JwtOperation`
+//! - Operation enums: `CodecOperation`, `JwtOperation`
 //!
 //! # Examples
 //!
@@ -22,18 +22,7 @@
 //! assert!(err.support_code().starts_with("CODEC-"));
 //! ```
 //!
-//! Serialization error:
-//! ```rust
-//! use axum_gate::errors::codecs::{CodecsError, SerializationOperation};
-//!
-//! let err = CodecsError::serialization(
-//!     SerializationOperation::SerializeJson,
-//!     "invalid structure",
-//!     Some("json".into()),
-//!     Some("claims".into()),
-//! );
-//! assert!(matches!(err.severity(), axum_gate::errors::ErrorSeverity::Error));
-//! ```
+
 //!
 //! JWT error:
 //! ```rust
@@ -65,27 +54,6 @@ impl fmt::Display for CodecOperation {
         match self {
             CodecOperation::Encode => write!(f, "encode"),
             CodecOperation::Decode => write!(f, "decode"),
-        }
-    }
-}
-
-/// Serialization operation types.
-#[derive(Debug, Clone)]
-pub enum SerializationOperation {
-    /// Serialize to JSON
-    SerializeJson,
-    /// Deserialize from JSON
-    DeserializeJson,
-    /// Validate structure
-    ValidateStructure,
-}
-
-impl fmt::Display for SerializationOperation {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            SerializationOperation::SerializeJson => write!(f, "serialize_json"),
-            SerializationOperation::DeserializeJson => write!(f, "deserialize_json"),
-            SerializationOperation::ValidateStructure => write!(f, "validate_structure"),
         }
     }
 }
@@ -127,19 +95,6 @@ pub enum CodecsError {
         /// Expected format or structure.
         expected_format: Option<String>,
     },
-
-    /// Serialization/Deserialization error.
-    #[error("Serialization error: {operation} - {message}")]
-    Serialization {
-        /// The serialization operation that failed.
-        operation: SerializationOperation,
-        /// Description of the serialization error (non-sensitive).
-        message: String,
-        /// The data format being processed.
-        format: Option<String>,
-        /// The field that caused the error.
-        field: Option<String>,
-    },
 }
 
 impl CodecsError {
@@ -168,21 +123,6 @@ impl CodecsError {
         }
     }
 
-    /// Create a serialization error.
-    pub fn serialization(
-        operation: SerializationOperation,
-        message: impl Into<String>,
-        format: Option<String>,
-        field: Option<String>,
-    ) -> Self {
-        CodecsError::Serialization {
-            operation,
-            message: message.into(),
-            format,
-            field,
-        }
-    }
-
     fn support_code_inner(&self) -> String {
         let mut hasher = DefaultHasher::new();
         match self {
@@ -193,14 +133,6 @@ impl CodecsError {
             } => {
                 format!("CODEC-{}-{:X}", operation.to_string().to_uppercase(), {
                     format!("{:?}{:?}", operation, payload_type).hash(&mut hasher);
-                    hasher.finish() % 10000
-                })
-            }
-            CodecsError::Serialization {
-                operation, format, ..
-            } => {
-                format!("SERIAL-{}-{:X}", operation.to_string().to_uppercase(), {
-                    format!("{:?}{:?}", operation, format).hash(&mut hasher);
                     hasher.finish() % 10000
                 })
             }
@@ -217,17 +149,6 @@ impl UserFriendlyError for CodecsError {
                 }
                 CodecOperation::Decode => {
                     "We received data in an unexpected format. This might be a temporary issue - please try again.".to_string()
-                }
-            },
-            CodecsError::Serialization { operation, .. } => match operation {
-                SerializationOperation::SerializeJson => {
-                    "We couldn't save your data in the required format. Please try again.".to_string()
-                }
-                SerializationOperation::DeserializeJson => {
-                    "We received data in an unexpected format. Please refresh the page and try again.".to_string()
-                }
-                SerializationOperation::ValidateStructure => {
-                    "The data structure couldn't be validated. Please check your input and try again.".to_string()
                 }
             },
         }
@@ -254,25 +175,6 @@ impl UserFriendlyError for CodecsError {
                     operation, message, payload_context, format_context
                 )
             }
-            CodecsError::Serialization {
-                operation,
-                message,
-                format,
-                field,
-            } => {
-                let format_context = format
-                    .as_ref()
-                    .map(|f| format!(" [Format: {}]", f))
-                    .unwrap_or_default();
-                let field_context = field
-                    .as_ref()
-                    .map(|f| format!(" [Field: {}]", f))
-                    .unwrap_or_default();
-                format!(
-                    "Serialization contract violation during {} operation: {}{}{}",
-                    operation, message, format_context, field_context
-                )
-            }
         }
     }
 
@@ -285,7 +187,6 @@ impl UserFriendlyError for CodecsError {
             CodecsError::Codec { operation, .. } => match operation {
                 CodecOperation::Encode | CodecOperation::Decode => ErrorSeverity::Error,
             },
-            CodecsError::Serialization { .. } => ErrorSeverity::Error,
         }
     }
 
@@ -305,11 +206,6 @@ impl UserFriendlyError for CodecsError {
                     "Contact support if you continue receiving malformed data".to_string(),
                 ],
             },
-            CodecsError::Serialization { .. } => vec![
-                "This is typically a temporary system issue".to_string(),
-                "Try your request again in a few minutes".to_string(),
-                "If the problem persists, contact support with the reference code".to_string(),
-            ],
         }
     }
 
@@ -319,7 +215,6 @@ impl UserFriendlyError for CodecsError {
                 CodecOperation::Encode => true, // user can fix input
                 CodecOperation::Decode => true, // may be temporary
             },
-            CodecsError::Serialization { .. } => true, // often temporary
         }
     }
 }

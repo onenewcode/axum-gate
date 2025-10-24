@@ -62,9 +62,7 @@ use thiserror::Error;
 pub use crate::accounts::errors::{AccountOperation, AccountsError};
 pub use crate::authn::errors::{AuthenticationError, AuthnError};
 pub use crate::authz::errors::AuthzError;
-pub use crate::codecs::errors::{
-    CodecOperation, CodecsError, JwtError, JwtOperation, SerializationOperation,
-};
+pub use crate::codecs::errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
 pub use crate::hashing::errors::{HashingError, HashingOperation};
 pub use crate::permissions::errors::PermissionsError;
 pub use crate::repositories::errors::{

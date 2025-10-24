@@ -74,7 +74,7 @@ use serde::{Serialize, de::DeserializeOwned};
 
 pub mod errors;
 pub mod jwt;
-pub use errors::{CodecOperation, CodecsError, JwtError, JwtOperation, SerializationOperation};
+pub use errors::{CodecOperation, CodecsError, JwtError, JwtOperation};
 
 /// A pluggable payload encoder/decoder.
 ///
