@@ -14,7 +14,7 @@
 //! Basic construction and user-facing message extraction:
 //!
 //! ```rust
-//! use axum_gate::errors::authn::{AuthnError, AuthenticationError};
+//! use axum_gate::authn::{AuthnError, AuthenticationError};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = AuthnError::from_authentication(AuthenticationError::InvalidCredentials, Some("login form//! ".into()));
@@ -26,7 +26,7 @@
 //! Convenience constructors:
 //!
 //! ```rust
-//! use axum_gate::errors::authn::AuthnError;
+//! use axum_gate::authn::AuthnError;
 //!
 //! let _ = AuthnError::invalid_credentials(Some("signin".into()));
 //! ```

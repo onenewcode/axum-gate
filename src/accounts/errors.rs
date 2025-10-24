@@ -10,7 +10,7 @@
 //! # Examples
 //! Basic construction and user-facing message extraction:
 //! ```rust
-//! use axum_gate::errors::accounts::{AccountsError, AccountOperation};
+//! use axum_gate::accounts::{AccountsError, AccountOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = AccountsError::operation(

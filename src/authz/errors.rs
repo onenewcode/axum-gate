@@ -12,7 +12,7 @@
 //!
 //! Detect a permission hash collision:
 //! ```rust
-//! use axum_gate::errors::authz::AuthzError;
+//! use axum_gate::authz::AuthzError;
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = AuthzError::collision(42, vec!["read:alpha".into(), "read:beta".into()]);

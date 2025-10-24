@@ -14,8 +14,8 @@
 //!
 //! Hashing failure with algorithm context:
 //! ```rust
-//! use axum_gate::errors::secrets::SecretError;
-//! use axum_gate::errors::hashing::HashingOperation;
+//! use axum_gate::secrets::SecretError;
+//! use axum_gate::hashing::HashingOperation;
 //!
 //! let err = SecretError::hashing_with_algorithm(
 //!     HashingOperation::Verify,

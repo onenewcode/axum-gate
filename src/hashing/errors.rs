@@ -13,7 +13,7 @@
 //!
 //! Construct a hashing error with algorithm context:
 //! ```rust
-//! use axum_gate::errors::hashing::{HashingError, HashingOperation};
+//! use axum_gate::hashing::{HashingError, HashingOperation};
 //!
 //! let err = HashingError::with_algorithm(
 //!     HashingOperation::Hash,
@@ -24,13 +24,13 @@
 //! // Utility methods from the unified trait
 //! use axum_gate::errors::UserFriendlyError;
 //! assert!(err.user_message().contains("security processing system"));
-//! assert!(err.developer_message().contains("hash operation failed"));
+//! assert!(err.developer_message().contains("Hash operation hash failed"));
 //! assert!(err.support_code().starts_with("HASH-HASH"));
 //! ```
 //!
 //! Construct a verification failure where retry is possible:
 //! ```rust
-//! use axum_gate::errors::hashing::{HashingError, HashingOperation};
+//! use axum_gate::hashing::{HashingError, HashingOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = HashingError::with_context(
@@ -95,7 +95,7 @@ impl HashingError {
     ///
     /// # Examples
     /// ```rust
-    /// use axum_gate::errors::hashing::{HashingError, HashingOperation};
+    /// use axum_gate::hashing::{HashingError, HashingOperation};
     /// let _err = HashingError::new(HashingOperation::Hash, "failed to hash value");
     /// ```
     pub fn new(operation: HashingOperation, message: impl Into<String>) -> Self {
@@ -116,7 +116,7 @@ impl HashingError {
     ///
     /// # Examples
     /// ```rust
-    /// use axum_gate::errors::hashing::{HashingError, HashingOperation};
+    /// use axum_gate::hashing::{HashingError, HashingOperation};
     /// let _err = HashingError::with_algorithm(HashingOperation::Verify, "verification failed", "argon2id");
     /// ```
     pub fn with_algorithm(
@@ -142,7 +142,7 @@ impl HashingError {
     ///
     /// # Examples
     /// ```rust
-    /// use axum_gate::errors::hashing::{HashingError, HashingOperation};
+    /// use axum_gate::hashing::{HashingError, HashingOperation};
     /// let _err = HashingError::with_context(
     ///     HashingOperation::Verify,
     ///     "verification failed",

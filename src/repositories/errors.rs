@@ -15,7 +15,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use axum_gate::errors::repositories::{RepositoriesError, RepositoryType, RepositoryOperation};
+//! use axum_gate::repositories::{RepositoriesError, RepositoryType, RepositoryOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = RepositoriesError::operation_failed(
@@ -26,12 +26,12 @@
 //!     Some("insert_account".into()),
 //! );
 //!
-//! assert!(err.developer_message().contains("Account repository"));
+//! assert!(err.developer_message().contains("account repository"));
 //! assert!(err.support_code().starts_with("REPO-ACCOUNT-INSERT-"));
 //! ```
 //!
 //! ```rust
-//! use axum_gate::errors::repositories::{DatabaseError, DatabaseOperation};
+//! use axum_gate::repositories::{DatabaseError, DatabaseOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = DatabaseError::with_context(

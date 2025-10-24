@@ -13,7 +13,7 @@
 //!
 //! Codec error:
 //! ```rust
-//! use axum_gate::errors::codecs::{CodecsError, CodecOperation};
+//! use axum_gate::codecs::{CodecsError, CodecOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = CodecsError::codec(CodecOperation::Encode, "failed to encode payload");
@@ -26,7 +26,7 @@
 //!
 //! JWT error:
 //! ```rust
-//! use axum_gate::errors::codecs::{JwtError, JwtOperation};
+//! use axum_gate::codecs::{JwtError, JwtOperation};
 //! use axum_gate::errors::UserFriendlyError;
 //!
 //! let err = JwtError::processing(JwtOperation::Encode, "jwt encoding failed");
