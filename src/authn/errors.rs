@@ -29,9 +29,6 @@
 //! use axum_gate::errors::authn::AuthnError;
 //!
 //! let _ = AuthnError::invalid_credentials(Some("signin".into()));
-//! let _ = AuthnError::session_expired(None);
-//! let _ = AuthnError::account_locked(Some("too many attempts".into()));
-//! let _ = AuthnError::rate_limit_exceeded(None);
 //! ```
 
 use crate::errors::{ErrorSeverity, UserFriendlyError};
@@ -46,18 +43,6 @@ pub enum AuthenticationError {
     /// Invalid credentials provided
     #[error("Invalid credentials provided")]
     InvalidCredentials,
-
-    /// Session expired or invalid
-    #[error("Session expired")]
-    SessionExpired,
-
-    /// Account locked due to security policy
-    #[error("Account temporarily locked")]
-    AccountLocked,
-
-    /// Authentication rate limit exceeded
-    #[error("Too many authentication attempts")]
-    RateLimitExceeded,
 }
 
 /// Category-native authentication error.
@@ -89,29 +74,10 @@ impl AuthnError {
         Self::from_authentication(AuthenticationError::InvalidCredentials, context)
     }
 
-    /// Session has expired or is otherwise invalid.
-    pub fn session_expired(context: Option<String>) -> Self {
-        Self::from_authentication(AuthenticationError::SessionExpired, context)
-    }
-
-    /// Account has been temporarily locked due to security policy.
-    pub fn account_locked(context: Option<String>) -> Self {
-        Self::from_authentication(AuthenticationError::AccountLocked, context)
-    }
-
-    /// Authentication rate limit has been exceeded.
-    pub fn rate_limit_exceeded(context: Option<String>) -> Self {
-        Self::from_authentication(AuthenticationError::RateLimitExceeded, context)
-    }
-
     fn support_code_inner(&self) -> String {
         match self {
             AuthnError::Authentication { error, .. } => match error {
                 AuthenticationError::InvalidCredentials => "AUTHN-INVALID-CREDS".to_string(),
-                AuthenticationError::SessionExpired => "AUTHN-SESSION-EXPIRED".to_string(),
-                AuthenticationError::AccountLocked => "AUTHN-ACCOUNT-LOCKED".to_string(),
-
-                AuthenticationError::RateLimitExceeded => "AUTHN-RATE-LIMITED".to_string(),
             },
         }
     }
@@ -123,16 +89,6 @@ impl UserFriendlyError for AuthnError {
             AuthnError::Authentication { error, .. } => match error {
                 AuthenticationError::InvalidCredentials => {
                     "The username or password you entered is incorrect. Please check your credentials and try again.".to_string()
-                }
-                AuthenticationError::SessionExpired => {
-                    "Your session has expired for security reasons. Please sign in again to continue.".to_string()
-                }
-                AuthenticationError::AccountLocked => {
-                    "Your account has been temporarily locked for security reasons. Please try again later or contact our support team.".to_string()
-                }
-
-                AuthenticationError::RateLimitExceeded => {
-                    "Too many sign-in attempts detected. Please wait a few minutes before trying again.".to_string()
                 }
             },
         }
@@ -157,10 +113,7 @@ impl UserFriendlyError for AuthnError {
     fn severity(&self) -> ErrorSeverity {
         match self {
             AuthnError::Authentication { error, .. } => match error {
-                AuthenticationError::AccountLocked => ErrorSeverity::Critical,
                 AuthenticationError::InvalidCredentials => ErrorSeverity::Warning,
-                AuthenticationError::SessionExpired => ErrorSeverity::Info,
-                AuthenticationError::RateLimitExceeded => ErrorSeverity::Error,
             },
         }
     }
@@ -175,23 +128,6 @@ impl UserFriendlyError for AuthnError {
                         .to_string(),
                     "Contact support if you're sure your credentials are correct".to_string(),
                 ],
-                AuthenticationError::SessionExpired => vec![
-                    "Sign in again to continue using the application".to_string(),
-                    "For security, sessions automatically expire after a period of inactivity"
-                        .to_string(),
-                ],
-                AuthenticationError::AccountLocked => vec![
-                    "Wait 15-30 minutes before attempting to sign in again".to_string(),
-                    "Contact our support team if you need immediate access".to_string(),
-                    "Review our security policies to understand account lockout procedures"
-                        .to_string(),
-                ],
-                AuthenticationError::RateLimitExceeded => vec![
-                    "Wait 5-10 minutes before trying to sign in again".to_string(),
-                    "Use the 'Forgot Password' feature if you're unsure of your credentials"
-                        .to_string(),
-                    "Contact support if you believe this restriction is in error".to_string(),
-                ],
             },
         }
     }
@@ -200,9 +136,6 @@ impl UserFriendlyError for AuthnError {
         match self {
             AuthnError::Authentication { error, .. } => match error {
                 AuthenticationError::InvalidCredentials => true,
-                AuthenticationError::SessionExpired => true,
-                AuthenticationError::AccountLocked => false, // time-based unlock
-                AuthenticationError::RateLimitExceeded => false, // time-based retry
             },
         }
     }
