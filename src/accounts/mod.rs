@@ -38,6 +38,8 @@ use crate::permissions::{PermissionId, Permissions};
 pub use account_delete::AccountDeleteService;
 pub use account_insert::AccountInsertService;
 pub use account_repository::AccountRepository;
+pub mod errors;
+pub use errors::{AccountOperation, AccountsError};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

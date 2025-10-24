@@ -66,13 +66,13 @@ use crate::accounts::AccountRepository;
 use crate::authz::AccessHierarchy;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use crate::errors::ports::{PortError, RepositoryType};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
 use crate::hashing::argon2::Argon2Hasher;
 use crate::permissions::PermissionId;
 use crate::permissions::mapping::PermissionMapping;
 use crate::permissions::mapping::PermissionMappingRepository;
+use crate::repositories::{RepositoriesError, RepositoryOperation, RepositoryType};
 use crate::secrets::Secret;
 use crate::secrets::SecretRepository;
 use crate::verification_result::VerificationResult;
@@ -274,24 +274,26 @@ impl SecretRepository for MemorySecretRepository {
         };
 
         if already_present {
-            return Err(Error::Port(PortError::Repository {
-                repository: RepositoryType::Secret,
-                message: "AccountID is already present".to_string(),
-                operation: None,
-                context: None,
-            }));
+            return Err(Error::Repositories(RepositoriesError::operation_failed(
+                RepositoryType::Secret,
+                RepositoryOperation::Insert,
+                "AccountID is already present",
+                None,
+                None,
+            )));
         }
 
         let mut write = self.store.write().await;
         debug!("Got write lock on secret repository.");
 
         if write.insert(secret.account_id, secret).is_some() {
-            return Err(Error::Port(PortError::Repository {
-                repository: RepositoryType::Secret,
-                message: "This should never occur because it is checked if the key is already present a few lines earlier".to_string(),
-                operation: Some("store".to_string()),
-                context: None,
-            }));
+            return Err(Error::Repositories(RepositoriesError::operation_failed(
+                RepositoryType::Secret,
+                RepositoryOperation::Insert,
+                "This should never occur because it is checked if the key is already present a few lines earlier",
+                None,
+                Some("store".to_string()),
+            )));
         };
         Ok(true)
     }
@@ -437,12 +439,13 @@ impl PermissionMappingRepository for MemoryPermissionMappingRepository {
     async fn store_mapping(&self, mapping: PermissionMapping) -> Result<Option<PermissionMapping>> {
         // Validate the mapping first
         if let Err(e) = mapping.validate() {
-            return Err(Error::Port(PortError::Repository {
-                repository: RepositoryType::PermissionMapping,
-                message: format!("Invalid permission mapping: {}", e),
-                operation: Some("store".to_string()),
-                context: None,
-            }));
+            return Err(Error::Repositories(RepositoriesError::operation_failed(
+                RepositoryType::PermissionMapping,
+                RepositoryOperation::Insert,
+                format!("Invalid permission mapping: {}", e),
+                None,
+                Some("store".to_string()),
+            )));
         }
 
         let id = mapping.permission_id().as_u64();

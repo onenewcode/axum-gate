@@ -48,6 +48,9 @@ mod hashing_service;
 
 pub use hashing_service::HashingService;
 
+pub mod errors;
+pub use errors::{HashingError, HashingOperation};
+
 /// A hashed value produced by password hashing algorithms.
 ///
 /// This type represents the output of cryptographic password hashing functions,

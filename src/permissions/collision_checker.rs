@@ -1,6 +1,6 @@
 use super::{PermissionCollision, PermissionId, ValidationReport};
-use crate::errors::domain::DomainError;
 use crate::errors::{Error, Result};
+use crate::permissions::PermissionsError;
 use std::collections::HashMap;
 
 /// Low-level permission collision checker for runtime validation and analysis.
@@ -139,7 +139,7 @@ impl PermissionCollisionChecker {
 
         // Check for hash collisions (including duplicates)
         self.check_hash_collisions(&mut report).map_err(|e| {
-            Error::Domain(DomainError::permission_collision(
+            Error::Permissions(PermissionsError::collision(
                 0,
                 vec![format!("Failed to check for hash collisions: {}", e)],
             ))

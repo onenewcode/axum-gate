@@ -54,3 +54,5 @@ mod logout;
 
 pub use login::{LoginResult, LoginService};
 pub use logout::LogoutService;
+pub mod errors;
+pub use errors::{AuthenticationError, AuthnError};

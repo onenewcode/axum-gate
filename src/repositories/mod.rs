@@ -52,11 +52,15 @@
 //! # }
 //! ```
 
+pub mod errors;
 pub mod memory;
 #[cfg(feature = "storage-seaorm")]
 pub mod sea_orm;
 #[cfg(feature = "storage-surrealdb")]
 pub mod surrealdb;
+pub use errors::{
+    DatabaseError, DatabaseOperation, RepositoriesError, RepositoryOperation, RepositoryType,
+};
 
 /// Table names used by the storage backends.
 #[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]

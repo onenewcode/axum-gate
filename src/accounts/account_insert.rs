@@ -1,9 +1,9 @@
 use super::{Account, AccountRepository};
+use crate::accounts::{AccountOperation, AccountsError};
 #[cfg(feature = "audit-logging")]
 use crate::audit;
 use crate::authz::AccessHierarchy;
-use crate::errors::application::AccountOperation;
-use crate::errors::{ApplicationError, Error, Result};
+use crate::errors::{Error, Result};
 use crate::hashing::argon2::Argon2Hasher;
 use crate::permissions::Permissions;
 use crate::secrets::{Secret, SecretRepository};
@@ -209,11 +209,11 @@ where
             {
                 audit::account_insert_failure(&self.user_id, "account_repo_none");
             }
-            return Err(Error::Application(ApplicationError::AccountService {
-                operation: AccountOperation::Create,
-                message: "Account repository returned None on insertion".to_string(),
-                account_id: Some(self.user_id.clone()),
-            }));
+            return Err(Error::Accounts(AccountsError::operation(
+                AccountOperation::Create,
+                "Account repository returned None on insertion",
+                Some(self.user_id.clone()),
+            )));
         };
         #[cfg(feature = "audit-logging")]
         {
@@ -228,11 +228,11 @@ where
             {
                 audit::account_insert_failure(&self.user_id, "secret_store_false");
             }
-            Err(Error::Application(ApplicationError::AccountService {
-                operation: AccountOperation::Create,
-                message: "Storing secret in repository returned false".to_string(),
-                account_id: Some(account.account_id.to_string()),
-            }))
+            Err(Error::Accounts(AccountsError::operation(
+                AccountOperation::Create,
+                "Storing secret in repository returned false",
+                Some(account.account_id.to_string()),
+            )))
         } else {
             debug!("Stored secret in secret repository.");
             Ok(Some(account))

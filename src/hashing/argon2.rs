@@ -22,9 +22,9 @@
 //! ⚠ The `DevFast` preset MUST NOT be used in production; it exists only to keep debug builds
 //! responsive. When you explicitly construct a hasher, choose an appropriate security profile.
 use super::HashedValue;
-use crate::errors::ports::{HashingOperation, PortError};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
+use crate::hashing::{HashingError, HashingOperation};
 use crate::verification_result::VerificationResult;
 use argon2::password_hash::{PasswordHasher, SaltString, rand_core::OsRng};
 use argon2::{Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version};
@@ -236,24 +236,24 @@ impl HashingService for Argon2Hasher {
             .engine
             .hash_password(plain_value.as_bytes(), &salt)
             .map_err(|e| {
-                Error::Port(PortError::Hashing {
-                    operation: HashingOperation::Hash,
-                    message: format!("Could not hash secret: {e}"),
-                    algorithm: Some("Argon2id".to_string()),
-                    expected_format: Some("PHC".to_string()),
-                })
+                Error::Hashing(HashingError::with_context(
+                    HashingOperation::Hash,
+                    format!("Could not hash secret: {e}"),
+                    Some("Argon2id".to_string()),
+                    Some("PHC".to_string()),
+                ))
             })?
             .to_string())
     }
 
     fn verify_value(&self, plain_value: &str, hashed_value: &str) -> Result<VerificationResult> {
         let hash = PasswordHash::new(hashed_value).map_err(|e| {
-            Error::Port(PortError::Hashing {
-                operation: HashingOperation::Verify,
-                message: format!("Could not parse stored hash: {e}"),
-                algorithm: Some("Argon2id".to_string()),
-                expected_format: Some("PHC".to_string()),
-            })
+            Error::Hashing(HashingError::with_context(
+                HashingOperation::Verify,
+                format!("Could not parse stored hash: {e}"),
+                Some("Argon2id".to_string()),
+                Some("PHC".to_string()),
+            ))
         })?;
         Ok(VerificationResult::from(
             self.engine

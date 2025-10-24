@@ -13,7 +13,6 @@ use crate::authz::AccessHierarchy;
 use crate::comma_separated_value::CommaSeparatedValue;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use crate::errors::infrastructure::{DatabaseOperation, InfrastructureError};
 use crate::errors::{Error, Result};
 use crate::hashing::HashingService;
 use crate::hashing::argon2::Argon2Hasher;
@@ -24,6 +23,7 @@ use crate::repositories::sea_orm::models::{
     account as seaorm_account, credentials as seaorm_credentials,
     permission_mapping as seaorm_permission_mapping,
 };
+use crate::repositories::{DatabaseError, DatabaseOperation};
 use crate::secrets::Secret;
 use crate::secrets::SecretRepository;
 use crate::verification_result::VerificationResult;
@@ -60,7 +60,7 @@ pub mod models;
 ///
 /// # Error Semantics
 /// Each DB interaction maps the concrete SeaORM / driver error into an
-/// `InfrastructureError::Database` variant enriched with: operation, table,
+/// `DatabaseError::Operation` variant enriched with: operation, table,
 /// and record identifier (when available).
 ///
 /// # Usage
@@ -120,24 +120,24 @@ where
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query account by user_id: {}", e),
-                    table: Some(TableName::AxumGateAccounts.to_string()),
-                    record_id: Some(user_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query account by user_id: {}", e),
+                    Some(TableName::AxumGateAccounts.to_string()),
+                    Some(user_id.to_string()),
+                ))
             })?
         else {
             return Ok(None);
         };
 
         Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Query,
-                message: format!("Failed to convert database model to Account: {}", e),
-                table: Some(TableName::AxumGateAccounts.to_string()),
-                record_id: Some(user_id.to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Query,
+                format!("Failed to convert database model to Account: {}", e),
+                Some(TableName::AxumGateAccounts.to_string()),
+                Some(user_id.to_string()),
+            ))
         })?))
     }
 
@@ -145,20 +145,20 @@ where
         let mut model = seaorm_account::ActiveModel::from(account);
         model.id = ActiveValue::NotSet;
         let model = model.insert(&self.db).await.map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Insert,
-                message: format!("Failed to insert account: {}", e),
-                table: Some(TableName::AxumGateAccounts.to_string()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Failed to insert account: {}", e),
+                Some(TableName::AxumGateAccounts.to_string()),
+                None,
+            ))
         })?;
         Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Insert,
-                message: format!("Failed to convert inserted model to Account: {}", e),
-                table: Some(TableName::AxumGateAccounts.to_string()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Failed to convert inserted model to Account: {}", e),
+                Some(TableName::AxumGateAccounts.to_string()),
+                None,
+            ))
         })?))
     }
 
@@ -168,12 +168,12 @@ where
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query account for deletion: {}", e),
-                    table: Some(TableName::AxumGateAccounts.to_string()),
-                    record_id: Some(user_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query account for deletion: {}", e),
+                    Some(TableName::AxumGateAccounts.to_string()),
+                    Some(user_id.to_string()),
+                ))
             })?
         else {
             return Ok(None);
@@ -183,21 +183,21 @@ where
             .exec(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete account: {}", e),
-                    table: Some(TableName::AxumGateAccounts.to_string()),
-                    record_id: Some(user_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete account: {}", e),
+                    Some(TableName::AxumGateAccounts.to_string()),
+                    Some(user_id.to_string()),
+                ))
             })?;
 
         Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Delete,
-                message: format!("Failed to convert deleted model to Account: {}", e),
-                table: Some(TableName::AxumGateAccounts.to_string()),
-                record_id: Some(user_id.to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Delete,
+                format!("Failed to convert deleted model to Account: {}", e),
+                Some(TableName::AxumGateAccounts.to_string()),
+                Some(user_id.to_string()),
+            ))
         })?))
     }
 
@@ -214,20 +214,20 @@ where
         db_account.roles = ActiveValue::Set(account.roles.into_csv());
 
         let model = db_account.update(&self.db).await.map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Update,
-                message: format!("Failed to update account: {}", e),
-                table: Some(TableName::AxumGateAccounts.to_string()),
-                record_id: Some(user_id.clone()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Update,
+                format!("Failed to update account: {}", e),
+                Some(TableName::AxumGateAccounts.to_string()),
+                Some(user_id.clone()),
+            ))
         })?;
         Ok(Some(Account::try_from(model).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Update,
-                message: format!("Failed to convert updated model to Account: {}", e),
-                table: Some(TableName::AxumGateAccounts.to_string()),
-                record_id: Some(user_id),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Update,
+                format!("Failed to convert updated model to Account: {}", e),
+                Some(TableName::AxumGateAccounts.to_string()),
+                Some(user_id),
+            ))
         })?))
     }
 }
@@ -237,12 +237,12 @@ impl SecretRepository for SeaOrmRepository {
         let account_id = secret.account_id;
         let model = seaorm_credentials::ActiveModel::from(secret);
         let _ = model.insert(&self.db).await.map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Insert,
-                message: format!("Failed to store secret: {}", e),
-                table: Some(TableName::AxumGateCredentials.to_string()),
-                record_id: Some(account_id.to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Failed to store secret: {}", e),
+                Some(TableName::AxumGateCredentials.to_string()),
+                Some(account_id.to_string()),
+            ))
         })?;
         Ok(true)
     }
@@ -254,12 +254,12 @@ impl SecretRepository for SeaOrmRepository {
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query secret for deletion: {}", e),
-                    table: Some(TableName::AxumGateCredentials.to_string()),
-                    record_id: Some(account_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query secret for deletion: {}", e),
+                    Some(TableName::AxumGateCredentials.to_string()),
+                    Some(account_id.to_string()),
+                ))
             })?
         else {
             return Ok(None);
@@ -269,12 +269,12 @@ impl SecretRepository for SeaOrmRepository {
             .exec(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete secret: {}", e),
-                    table: Some(TableName::AxumGateCredentials.to_string()),
-                    record_id: Some(account_id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete secret: {}", e),
+                    Some(TableName::AxumGateCredentials.to_string()),
+                    Some(account_id.to_string()),
+                ))
             })?;
 
         Ok(Some(Secret {
@@ -287,12 +287,12 @@ impl SecretRepository for SeaOrmRepository {
         let account_id = secret.account_id;
         let model = models::credentials::ActiveModel::from(secret);
         model.update(&self.db).await.map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Update,
-                message: format!("Failed to update secret: {}", e),
-                table: Some(TableName::AxumGateCredentials.to_string()),
-                record_id: Some(account_id.to_string()),
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Update,
+                format!("Failed to update secret: {}", e),
+                Some(TableName::AxumGateCredentials.to_string()),
+                Some(account_id.to_string()),
+            ))
         })?;
         Ok(())
     }
@@ -310,12 +310,12 @@ impl CredentialsVerifier<Uuid> for SeaOrmRepository {
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query credentials for verification: {}", e),
-                    table: Some(TableName::AxumGateCredentials.to_string()),
-                    record_id: Some(credentials.id.to_string()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query credentials for verification: {}", e),
+                    Some(TableName::AxumGateCredentials.to_string()),
+                    Some(credentials.id.to_string()),
+                ))
             })?;
 
         // Select stored or dummy hash (always perform Argon2 verify)
@@ -353,12 +353,12 @@ impl PermissionMappingRepository for SeaOrmRepository {
     ) -> crate::errors::Result<Option<PermissionMapping>> {
         // Validate mapping consistency first
         if let Err(e) = mapping.validate() {
-            return Err(Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Insert,
-                message: format!("Invalid permission mapping: {}", e),
-                table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                record_id: None,
-            }));
+            return Err(Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Insert,
+                format!("Invalid permission mapping: {}", e),
+                Some(TableName::AxumGatePermissionMappings.to_string()),
+                None,
+            )));
         }
 
         // Insert mapping; rely on DB unique constraints
@@ -367,12 +367,12 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .await
         {
             Ok(model) => PermissionMapping::try_from(model).map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Insert,
-                    message: format!("Failed to convert stored permission mapping: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to convert stored permission mapping: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                ))
             })?,
             Err(e) => {
                 let msg = e.to_string().to_lowercase();
@@ -380,12 +380,12 @@ impl PermissionMappingRepository for SeaOrmRepository {
                     // Treat unique constraint violation as "already exists"
                     return Ok(None);
                 }
-                return Err(Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Insert,
-                    message: format!("Failed to store permission mapping: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                }));
+                return Err(Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Insert,
+                    format!("Failed to store permission mapping: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                )));
             }
         };
         Ok(Some(stored))
@@ -403,12 +403,12 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query permission mapping by id: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: Some(id_str.clone()),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query permission mapping by id: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(id_str.clone()),
+                ))
             })?
         else {
             return Ok(None);
@@ -419,21 +419,21 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .exec(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete permission mapping by id: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: Some(id_str),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete permission mapping by id: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(id_str),
+                ))
             })?;
 
         let domain = PermissionMapping::try_from(model).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Delete,
-                message: format!("Failed to convert deleted permission mapping: {}", e),
-                table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Delete,
+                format!("Failed to convert deleted permission mapping: {}", e),
+                Some(TableName::AxumGatePermissionMappings.to_string()),
+                None,
+            ))
         })?;
         Ok(Some(domain))
     }
@@ -452,12 +452,12 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query permission mapping by string: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query permission mapping by string: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                ))
             })?
         else {
             return Ok(None);
@@ -468,21 +468,21 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .exec(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Delete,
-                    message: format!("Failed to delete permission mapping by string: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Delete,
+                    format!("Failed to delete permission mapping by string: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                ))
             })?;
 
         let domain = PermissionMapping::try_from(model).map_err(|e| {
-            Error::Infrastructure(InfrastructureError::Database {
-                operation: DatabaseOperation::Delete,
-                message: format!("Failed to convert deleted permission mapping: {}", e),
-                table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                record_id: None,
-            })
+            Error::Database(DatabaseError::with_context(
+                DatabaseOperation::Delete,
+                format!("Failed to convert deleted permission mapping: {}", e),
+                Some(TableName::AxumGatePermissionMappings.to_string()),
+                None,
+            ))
         })?;
         Ok(Some(domain))
     }
@@ -497,23 +497,23 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query permission mapping by id: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: Some(id_str),
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query permission mapping by id: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    Some(id_str),
+                ))
             })?;
 
         model_opt
             .map(|m| {
                 PermissionMapping::try_from(m).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Query,
-                        message: format!("Failed to convert permission mapping: {}", e),
-                        table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                        record_id: None,
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to convert permission mapping: {}", e),
+                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        None,
+                    ))
                 })
             })
             .transpose()
@@ -532,23 +532,23 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .one(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to query permission mapping by string: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query permission mapping by string: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                ))
             })?;
 
         model_opt
             .map(|m| {
                 PermissionMapping::try_from(m).map_err(|e| {
-                    Error::Infrastructure(InfrastructureError::Database {
-                        operation: DatabaseOperation::Query,
-                        message: format!("Failed to convert permission mapping: {}", e),
-                        table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                        record_id: None,
-                    })
+                    Error::Database(DatabaseError::with_context(
+                        DatabaseOperation::Query,
+                        format!("Failed to convert permission mapping: {}", e),
+                        Some(TableName::AxumGatePermissionMappings.to_string()),
+                        None,
+                    ))
                 })
             })
             .transpose()
@@ -559,23 +559,23 @@ impl PermissionMappingRepository for SeaOrmRepository {
             .all(&self.db)
             .await
             .map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to list permission mappings: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to list permission mappings: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                ))
             })?;
 
         let mut out = Vec::with_capacity(models.len());
         for m in models {
             let dom = PermissionMapping::try_from(m).map_err(|e| {
-                Error::Infrastructure(InfrastructureError::Database {
-                    operation: DatabaseOperation::Query,
-                    message: format!("Failed to convert permission mapping: {}", e),
-                    table: Some(TableName::AxumGatePermissionMappings.to_string()),
-                    record_id: None,
-                })
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to convert permission mapping: {}", e),
+                    Some(TableName::AxumGatePermissionMappings.to_string()),
+                    None,
+                ))
             })?;
             out.push(dom);
         }
