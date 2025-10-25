@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0-rc.0] - 2025-10-24
+## [1.0.0-rc.0] - 2025-10-25
 ### 🏗 Refactoring
 - **💥 BREAKING CHANGE:** Introduced hashing module [[0b5cb49]]
 
@@ -26,6 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
+- Updated Rust version to 2024 in permission-registry example [[4f0b4c4]]
+
+- Added snippets about prelude and re-exported crates [[69c8f1e]]
+
+- Allowed unwrap and expect at certain test modules [[5e1ac35]]
+
+- Examples [[29d88f1]]
+
+- Updated CHANGELOG.md [[a9f4873]]
+
 - Updated README.md [[c96b048]]
 
 - Added unwrap to convenient login check example [[47faa87]]
@@ -821,6 +831,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 🚲 Miscellaneous
+- **💥 BREAKING CHANGE:** Removed DecodingKey and EncodingKey from prelude [[bf35415]]
+
 - **💥 BREAKING CHANGE:** Renamed update_permission_set to extend_permission_set [[17dac0f]]
 
 - **💥 BREAKING CHANGE:** Some JWT properties are now mandatory [[acae31b]]
