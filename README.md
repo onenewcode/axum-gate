@@ -13,6 +13,9 @@ Flexible, type-safe authentication and authorization for Axum using JWTs.
 
 ## Install
 
+This crate re-exports jsonwebtoken, cookie, uuid, axum_extra (and optionally prometheus) because those types appear in the public API, and it provides a convenience prelude via axum_gate::prelude::*.
+
+
 ```toml
 [dependencies]
 axum = "0.8"

@@ -19,6 +19,12 @@
 //! - **Pre-built handlers** - Login/logout endpoints with timing attack protection
 //! - **Security by default** - Secure cookie templates and comprehensive input validation
 //!
+//! ### Re-exports
+//! This crate re-exports selected external crates (e.g., `jsonwebtoken`, `cookie`, `uuid`, `axum_extra`, and, behind a feature flag, `prometheus`) because types from these crates are part of this crate’s public API. Keeping these re-exports is intentional so users can import the exposed types from a single namespace.
+//!
+//! ### Prelude
+//! A convenience prelude is available via `axum_gate::prelude::*` that re-exports the most commonly used types (e.g., `Gate`, `JsonWebToken`, `JwtClaims`, `RegisteredClaims`, `AccessPolicy`, `Account`, `Role`, `Group`, `Credentials`, `PermissionId`, and `Permissions`).
+//!
 //! ## Quick Start
 //!
 //! ```rust
