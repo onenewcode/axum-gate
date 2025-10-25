@@ -261,6 +261,7 @@ impl HashingService for Argon2Hasher {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::hashing::HashingService;

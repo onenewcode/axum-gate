@@ -324,6 +324,8 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::unwrap_used)]
+    #[allow(clippy::expect_used)]
     async fn test_timing_attack_protection() {
         use crate::secrets::SecretRepository;
         // Setup
@@ -516,6 +518,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::unwrap_used)]
     async fn test_login_result_no_user_enumeration() {
         let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
         let secret_repo = Arc::new(MemorySecretRepository::new_with_argon2_hasher().unwrap());

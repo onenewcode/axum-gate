@@ -268,6 +268,7 @@ impl Secret {
 }
 
 #[test]
+#[allow(clippy::unwrap_used)]
 fn secret_verification() {
     use crate::hashing::argon2::Argon2Hasher;
 
