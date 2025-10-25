@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
+- Updated Cargo.lock [[568cbd5]]
+
+- Re-arranged use statements in permission-registry example [[643656d]]
+
+- Updated CHANGELOG.md [[fd38e04]]
+
 - Updated Rust version to 2024 in permission-registry example [[4f0b4c4]]
 
 - Added snippets about prelude and re-exported crates [[69c8f1e]]
