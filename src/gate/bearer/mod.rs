@@ -27,38 +27,57 @@
 //!     inserts `StaticTokenAuthorized(true)` on success, 401 otherwise
 //!
 //! Example (JWT strict):
-//! ```ignore
-//! let gate = Gate::bearer("my-app", codec)
+//! ```rust
+//! use std::sync::Arc;
+//! use axum::Router;
+//! use axum_gate::prelude::*;
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!
+//! let router = Router::<()>::new();
+//! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", codec)
 //!     .with_policy(AccessPolicy::require_role(Role::Admin));
 //! router.layer(gate);
 //! ```
 //!
 //! Example (JWT optional):
-//! ```ignore
-//! let gate = Gate::bearer("my-app", codec)
+//! ```rust
+//! use std::sync::Arc;
+//! use axum_gate::prelude::*;
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!
+//! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("my-app", codec)
 //!     .allow_anonymous_with_optional_user(); // Option<Account>, Option<RegisteredClaims>
 //! ```
 //!
 //! Transition to static token mode (compile-time change of available methods):
-//! ```ignore
-//! let gate = Gate::bearer("svc-a", codec)
+//! ```rust
+//! use std::sync::Arc;
+//! use axum_gate::prelude::*;
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!
+//! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
 //!     .with_static_token("shared-secret"); // now static token mode (no with_policy)
 //! ```
 //!
 //! Static token optional:
-//! ```ignore
-//! use axum_gate::gate::bearer::StaticTokenAuthorized;
-//! let gate = Gate::bearer("svc-a", codec)
+//! ```rust
+//! use std::sync::Arc;
+//! use axum_gate::prelude::*;
+//! let codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!
+//! let gate = Gate::bearer::<JsonWebToken::<JwtClaims<Account<Role, Group>>>, Role, Group>("svc-a", codec)
 //!     .with_static_token("shared-secret")
 //!     .allow_anonymous_with_optional_user(); // installs StaticTokenAuthorized(bool)
 //! ```
 //!
 //! Handler extraction (static token optional):
-//! ```ignore
+//! ```rust
+//! use axum_gate::gate::bearer::StaticTokenAuthorized;
+//!
 //! async fn handler(
-//!     axum::Extension(StaticTokenAuthorized(is_auth)): axum::Extension<StaticTokenAuthorized>
+//!     axum::Extension(token_auth): axum::Extension<StaticTokenAuthorized>
 //! ) {
-//!     if is_auth { /* privileged */ } else { /* public */ }
+//!     if token_auth.is_authorized() { /* privileged */ } else { /* public */ }
 //! }
 //! ```
 
