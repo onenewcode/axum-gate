@@ -203,6 +203,7 @@
               cargo-nextest
               cargo-watch
               cargo-expand # For macro debugging
+              cargo-machete # For unused dependency detection
 
               # Database tools for examples
               sqlite
