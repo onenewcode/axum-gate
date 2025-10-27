@@ -15,6 +15,33 @@ use tower::Layer;
 /// This struct is created by `Gate::cookie()` and can be customized
 /// with `with_policy()` and `with_cookie_template()` before being applied
 /// as a layer to your routes.
+///
+/// # Troubleshooting
+///
+/// These issues commonly cause 401 Unauthorized responses and are easy to miss. Check them first:
+///
+/// 1) Cookie name mismatch
+/// - Symptom: Login appears to succeed and a cookie is set, but protected routes still return 401.
+/// - Cause: The login flow issued the cookie under one name, while the `CookieGate` middleware is
+///   looking for a different cookie name.
+/// - Fix: Ensure the same cookie template (or at least the same name) is used for both login and gate.
+///   Use `CookieTemplateBuilder::recommended().name("your-auth-cookie")` and pass that template to:
+///   - the login handler (when setting the cookie), and
+///   - `Gate::cookie(...).with_cookie_template(template)`
+///
+/// 2) Issuer mismatch
+/// - Symptom: 401 on protected routes with logs indicating an invalid issuer (if logging enabled).
+/// - Cause: The expected issuer configured in `Gate::cookie("issuer", ..)` does not exactly match
+///   the `RegisteredClaims::new("issuer", ..)` used when minting the JWT during login. The comparison
+///   is exact and case‑sensitive.
+/// - Fix: Use the same issuer string in both places (no extra whitespace, same case, consistent per‑environment).
+///   Example: `Gate::cookie("my-app", codec)` and `RegisteredClaims::new("my-app", exp)`
+///
+/// Quick checklist:
+/// - Verify cookie name is identical between the login cookie writer and `CookieGate`’s cookie template.
+/// - Verify issuer string is identical between `Gate::cookie("<issuer>", ..)` and `RegisteredClaims::new("<issuer>", ..)`.
+/// - If you changed cookie attributes (domain/path), ensure they still allow the browser to send the cookie
+///   to your protected routes (same host/path scope).
 #[derive(Clone)]
 pub struct CookieGate<C, R, G>
 where
