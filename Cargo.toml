@@ -59,7 +59,6 @@ prometheus = ["audit-logging", "dep:prometheus"]
 [dependencies]
 anyhow = { workspace = true }
 argon2 = { version = "0.5", features = ["std"] }
-async-trait = "0.1"
 axum = { workspace = true }
 axum-extra = { workspace = true }
 chrono = { workspace = true }
@@ -67,7 +66,6 @@ const-crypto = "0.3"
 cookie = { version = "0.18" }
 http = "1"
 jsonwebtoken = { version = "10", features = ["aws_lc_rs"] }
-pin-project = "1"
 prometheus = { workspace = true, optional = true }
 rand = "0.9"
 roaring = { workspace = true, features = ["serde"] }
@@ -86,10 +84,7 @@ uuid = { version = "1", features = ["serde", "v7"] }
 
 
 [dev-dependencies]
-mime = "0.3.17"
-num_enum = "0.7.3"
 surrealdb = { workspace = true }
-tracing-subscriber = { workspace = true }
 tokio-test = "0.4.4"
 uuid = "1"
 

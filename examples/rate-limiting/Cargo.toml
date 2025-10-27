@@ -8,7 +8,6 @@ license = "MIT"
 axum = { workspace = true }
 axum-extra = { workspace = true }
 axum-gate = { path = "../../" }
-chrono = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
