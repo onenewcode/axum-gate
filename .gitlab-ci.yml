@@ -241,18 +241,18 @@ bench_tests:
     only:
         - nightly
         - merge_requests
-
 # Coverage report (optional)
-coverage:
-    <<: *rust_job
-    stage: test
-    script:
-        - cargo install cargo-tarpaulin
-        - cargo tarpaulin --workspace --all-features --out Markdown
-    coverage: '/(\d+\.\d+)% coverage/'
-    artifacts:
-        paths:
-            - tarpaulin-report.md
-    allow_failure: true
-    only:
-        - nightly
+# Currently disabled because of specific security features in docker are not disabled
+# coverage:
+#     <<: *rust_job
+#     stage: test
+#     script:
+#         - cargo install cargo-tarpaulin
+#         - cargo tarpaulin --workspace --all-features --out Markdown
+#     coverage: '/(\d+\.\d+)% coverage/'
+#     artifacts:
+#         paths:
+#             - tarpaulin-report.md
+#     allow_failure: true
+#     only:
+#         - nightly
