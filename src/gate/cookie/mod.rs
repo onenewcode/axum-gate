@@ -1,3 +1,81 @@
+//! Cookie-based JWT authentication gate for browser apps (HTTP-only cookies).
+//!
+//! This module implements the cookie-backed gate returned by `Gate::cookie(...)`.
+//! It validates a JWT carried in a secure, HTTP-only cookie and enforces an
+//! [`AccessPolicy`] in strict mode, or it can operate in an optional, non-blocking
+//! mode that merely injects user context if present.
+//!
+//! Modes and installed request extensions:
+//! - Strict (default): validates the cookie JWT and enforces policy; on success
+//!   inserts `Account<R, G>` and `RegisteredClaims`; on failure returns 401.
+//! - Optional (`allow_anonymous_with_optional_user()`): never blocks; inserts
+//!   `Option<Account<R, G>>` and `Option<RegisteredClaims>` where `Some(..)` is
+//!   provided only when a valid JWT cookie is present; policy is not evaluated.
+//!
+//! # Typical usage (strict):
+//! ```rust
+//! # use axum::{routing::get, Router};
+//! # use std::sync::Arc;
+//! # use axum_gate::prelude::*;
+//! # async fn admin() {}
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let policy = AccessPolicy::<Role, Group>::require_role(Role::Admin);
+//!
+//! let app = Router::<()>::new()
+//!     .route("/admin", get(admin))
+//!     .layer(
+//!         Gate::cookie("my-app", Arc::clone(&jwt))
+//!             .with_policy(policy)
+//!     );
+//! ```
+//!
+//! # Optional user context (never blocks):
+//! ```rust
+//! # use std::sync::Arc;
+//! # use axum_gate::prelude::*;
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
+//!     .allow_anonymous_with_optional_user(); // inserts Option<Account>, Option<RegisteredClaims>
+//! ```
+//!
+//! # Convenience for “any authenticated user”:
+//! ```rust
+//! # use std::sync::Arc;
+//! # use axum_gate::prelude::*;
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
+//!     .require_login(); // baseline role + all supervisors
+//! ```
+//!
+//! # Cookie template configuration
+//! ```rust
+//! # use std::sync::Arc;
+//! # use axum_gate::prelude::*;
+//! let jwt = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//! let gate = Gate::cookie::<_, Role, Group>("my-app", jwt)
+//!     .configure_cookie_template(|tpl| {
+//!         tpl.name("auth-token")
+//!            .persistent(cookie::time::Duration::hours(24))
+//!     })?;
+//! # Ok::<_, axum_gate::cookie_template::CookieTemplateBuilderError>(())
+//! ```
+//!
+//! # Security notes
+//! - Cookies are built via `CookieTemplateBuilder::recommended()` which provides sensible,
+//!   environment-aware defaults: `HttpOnly=true`, `Secure` on release builds, strict SameSite
+//!   policies by default, and session cookies unless overridden.
+//! - If you set `SameSite=None`, `Secure=true` is required by browsers; the template validator
+//!   enforces safe combinations.
+//! - Always run production behind HTTPS and prefer short-lived JWTs.
+//!
+//! # Prometheus metrics (feature-gated)
+//! - When the `prometheus` feature is enabled you can enable lightweight metrics collection:
+//!   - `with_prometheus_metrics()` installs metrics into the default registry
+//!   - `with_prometheus_registry(&registry)` installs into a specific registry
+//!
+//! # Handler extraction examples
+//! - Strict mode inserts concrete `Account<R, G>` and `RegisteredClaims` on success
+//! - Optional mode inserts `Option<Account<R, G>>` and `Option<RegisteredClaims>`
 pub(crate) mod cookie_service;
 
 use self::cookie_service::CookieGateService;
