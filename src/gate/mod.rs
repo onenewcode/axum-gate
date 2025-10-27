@@ -117,7 +117,6 @@ use crate::codecs::Codec;
 use std::sync::Arc;
 
 pub mod bearer;
-/// Cookie-based JWT authentication gate implementation.
 pub mod cookie;
 
 /// Main entry point for creating authentication gates.
