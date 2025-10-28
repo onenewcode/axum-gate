@@ -228,7 +228,7 @@ where
 
     /// Convenience: configure the secure cookie template via a closure using the high-level `CookieTemplateBuilder`.
     /// Starts from [`CookieTemplateBuilder::recommended()`] each time.
-    /// Invalid configurations (e.g. SameSite=None without Secure) will panic to surface misconfiguration early.
+    /// Invalid configurations (e.g. SameSite=None without Secure) return an error (`CookieTemplateBuilderError`) to surface misconfiguration early.
     ///
     /// # Example
     /// ```rust

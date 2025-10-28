@@ -24,7 +24,24 @@ use http::StatusCode;
 use tower::Service;
 use tracing::{debug, trace, warn};
 
-/// The gate is protecting your application from unauthorized access.
+/// Cookie-backed JWT gate service.
+///
+/// Behavior:
+/// - Strict mode (default): validates the JWT from the configured cookie,
+///   enforces the configured `AccessPolicy`, and on success inserts
+///   `Account<R, G>` and `RegisteredClaims` into request extensions. On failure,
+///   responds with 401 Unauthorized.
+/// - Optional mode (`allow_anonymous_with_optional_user()` from the builder):
+///   never blocks. It inserts only:
+///   - `Option<Account<R, G>>`
+///   - `Option<RegisteredClaims>`
+///   They are `Some(..)` when a valid JWT cookie is present and `None` otherwise.
+///   No concrete types are inserted in this mode. Authorization policy is not
+///   evaluated; handlers must enforce any required checks explicitly.
+///
+/// The cookie name and attributes are derived from the provided `CookieBuilder`.
+/// The issuer and JWT validation are configured via the builder that constructs
+/// this service.
 #[derive(Debug, Clone)]
 pub struct CookieGateService<C, R, G, S>
 where
@@ -155,9 +172,7 @@ where
                 if let JwtValidationResult::Valid(jwt) =
                     self.jwt_validation_service.validate_token(cookie_value)
                 {
-                    // Insert concrete types for convenience
-                    req.extensions_mut().insert(jwt.custom_claims.clone());
-                    req.extensions_mut().insert(jwt.registered_claims.clone());
+                    // Valid JWT present; optional mode will only install Option<...> extensions
 
                     opt_account = Some(jwt.custom_claims.clone());
                     opt_reg_claims = Some(jwt.registered_claims.clone());
