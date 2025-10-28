@@ -262,7 +262,7 @@ Adopting these rules ensures consistent, high-quality changes and smooth collabo
 
 # Global AI Rules for This Workspace
 
-These rules are model-agnostic and apply equally when using Claude Sonnet 4 or GPT‑5 in Zed. They define how to structure assistance, keep changes safe, and maximize developer productivity across any programming language or framework.
+These rules are model-agnostic and apply equally across different AI providers in any development environment. They define how to structure assistance, keep changes safe, and maximize developer productivity across any programming language or framework.
 
 ## Purpose
 - Provide consistent, high-quality assistance across languages and stacks in this workspace.
@@ -341,11 +341,16 @@ These rules are model-agnostic and apply equally when using Claude Sonnet 4 or G
 - Suggest health checks and basic metrics for new services or endpoints.
 
 ## Documentation & Comments
-- Explain "why", not just "what". Call out assumptions, trade-offs, and limitations.
-- Include usage examples for public functions/components.
+- Focus documentation on developers using the corresponding code, not implementers or maintainers.
+- Do not explain differences to previous versions or internals that users are not required to know about.
+- Keep documentation short, simple, and informative - prioritize clarity over comprehensiveness.
+- Explain "why", not just "what". Call out assumptions, trade-offs, and limitations that affect usage.
+- Include practical usage examples for public functions/components showing common use cases.
+- Document parameters, return values, and error conditions that callers need to handle.
 - Update or create README snippets when adding meaningful features or workflows.
+- Avoid implementation details unless they directly impact how the code should be used.
 
-## Zed Integration Notes
+## IDE Integration Notes
 - Optimize for navigation: consistent naming, clear module structures, and meaningful symbols for go-to-definition/find references.
 - Keep imports ordered and deduplicated.
 - When suggesting commands or scripts, prefer portable, single-shot commands (no long-running watchers).
@@ -379,9 +384,9 @@ These global rules ensure consistent, safe, and efficient collaboration with AI 
 ## Source: global/provider-guidance.md
 
 
-# Provider-Agnostic Model Guidance (Claude Sonnet 4 and GPT-5)
+# Provider-Agnostic Model Guidance
 
-This document makes the ruleset work interchangeably with Claude Sonnet 4 and GPT-5 in Zed. It provides model-neutral instructions, selection guidance by task type, and response-shaping patterns that produce consistent, reviewable results regardless of the chosen provider.
+This document makes the ruleset work interchangeably with different AI models in any development environment. It provides model-neutral instructions, selection guidance by task type, and response-shaping patterns that produce consistent, reviewable results regardless of the chosen provider.
 
 ## Goals and Scope
 
@@ -473,7 +478,7 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 - Use stable wording for headings and checklists.
 - Prefer explicit types, clear interfaces, and well-defined contracts.
 
-## Zed-Oriented Tips (Model-Neutral)
+## IDE-Oriented Tips (Model-Neutral)
 
 - Respect ruleset scoping via globs; keep changes within the current file set unless asked otherwise.
 - Include complete module context (imports, dependencies, configuration updates when relevant).
@@ -533,6 +538,7 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 - Respect the project's current versions and dependency management approach.
 - Propose upgrades explicitly with a short risk assessment and a test/rollback plan.
 - Keep feature flags and dependency updates localized and documented.
+- When looking up the latest API versions or official docs, use Context7 to fetch up-to-date documentation and version information.
 
 ## Universal Patterns for Quality Code
 
@@ -562,7 +568,262 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
 
 ---
 
-With these rules, Claude Sonnet 4 and GPT-5 can be used interchangeably in Zed. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers and programming languages.
+With these rules, different AI models can be used interchangeably in any development environment. The guidance here standardizes how tasks are planned, executed, and validated, producing consistent, safe, and reviewable results across providers and programming languages.
+
+
+## Source: global/readme-structure.md
+
+
+# README Structure and Content Rules for AI-Assisted Development
+
+## Purpose
+Define standards for creating comprehensive, user-friendly README.md files that effectively communicate project purpose, usage, and contribution guidelines to users and developers.
+
+## Essential README Sections
+
+### Project Header Requirements
+- Start with clear, descriptive project title as H1 heading
+- Include concise one-line description immediately after title
+- Add detailed project purpose and goals in following paragraph
+- Place badges (build status, version, license) after description if applicable
+
+### Installation Section Standards
+- Provide complete prerequisites list with version requirements
+- Include step-by-step installation instructions
+- Add platform-specific guidance when needed
+- Show actual commands users should run (npm install, pip install, etc.)
+- Test all installation commands before including them
+
+### Usage Examples Requirements
+- Include basic usage example that users can run immediately
+- Provide complete, working code snippets with proper syntax highlighting
+- Show expected output where helpful
+- Include common use cases and workflows
+- Add configuration options with examples
+
+### Documentation Structure
+- Use consistent heading hierarchy (H1 for title, H2 for main sections, H3 for subsections)
+- Include table of contents for READMEs longer than 200 lines
+- Link to external documentation when available
+- Provide API reference or quick reference section for libraries
+
+## Code Example Standards
+
+### Code Block Requirements
+- Use proper language tags for syntax highlighting
+- Provide complete, runnable examples that work out of the box
+- Include necessary imports and setup code
+- Show realistic data and scenarios, not placeholder text
+- Test all code examples before including them
+
+### Example Code Patterns
+```bash
+# Good: Complete, tested command
+npm install package-name --save
+npm run build
+```
+
+```javascript
+// Good: Complete example with imports and realistic usage
+const express = require('express');
+const app = express();
+
+app.get('/api/users', (req, res) => {
+  res.json({ users: ['alice', 'bob'] });
+});
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+### Anti-Patterns to Avoid
+- ❌ Incomplete code snippets without imports or context
+- ❌ Placeholder text like "your-api-key-here" without explanation
+- ❌ Commands that don't actually work as written
+- ❌ Examples using deprecated or outdated syntax
+
+## Project Type Specific Guidelines
+
+### Library/Package Documentation
+- Emphasize installation and basic usage heavily
+- Include comprehensive API documentation or links
+- Show integration examples with popular frameworks
+- Document all public methods, functions, or classes
+- Include troubleshooting section for common issues
+
+### Application Documentation
+- Include screenshots or demo links prominently
+- Provide deployment and configuration instructions
+- Document environment variables and settings
+- Show different usage scenarios or user workflows
+- Include system requirements and dependencies
+
+### CLI Tool Documentation
+- Show command examples with actual output
+- Document all available flags and options with descriptions
+- Include usage scenarios and common workflows
+- Provide installation verification commands
+- Add troubleshooting for common CLI issues
+
+## Contributing and Community Sections
+
+### Contributing Guidelines Requirements
+- Explain how to report bugs with issue template links
+- Provide development environment setup instructions
+- Document coding standards and style guidelines
+- Explain pull request process and requirements
+- Include testing requirements and how to run tests
+
+### Community Information Standards
+- Include license information with link to full text
+- Add code of conduct reference for open source projects
+- Credit major contributors and acknowledgments
+- Provide contact information or community links
+- Include security policy reference if applicable
+
+## Quality Assurance Standards
+
+### Content Verification Requirements
+- Test all installation instructions on clean environment
+- Verify all code examples compile and run correctly
+- Check all links are accessible and current
+- Ensure consistent formatting and style throughout
+- Update examples when dependencies or APIs change
+
+### Maintenance Guidelines
+- Keep README current with project changes
+- Update version numbers and compatibility information
+- Refresh screenshots and demo links regularly
+- Review and update contributing guidelines periodically
+- Maintain consistency with actual project behavior
+
+## AI Assistant Interaction Guidelines
+
+### Effective README Creation Requests
+When requesting README assistance:
+- Specify project type (library, application, CLI tool, etc.)
+- Mention target audience (beginners, developers, specific domain)
+- Include existing project structure and key files
+- Specify any special requirements or constraints
+
+### Iterative README Development
+- Start with essential sections (title, description, installation, basic usage)
+- Add comprehensive examples and documentation iteratively
+- Refine based on user feedback and common questions
+- Test README effectiveness with new users when possible
+
+### README Review Process
+When reviewing generated READMEs:
+- Verify all code examples work as written
+- Check that installation instructions are complete and accurate
+- Ensure appropriate depth for target audience
+- Confirm consistent formatting and professional presentation
+
+## Content Organization Patterns
+
+### Information Hierarchy
+Structure information by user journey:
+1. **Discovery**: Title, description, key features
+2. **Evaluation**: Screenshots, demos, comparison with alternatives
+3. **Getting Started**: Installation, basic usage, quick start guide
+4. **Learning**: Detailed examples, tutorials, best practices
+5. **Reference**: API documentation, configuration options, troubleshooting
+6. **Contributing**: Development setup, contribution guidelines, community info
+
+### Section Ordering Standards
+- Place most critical information first (installation, basic usage)
+- Group related information together (all usage examples in one section)
+- End with community and contribution information
+- Use consistent section naming across projects
+
+## Formatting and Style Guidelines
+
+### Markdown Best Practices
+- Use consistent heading styles and hierarchy
+- Include blank lines around code blocks and sections
+- Use proper list formatting with consistent indentation
+- Include alt text for images and meaningful link text
+- Test markdown rendering in target platforms (GitHub, GitLab, etc.)
+
+### Visual Design Principles
+- Use whitespace effectively to improve readability
+- Include visual breaks between major sections
+- Use code blocks, quotes, and emphasis strategically
+- Keep line length reasonable for easy reading
+- Ensure good contrast and accessibility
+
+## Checklist for README Quality
+
+**Essential Content:**
+- [ ] Clear project title and description
+- [ ] Complete installation instructions tested on clean system
+- [ ] Working basic usage example that new users can run
+- [ ] Link to additional documentation or resources
+- [ ] License and contributing information
+
+**Code Examples:**
+- [ ] All code examples tested and working
+- [ ] Proper syntax highlighting applied
+- [ ] Complete examples with necessary imports and setup
+- [ ] Realistic data and scenarios used
+- [ ] Expected output shown where helpful
+
+**Organization and Style:**
+- [ ] Logical information flow matching user journey
+- [ ] Consistent formatting and markdown style
+- [ ] Appropriate section depth for target audience
+- [ ] Professional presentation and tone
+- [ ] All links verified and accessible
+
+**Maintenance Considerations:**
+- [ ] Version information current and accurate
+- [ ] Examples compatible with documented versions
+- [ ] Screenshots and demos reflect current state
+- [ ] Contributing guidelines match actual process
+- [ ] Contact and community information up to date
+
+## Anti-Patterns in README Creation
+
+**Avoid These Common Mistakes:**
+
+**❌ Incomplete Installation Instructions:**
+```markdown
+# Too vague
+## Installation
+Just install the dependencies and run it.
+```
+
+**❌ Non-Working Code Examples:**
+```python
+# Missing imports, won't actually run
+result = awesome_function("test")
+print(result)
+```
+
+**❌ Overwhelming Wall of Text:**
+```markdown
+# No structure or breathing room
+This project does many things and here's everything about it in one giant paragraph that goes on and on without any breaks or organization making it very difficult to scan and find specific information that users need when they're trying to understand what this project does and how to use it...
+```
+
+**❌ Outdated or Incorrect Information:**
+```markdown
+# Information that doesn't match current project state
+This project requires Node.js 8+ (when it actually requires Node.js 16+)
+Run `npm start` to begin (when the actual command is `npm run dev`)
+```
+
+**❌ Missing Critical Information:**
+```markdown
+# Assumes too much knowledge
+## Usage
+Configure the settings and run the application.
+```
+
+---
+
+Following these rules ensures README files serve as effective project documentation that welcomes new users, provides clear guidance, and maintains professional standards across different project types and audiences.
 
 
 ## Source: global/security-ai.md
@@ -570,7 +831,7 @@ With these rules, Claude Sonnet 4 and GPT-5 can be used interchangeably in Zed. 
 
 # AI Security & Privacy Rules (Global)
 
-Model-agnostic rules to keep code, data, and credentials safe while collaborating with AI in Zed. These rules apply to all files matched by this ruleset.
+Model-agnostic rules to keep code, data, and credentials safe while collaborating with AI in any development environment. These rules apply to all files matched by this ruleset.
 
 ## Golden rules
 
@@ -710,14 +971,14 @@ Use these templates to align requests/responses with safe practices.
 - Logging: Log security events for monitoring but never log sensitive data.
 
 ---
-By following these rules, assistants and contributors maintain strong security posture across models and workflows while enabling effective, privacy-preserving collaboration in Zed regardless of the programming language or technology stack being used.
+By following these rules, assistants and contributors maintain strong security posture across models and workflows while enabling effective, privacy-preserving collaboration in any development environment regardless of the programming language or technology stack being used.
 
 
 ## Source: rust/rust.md
 
 # Rust Best Practices for AI-Assisted Development
 
-You are an expert in Rust programming and related technologies, optimized for AI-assisted development workflows using Zed editor, Claude Sonnet 4, and GPT-5.
+Expert-level Rust programming guidance optimized for AI-assisted development workflows.
 
 ## AI-Optimized Development Principles
 
@@ -734,7 +995,7 @@ You are an expert in Rust programming and related technologies, optimized for AI
 - If the complete answer may exceed tool or model limits, propose a plan and split the work into steps
 - When requirements are ambiguous, ask one clarifying question, then proceed with a conservative, safe default
 
-### Zed Editor Integration
+### IDE Integration
 - Structure code for optimal Go-to-Definition and Find References functionality
 - Use consistent naming conventions that support fuzzy finding and navigation
 - Organize imports in standard order: std, external crates, local crates, modules
@@ -779,33 +1040,80 @@ You are an expert in Rust programming and related technologies, optimized for AI
 ### Project Structure
 ```
 src/
-├── lib.rs              # Crate root with public API
-├── bin/                # Binary targets
-│   └── main.rs
-├── config/             # Configuration management
+├── verification_result.rs
+├── comma_separated_value.rs
+├── groups.rs
+├── roles.rs
+├── lib.rs
+├── cookie_template.rs
+├── route_handlers.rs
+├── credentials
+│   ├── credentials_verifier.rs
+│   └── mod.rs
+├── secrets
+│   ├── secret_repository.rs
+│   └── mod.rs
+├── audit.rs
+├── hashing
+│   ├── hashing_service.rs
 │   ├── mod.rs
-│   └── settings.rs
-├── domain/             # Domain models and business logic
+│   └── argon2.rs
+├── jwt
 │   ├── mod.rs
-│   ├── entities/       # Domain entities
-│   ├── services/       # Business services
-│   └── repositories/   # Data access abstractions
-├── infrastructure/     # External integrations
+│   ├── validation_result.rs
+│   └── validation_service.rs
+├── codecs
+│   ├── logout.rs
 │   ├── mod.rs
-│   ├── database/
-│   ├── http_client/
-│   └── messaging/
-├── api/                # API layer (REST, GraphQL, gRPC)
+│   └── login.rs
+├── authn
 │   ├── mod.rs
-│   ├── handlers/
-│   ├── middleware/
-│   └── routing/
-├── utils/              # Utility functions and helpers
+│   ├── access_scope.rs
+│   ├── access_hierarchy.rs
+│   ├── authorization_service.rs
+│   └── access_policy.rs
+├── authz
+│   ├── account_delete.rs
+│   ├── account_repository.rs
+│   ├── account_insert.rs
+│   └── mod.rs
+├── accounts
 │   ├── mod.rs
-│   └── validation.rs
-└── tests/              # Integration tests
-    └── common/
-        └── mod.rs
+│   ├── bearer
+│   │   ├── static_token_authorized.rs
+│   │   └── mod.rs
+│   └── cookie
+│       ├── cookie_service.rs
+│       └── mod.rs
+├── gate
+│   ├── mod.rs
+│   ├── models
+│   │   ├── credentials.rs
+│   │   ├── account.rs
+│   │   └── permission_mapping.rs
+│   ├── sea_orm
+│   ├── memory.rs
+│   ├── sea_orm.rs
+│   └── surrealdb.rs
+├── repositories
+│   ├── validate_permissions.rs
+│   ├── permission_collision.rs
+│   ├── as_permission_name.rs
+│   ├── permission_id.rs
+│   ├── application_validator.rs
+│   ├── validation_report.rs
+│   ├── collision_checker.rs
+│   └── mod.rs
+├── mapping
+│   ├── mapping_repository.rs
+│   └── mod.rs
+├── permissions
+│   ├── domain.rs
+│   ├── mod.rs
+│   ├── application.rs
+│   ├── infrastructure.rs
+│   └── ports.rs
+├── errors
 ```
 
 ### Module Design Principles
@@ -815,7 +1123,10 @@ src/
 - Use `pub(crate)` for internal APIs that shouldn't be exposed
 - Implement proper module documentation with usage examples
 - Design for testability with dependency injection patterns
-- Create clear boundaries between layers (domain, infrastructure, API)
+- Enforce category-domain boundaries: categories are top-level business groupings; domains are submodules within a category
+- Dependencies flow inward: delivery-facing modules (e.g., `route_handlers.rs`) depend on category/domain modules; category/domain modules depend only on shared technical modules within the crate (e.g., `hashing`, `jwt`, `repositories`) and Rust std/libs; never on delivery modules or unrelated categories directly
+- Cross-category interactions occur via explicit interfaces (traits) and dedicated integration modules; avoid direct imports between categories and avoid cyclic dependencies
+- Surface public API via `mod.rs` per domain; keep internal modules `pub(crate)` unless deliberately shared
 
 ### Dependency Management
 ```toml
@@ -1122,7 +1433,7 @@ pub enum DatabaseError {
 
 ---
 
-Following these practices ensures that Rust code generated with AI assistance is maintainable, performant, and follows modern Rust idioms while being optimized for development workflows using Zed editor and AI assistants like Claude Sonnet 4 and GPT-5.
+Following these practices ensures that Rust code generated with AI assistance is maintainable, performant, and follows modern Rust idioms while being optimized for development workflows with modern AI assistants.
 
 
 ## Source: rust/axum.md
@@ -1130,7 +1441,7 @@ Following these practices ensures that Rust code generated with AI assistance is
 
 # Axum Best Practices for AI-Assisted Development
 
-Optimized for Zed editor, Claude Sonnet 4, and GPT-5 workflows.
+Expert-level Axum guidance optimized for AI-assisted development workflows.
 Target: Axum 0.8.4+, Tokio + Hyper + Tower stack.
 
 ## Core Principles
