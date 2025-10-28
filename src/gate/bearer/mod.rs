@@ -398,8 +398,7 @@ where
             if let Some(token) = Self::bearer_token(&req) {
                 trace!("JWT optional bearer header present");
                 if let JwtValidationResult::Valid(jwt) = self.validator.validate_token(token) {
-                    req.extensions_mut().insert(jwt.custom_claims.clone());
-                    req.extensions_mut().insert(jwt.registered_claims.clone());
+                    // Valid JWT present; optional mode inserts only Option<...> extensions
                     opt_account = Some(jwt.custom_claims.clone());
                     opt_claims = Some(jwt.registered_claims.clone());
                 } else {
