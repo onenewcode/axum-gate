@@ -158,7 +158,7 @@ impl Gate {
     pub fn cookie<C, R, G>(issuer: &str, codec: Arc<C>) -> CookieGate<C, R, G>
     where
         C: Codec,
-        R: AccessHierarchy + std::fmt::Display,
+        R: AccessHierarchy + Eq + std::fmt::Display,
         G: Eq,
     {
         CookieGate::new_with_codec(issuer, codec)
