@@ -90,3 +90,6 @@ uuid = "1"
 
 [profile.dev]
 debug = false
+
+[package.metadata.docs.rs]
+all-features = true
