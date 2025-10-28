@@ -110,11 +110,32 @@ where
     optional: bool,
 }
 
+impl<R, G> std::fmt::Debug for JwtConfig<R, G>
+where
+    R: AccessHierarchy + Eq + std::fmt::Display,
+    G: Eq,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JwtConfig")
+            .field("optional", &self.optional)
+            .finish_non_exhaustive()
+    }
+}
+
 /// Static token mode configuration (compile-time).
 #[derive(Clone)]
 pub struct StaticTokenConfig {
     token: String,
     optional: bool,
+}
+
+impl std::fmt::Debug for StaticTokenConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StaticTokenConfig")
+            .field("token", &"<redacted>")
+            .field("optional", &self.optional)
+            .finish_non_exhaustive()
+    }
 }
 
 /// Generic bearer gate with compile-time mode parameter.
@@ -323,6 +344,7 @@ where
     fn unauthorized() -> Response<Body> {
         Response::builder()
             .status(StatusCode::UNAUTHORIZED)
+            .header(http::header::WWW_AUTHENTICATE, "Bearer")
             .body(Body::from("Unauthorized"))
             .expect("static unauthorized response")
     }
@@ -330,11 +352,12 @@ where
     fn bearer_token(req: &Request<Body>) -> Option<&str> {
         let value = req.headers().get(http::header::AUTHORIZATION)?;
         let value = value.to_str().ok()?.trim();
-        if value.len() > 7 && value[..7].eq_ignore_ascii_case("Bearer ") {
-            Some(&value[7..])
-        } else {
-            None
+        let mut parts = value.split_whitespace();
+        let scheme = parts.next()?;
+        if !scheme.eq_ignore_ascii_case("Bearer") {
+            return None;
         }
+        parts.next()
     }
 }
 
@@ -500,6 +523,7 @@ impl<S> StaticTokenService<S> {
     fn unauthorized() -> Response<Body> {
         Response::builder()
             .status(StatusCode::UNAUTHORIZED)
+            .header(http::header::WWW_AUTHENTICATE, "Bearer")
             .body(Body::from("Unauthorized"))
             .expect("static unauthorized response")
     }
@@ -507,11 +531,12 @@ impl<S> StaticTokenService<S> {
     fn bearer_token(req: &Request<Body>) -> Option<&str> {
         let value = req.headers().get(http::header::AUTHORIZATION)?;
         let value = value.to_str().ok()?.trim();
-        if value.len() > 7 && value[..7].eq_ignore_ascii_case("Bearer ") {
-            Some(&value[7..])
-        } else {
-            None
+        let mut parts = value.split_whitespace();
+        let scheme = parts.next()?;
+        if !scheme.eq_ignore_ascii_case("Bearer") {
+            return None;
         }
+        parts.next()
     }
 }
 
@@ -620,5 +645,61 @@ mod tests {
                 .with_static_token("secret")
                 .allow_anonymous_with_optional_user();
         assert!(static_gate.mode.optional);
+    }
+
+    #[test]
+    fn jwt_unauthorized_has_www_authenticate() {
+        tokio_test::block_on(async {
+            use axum::{body::Body, extract::Request, http::Response};
+            use std::convert::Infallible;
+            use tower::ServiceExt;
+
+            let codec =
+                std::sync::Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let gate: BearerGateJsonwebtoken = BearerGate::new_with_codec("issuer", codec)
+                .with_policy(AccessPolicy::<Role, Group>::require_role(Role::Admin));
+
+            let svc = gate.layer(tower::service_fn(|_req: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::from("ok")))
+            }));
+
+            let req = Request::new(Body::empty());
+            let resp = svc.oneshot(req).await.unwrap();
+
+            assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
+            let hdr = resp
+                .headers()
+                .get(http::header::WWW_AUTHENTICATE)
+                .and_then(|v| v.to_str().ok());
+            assert_eq!(hdr, Some("Bearer"));
+        });
+    }
+
+    #[test]
+    fn static_token_unauthorized_has_www_authenticate() {
+        tokio_test::block_on(async {
+            use axum::{body::Body, extract::Request, http::Response};
+            use std::convert::Infallible;
+            use tower::ServiceExt;
+
+            let codec =
+                std::sync::Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+            let gate: BearerGate<_, Role, Group, StaticTokenConfig> =
+                BearerGate::new_with_codec("issuer", codec).with_static_token("secret");
+
+            let svc = gate.layer(tower::service_fn(|_req: Request<Body>| async {
+                Ok::<_, Infallible>(Response::new(Body::from("ok")))
+            }));
+
+            let req = Request::new(Body::empty());
+            let resp = svc.oneshot(req).await.unwrap();
+
+            assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
+            let hdr = resp
+                .headers()
+                .get(http::header::WWW_AUTHENTICATE)
+                .and_then(|v| v.to_str().ok());
+            assert_eq!(hdr, Some("Bearer"));
+        });
     }
 }
