@@ -254,7 +254,7 @@ impl CookieTemplateBuilder {
         Ok(())
     }
 
-    /// Validate then build. Panics if invalid (ergonomic for tests / examples / examples).
+    /// Validate then build. Returns an error if invalid (`CookieTemplateBuilderError`).
     pub fn validate_and_build(&self) -> Result<CookieBuilder<'static>, CookieTemplateBuilderError> {
         self.validate()?;
         Ok(self.build())
