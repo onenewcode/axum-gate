@@ -7,6 +7,8 @@
 //! use axum_gate::repositories::memory::MemoryAccountRepository;
 //! use std::sync::Arc;
 //!
+//! let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
+//!
 //! // Build an account repository (e.g., in-memory for examples)
 //! let account_repo = Arc::new(MemoryAccountRepository::<Role, Group>::default());
 //!
