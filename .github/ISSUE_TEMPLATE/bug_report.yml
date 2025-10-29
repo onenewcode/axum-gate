@@ -1,0 +1,160 @@
+name: "🐞 Bug report"
+description: "Report a bug or unexpected behavior in the axum-gate crate"
+title: "bug: <short summary>"
+labels:
+  - bug
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please include as much detail as possible.
+        Do not include secrets, tokens, or PII. Redact or replace with placeholders like "<REDACTED:JWT>".
+
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      description: Please confirm the following before submitting.
+      options:
+        - label: I have searched existing issues and discussions
+          required: true
+        - label: I can reproduce this with the latest released version of axum-gate
+          required: true
+        - label: I have a minimal reproduction demonstrating the issue
+          required: true
+
+  - type: input
+    id: crate_version
+    attributes:
+      label: axum-gate version
+      description: Provide the exact crate version from your Cargo.lock (preferred) or Cargo.toml.
+      placeholder: e.g., 0.3.4
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide details about your environment. Run `rustc --version` and include the output.
+      placeholder: |
+        OS: macOS 14.5 (Apple Silicon) / Ubuntu 22.04 / Windows 11
+        Architecture: x86_64 / aarch64
+        Rust toolchain: stable-x.y.z / nightly-yyyy-mm-dd
+        rustc: rustc 1.xx.x (commit-hash yyyy-mm-dd)
+        axum: x.y.z
+        tokio: x.y.z
+        feature flags (axum-gate): ["serde", "sea-orm", "surrealdb", ...]
+        backend in use: memory / sea-orm / surrealdb
+        database version (if applicable): PostgreSQL 15 / MySQL 8 / SQLite
+        other relevant deps: tower=x.y.z, hyper=x.y.z, tracing=x.y.z
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction_steps
+    attributes:
+      label: Steps to reproduce
+      description: Clear, minimal steps to reproduce the issue. Include commands and sample requests if relevant.
+      placeholder: |
+        1. Setup project with dependencies (show Cargo.toml relevant parts)
+        2. Run <command> to start
+        3. Send request: curl -i http://localhost:3000/path
+        4. Observe error/behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: minimal_code
+    attributes:
+      label: Minimal reproducible code
+      description: Include the smallest possible code snippet that reproduces the bug. If larger, link to a gist or repo.
+      placeholder: |
+        ```rust
+        // Cargo.toml (relevant)
+        // [dependencies]
+        // axum = "0.8"
+        // tokio = { version = "1", features = ["full"] }
+        // axum-gate = "<version>"
+
+        #[tokio::main]
+        async fn main() -> Result<(), Box<dyn std::error::Error>> {
+            // minimal setup that triggers the issue
+            Ok(())
+        }
+        ```
+      render: rust
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: The request should return HTTP 200 and include header X-Example...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+      placeholder: The handler returns HTTP 500 with message "...", or the service panics with backtrace...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs, error messages, and backtraces
+      description: Include sanitized logs and errors. Do not paste secrets; redact sensitive values.
+      placeholder: |
+        ```text
+        2025-01-01T12:34:56Z ERROR axum_gate::...: validation failed: invalid token
+           Caused by: ...
+        ```
+      render: text
+    validations:
+      required: false
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Is this a regression?
+      description: Did this work in a previous version of axum-gate (or dependent libraries)?
+      options:
+        - Yes
+        - No
+        - Not sure
+    validations:
+      required: false
+
+  - type: input
+    id: prior_working_version
+    attributes:
+      label: Previously working version (if regression)
+      description: If this is a regression, what version(s) worked previously?
+      placeholder: e.g., axum-gate 0.3.2, axum 0.8.5
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Any other context, links, or screenshots about the problem.
+      placeholder: Workarounds attempted, hypotheses, related PRs, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: security_and_privacy
+    attributes:
+      label: Security and privacy
+      description: Confirm you have not included sensitive data.
+      options:
+        - label: I confirm this report does not contain secrets, tokens, or PII and sensitive values are redacted.
+          required: true
