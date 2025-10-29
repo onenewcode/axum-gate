@@ -1,0 +1,16 @@
+# GitHub Issue Template configuration
+# - Disables opening a blank issue
+# - Enables the Issue Template chooser when multiple templates exist in .github/ISSUE_TEMPLATE
+#
+# You can customize or add contact links below.
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: "Security vulnerability reporting"
+    url: "https://bounty.github.com/"
+    about: "Report security issues privately; do not open public issues."
+
+  - name: "GitHub Community Support"
+    url: "https://github.com/orgs/community/discussions"
+    about: "General questions and how-to help."
