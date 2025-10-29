@@ -75,3 +75,11 @@ For common integration issues and practical debugging tips, see TROUBLESHOOTING.
 
 - MSRV: 1.86
 - License: MIT
+- SurrealDB (BUSL-1.1) notice:
+  - Enabling the optional feature `storage-surrealdb` pulls in SurrealDB, which is licensed under the Business Source License 1.1 (not OSI-approved).
+  - BUSL restricts Production Use unless allowed by the licensor or after the project's Change Date. This feature is off by default.
+  - If you build or distribute binaries that enable this feature, you must comply with SurrealDB's BUSL terms or obtain a commercial license.
+  - When distributing binaries that include SurrealDB, include third-party notices and the SurrealDB license text.
+  - For fully open-source distributions, prefer the `memory` or `storage-seaorm` backends.
+- subtle license notice:
+  - The license for the subtle dependency is provided in the NOTICE file in this repository. When redistributing, retain the NOTICE contents as required by that license.
