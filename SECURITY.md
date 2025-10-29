@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0.
+This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0-rc.0.
 
 ---
 
@@ -8,9 +8,8 @@ This document outlines the security practices, built-in protections, and deploym
 
 | Version | Supported |
 | ------- | --------- |
-| 1.0.0 | ✅ |
-| 1.0.0-rc.1 | ✅ |
-| < 1.0.0 | ❌ |
+| 1.0.0-rc.0 | ✅ |
+| < 1.0.0-rc.0 | ❌ |
 
 Only the latest stable release and the most recent release candidate receive security updates.
 
@@ -21,7 +20,7 @@ Only the latest stable release and the most recent release candidate receive sec
 ### Argon2id Implementation
 - **Algorithm**: Uses Argon2id (latest variant) with cryptographically secure parameters
 - **Salting**: Each password gets a unique, randomly generated salt using `OsRng`
-- **PHC Format**: Stores hashes in standardized PHC (Password Hashing Competition) format
+- PHC string format: Stores Argon2id hashes in the standard PHC string format
 - **No Plaintext Storage**: Only Argon2id hashes are persisted; plaintext secrets never touch disk
 
 ### Configurable Security Levels
@@ -35,8 +34,8 @@ The crate provides three security presets:
 
 **Default Behavior**:
 - Release builds: `HighSecurity` preset automatically
-- Debug builds: `DevFast` preset for faster iteration
-- Production override: Use `insecure-fast-hash` feature flag to access `DevFast` in release (⚠️ **NOT RECOMMENDED**)
+- Debug builds: `DevFast` preset (4 MiB memory, 1 iteration, 1 thread) for faster iteration
+- Release opt-in: `insecure-fast-hash` feature enables `DevFast` in release builds (⚠️ NEVER use in production)
 
 ### Timing Attack Protection
 - **Constant-Time Verification**: Always performs Argon2 computation, even for non-existent accounts
@@ -66,11 +65,27 @@ The crate provides three security presets:
 **Example Production Setup**:
 ```rust
 // Load from environment (recommended)
-let jwt_secret = std::env::var("JWT_SECRET").expect("JWT_SECRET not set");
-let jwt_manager = JwtManager::new(jwt_secret.as_bytes());
+let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET not set");
 
-// Or from a secret management service
-let jwt_manager = JwtManager::new(&load_secret_from_vault("jwt-signing-key"));
+// Construct symmetric encoding/decoding keys
+let enc_key = jsonwebtoken::EncodingKey::from_secret(secret.as_bytes());
+let dec_key = jsonwebtoken::DecodingKey::from_secret(secret.as_bytes());
+
+// Build options with persistent keys (avoid JsonWebToken::default in production)
+use axum_gate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims};
+let options = JsonWebTokenOptions {
+    enc_key,
+    dec_key,
+    header: None,
+    validation: None,
+};
+
+// Create a codec that survives restarts as long as JWT_SECRET stays the same
+use std::sync::Arc;
+use axum_gate::prelude::*;
+let jwt_codec = Arc::new(
+    JsonWebToken::<JwtClaims<Account<Role, Group>>>::new_with_options(options)
+);
 ```
 
 ---
@@ -81,16 +96,16 @@ let jwt_manager = JwtManager::new(&load_secret_from_vault("jwt-signing-key"));
 When using cookie-based authentication, apply these security settings:
 
 ```rust
-use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_gate::prelude::*;
+use cookie::SameSite;
+use cookie::time::Duration;
 
 // Recommended production cookie settings
-let secure_cookie = Cookie::build(("auth-token", token_value))
-    .secure(true)              // HTTPS only
-    .http_only(true)           // Prevents XSS access
-    .same_site(SameSite::Strict) // Strong CSRF protection
-    .path("/")                 // Application-wide
-    .max_age(Duration::hours(24)) // Explicit expiration
-    .build();
+let template = CookieTemplate::recommended()
+    .name("auth-token")
+    .persistent(Duration::hours(24)) // Explicit expiration
+    .same_site(SameSite::Strict);    // Strong CSRF protection
+let secure_cookie = template.build_with_value(&token_value);
 ```
 
 ### Security Recommendations
@@ -99,6 +114,7 @@ let secure_cookie = Cookie::build(("auth-token", token_value))
 - **Use `SameSite::Strict` or `Lax`** for CSRF protection
 - **Avoid `SameSite::None`** unless cross-site requests are required
 - **Consider `__Host-` prefix** for additional security (requires Secure + no Domain + Path="/")
+- **Optional user context (cookies)**: When you need anonymous routes that can still personalize content, configure CookieGate with `allow_anonymous_with_optional_user()`. This never blocks requests and inserts `Option<Account<..>>` and `Option<RegisteredClaims>`; enforce access in handlers if required.
 
 ---
 
@@ -109,6 +125,8 @@ let secure_cookie = Cookie::build(("auth-token", token_value))
 - **Least Privilege**: Combine roles and permissions narrowly
 - **Hierarchical Roles**: Parent-child relationships with explicit traversal
 - **Fine-Grained Permissions**: 64-bit deterministic IDs from permission names
+- **CookieGate optional mode**: For routes that should never be blocked but may use authenticated context when present, configure CookieGate with `allow_anonymous_with_optional_user()`. This installs `Option<Account<..>>` and `Option<RegisteredClaims>` without enforcing authentication or authorization in the middleware. Handlers must perform any necessary checks.
+- **BearerGate modes**: Bearer gate supports (1) strict JWT mode (enforces policy), (2) optional mode via `allow_anonymous_with_optional_user()` (never blocks; inserts optional context), and (3) static token mode via `with_static_token("...")` for internal services.
 
 ### Permission System Safety
 - **Deterministic Hashing**: Uses SHA-256 prefix for 64-bit permission IDs
@@ -122,10 +140,10 @@ use axum_gate::prelude::*;
 
 // Compile-time validation ensures no collisions
 validate_permissions![
-    CreateUser,
-    UpdateUser,
-    DeleteUser,
-    ViewDashboard
+    "create:user",
+    "update:user",
+    "delete:user",
+    "view:dashboard",
 ];
 ```
 
@@ -182,7 +200,7 @@ let protected_routes = Router::new()
 ### Mitigation Strategies
 1. **Primary**: Use `SameSite=Strict` for sensitive applications
 2. **Alternative**: Implement double-submit cookie pattern
-3. **API Clients**: Consider header-based authentication (not implemented yet)
+3. **API Clients**: Use header-based authentication with the Bearer gate (implemented), or static token mode for internal services
 
 ---
 
@@ -195,13 +213,14 @@ let protected_routes = Router::new()
 
 ### Logout Security
 ```rust
-// Secure logout implementation
-async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
-    let removal_cookie = Cookie::build(("auth-token", ""))
-        .removal()  // Properly removes cookie
-        .build();
+// Secure logout using axum-gate's built-in handler
+use axum_gate::route_handlers::logout;
+use axum_extra::extract::CookieJar;
+use axum_gate::prelude::*;
 
-    (jar.add(removal_cookie), Redirect::to("/login"))
+async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
+    let cookie_template = CookieTemplate::recommended().name("auth-token");
+    logout(cookie_jar, cookie_template).await
 }
 ```
 
@@ -209,10 +228,10 @@ async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
 
 ## 10. Observability & Monitoring
 
-### Current State (v1.0.0)
+### Current State (v1.0.0-rc.0)
 - **Structured Logging**: Comprehensive tracing integration with contextual metadata for all authentication operations
-- **Prometheus Metrics**: Built-in counters and labels for authorization decisions, JWT validation failures, and account operations
-- **Audit Trail System**: Complete audit logging system with pluggable recorders via `audit-logging` feature
+- **Prometheus Metrics**: Built-in counters and histograms (authorization decisions, JWT validation latency, account operations)
+- **Audit Logging**: Emits structured tracing events when `audit-logging` is enabled; integrate with your tracing subscriber/sink
 - **Security Metrics**: Authorization success/denial tracking, JWT validation monitoring, account lifecycle events
 
 ### Prometheus Integration
@@ -221,6 +240,10 @@ Enable with the `prometheus` feature flag:
 ```rust
 // Metrics are automatically collected and can be exposed
 use axum_gate::prelude::*;
+use axum_gate::audit::prometheus_metrics;
+
+let registry = prometheus::Registry::new();
+prometheus_metrics::install_prometheus_metrics_with_registry(&registry).expect("install metrics");
 
 let app = Router::new()
     .route("/", get(handler).layer(
@@ -237,12 +260,8 @@ let app = Router::new()
 - `axum_gate_jwt_invalid_total` - Invalid JWT tokens (by failure type)
 - `axum_gate_account_delete_outcome_total` - Account deletion operations
 - `axum_gate_account_insert_outcome_total` - Account creation operations
-
-### Planned Enhancements (v1.1.0)
-- **Performance Histograms**: Request duration tracking and response time monitoring
-- **Rate Limiting Metrics**: Integration with tower rate limiting middleware
-- **Health Check Endpoints**: Built-in health and readiness endpoints
-- **OpenTelemetry Integration**: Distributed tracing support for microservices
+- `axum_gate_authz_decision_seconds` - Authorization decision latency (histogram; by outcome)
+- `axum_gate_jwt_validation_seconds` - JWT validation latency (histogram; by outcome)
 
 **Current Monitoring Setup**:
 ```rust
@@ -349,7 +368,7 @@ match auth_result {
 
 ## 15. Feature Flags and Security
 
-### Available Feature Flags (v1.0.0)
+### Available Feature Flags (v1.0.0-rc.0)
 | Feature | Security Impact | Recommendation |
 |---------|-----------------|----------------|
 | `insecure-fast-hash` | ⚠️ Weakens password hashing | **NEVER** enable in production |
@@ -363,13 +382,13 @@ match auth_result {
 // Production-safe feature configuration
 [dependencies]
 axum-gate = {
-    version = "1.0.0",
+    version = "1.0.0-rc.0",
     features = ["storage-surrealdb", "audit-logging", "prometheus"]
 }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-axum-gate = { version = "1.0.0", features = ["storage-surrealdb"] }
+axum-gate = { version = "1.0.0-rc.0", features = ["storage-surrealdb"] }
 ```
 
 ---

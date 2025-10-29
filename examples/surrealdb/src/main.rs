@@ -73,7 +73,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = axum_gate::cookie_template::CookieTemplateBuilder::recommended().build();
+    let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended();
 
     let app = Router::new()
         .route(

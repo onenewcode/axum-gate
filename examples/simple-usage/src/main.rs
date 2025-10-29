@@ -9,7 +9,7 @@ use axum_gate::errors::Result;
 use axum_gate::{
     accounts::AccountInsertService,
     codecs::jwt::RegisteredClaims,
-    cookie_template::CookieTemplateBuilder,
+    cookie_template::CookieTemplate,
     prelude::*,
     repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
     route_handlers::{login, logout},
@@ -523,11 +523,10 @@ async fn login_handler(
         (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
     );
 
-    let cookie_template = CookieTemplateBuilder::recommended()
+    let cookie_template = CookieTemplate::recommended()
         .name("my-app")
         .secure(false) // Dev only; enable HTTPS + Secure(true) in production
-        .persistent(cookie::time::Duration::hours(24))
-        .build();
+        .persistent(cookie::time::Duration::hours(24));
 
     match login(
         cookie_jar,
@@ -599,7 +598,7 @@ async fn login_handler(
 }
 
 async fn logout_handler(cookie_jar: CookieJar) -> (CookieJar, Redirect) {
-    let cookie_template = CookieTemplateBuilder::recommended().name("my-app").build();
+    let cookie_template = CookieTemplate::recommended().name("my-app");
     let updated_jar = logout(cookie_jar, cookie_template).await;
     (updated_jar, Redirect::to("/"))
 }

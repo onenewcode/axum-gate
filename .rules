@@ -1347,7 +1347,8 @@ Note: Keep the language model choice flexible. When uncertain, briefly propose w
   - Any risky or breaking steps explicitly called out.
 - Await confirmation for multi-file or risky changes; otherwise proceed with the first step.
 - Implement incrementally; after each step:
-  - Summarize what changed.
+  - Provide a concise, rationale-focused summary (what changed and why) with no code blocks.
+  - Do not include a changed-file list; version control tracks it.
   - Identify next steps and potential validations.
 
 ### 2) Chunking and Context Management

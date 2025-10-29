@@ -107,8 +107,16 @@ impl SeaOrmRepository {
 
 impl<R, G> AccountRepository<R, G> for SeaOrmRepository
 where
-    R: AccessHierarchy + Eq + Serialize + DeserializeOwned + std::fmt::Display + Clone,
-    G: Eq + Clone,
+    R: AccessHierarchy
+        + Eq
+        + Serialize
+        + DeserializeOwned
+        + std::fmt::Display
+        + Clone
+        + Send
+        + Sync
+        + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
     Vec<R>: CommaSeparatedValue,
     Vec<G>: CommaSeparatedValue,
 {

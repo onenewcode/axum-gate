@@ -17,9 +17,9 @@ use crate::audit;
 use crate::audit::prometheus_metrics::{JwtValidationOutcome, observe_jwt_validation_latency};
 #[cfg(all(feature = "audit-logging", feature = "prometheus"))]
 use crate::audit::{AuthzOutcome, observe_authz_latency};
+use crate::cookie_template::CookieTemplate;
 use axum::{body::Body, extract::Request, http::Response};
 use axum_extra::extract::cookie::{Cookie, CookieJar};
-use cookie::CookieBuilder;
 use http::StatusCode;
 use tower::Service;
 use tracing::{debug, trace, warn};
@@ -52,7 +52,7 @@ where
     inner: S,
     authorization_service: AuthorizationService<R, G>,
     jwt_validation_service: JwtValidationService<C>,
-    cookie_template: CookieBuilder<'static>,
+    cookie_template: CookieTemplate,
     /// If `true`, the service will ALWAYS forward the request and install
     /// `Option<Account<R,G>>` and `Option<RegisteredClaims>` extensions:
     /// - `Some(..)` when a valid JWT cookie is present (policy IS NOT evaluated)
@@ -75,7 +75,7 @@ where
         issuer: &str,
         policy: AccessPolicy<R, G>,
         codec: Arc<C>,
-        cookie_template: CookieBuilder<'static>,
+        cookie_template: CookieTemplate,
     ) -> Self {
         Self {
             inner,
@@ -94,7 +94,7 @@ where
         inner: S,
         issuer: &str,
         codec: Arc<C>,
-        cookie_template: CookieBuilder<'static>,
+        cookie_template: CookieTemplate,
     ) -> Self {
         // In optional mode we ignore the policy completely, but we still supply a
         // deny-all policy object (it is never consulted).
@@ -117,8 +117,9 @@ where
     /// Queries the axum-gate auth cookie from the request.
     pub fn auth_cookie(&self, req: &Request<Body>) -> Option<Cookie<'_>> {
         let cookie_jar = CookieJar::from_headers(req.headers());
-        let cookie = self.cookie_template.clone().build();
-        cookie_jar.get(cookie.name()).cloned()
+        cookie_jar
+            .get(self.cookie_template.cookie_name_ref())
+            .cloned()
     }
 
     /// Used to return the unauthorized response.

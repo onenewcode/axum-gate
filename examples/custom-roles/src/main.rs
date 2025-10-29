@@ -307,7 +307,7 @@ async fn main() {
         .unwrap();
     debug!("Inserted User.");
 
-    let cookie_template = axum_gate::cookie_template::CookieTemplateBuilder::recommended().build(); // secure defaults for the session cookie
+    let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended(); // secure defaults for the session cookie
 
     let app = Router::new()
         .route("/admin", get(admin))

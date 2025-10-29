@@ -105,8 +105,8 @@ where
 
 impl<R, G, S> AccountRepository<R, G> for SurrealDbRepository<S>
 where
-    R: AccessHierarchy + Eq + DeserializeOwned + Serialize + 'static,
-    G: Serialize + DeserializeOwned + Eq + Clone + 'static,
+    R: AccessHierarchy + Eq + DeserializeOwned + Serialize + Send + Sync + 'static,
+    G: Serialize + DeserializeOwned + Eq + Clone + Send + Sync + 'static,
     S: Connection,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {

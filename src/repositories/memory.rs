@@ -118,16 +118,16 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct MemoryAccountRepository<R, G>
 where
-    R: AccessHierarchy + Eq,
-    G: Eq + Clone,
+    R: AccessHierarchy + Eq + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
 {
     accounts: Arc<RwLock<HashMap<String, Account<R, G>>>>,
 }
 
 impl<R, G> Default for MemoryAccountRepository<R, G>
 where
-    R: AccessHierarchy + Eq,
-    G: Eq + Clone,
+    R: AccessHierarchy + Eq + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
 {
     fn default() -> Self {
         Self {
@@ -138,8 +138,8 @@ where
 
 impl<R, G> From<Vec<Account<R, G>>> for MemoryAccountRepository<R, G>
 where
-    R: AccessHierarchy + Eq,
-    G: Eq + Clone,
+    R: AccessHierarchy + Eq + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
 {
     fn from(value: Vec<Account<R, G>>) -> Self {
         let mut accounts = HashMap::new();
@@ -155,8 +155,8 @@ where
 impl<R, G> AccountRepository<R, G> for MemoryAccountRepository<R, G>
 where
     Account<R, G>: Clone,
-    R: AccessHierarchy + Eq,
-    G: Eq + Clone,
+    R: AccessHierarchy + Eq + Send + Sync + 'static,
+    G: Eq + Clone + Send + Sync + 'static,
 {
     async fn query_account_by_user_id(&self, user_id: &str) -> Result<Option<Account<R, G>>> {
         let read = self.accounts.read().await;

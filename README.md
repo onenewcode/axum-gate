@@ -5,11 +5,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://github.com/emirror-de/axum-gate/workflows/CI/badge.svg)](https://github.com/emirror-de/axum-gate/actions)
 
-Flexible, type-safe authentication and authorization for Axum using JWTs.
+Flexible, type-safe authentication and authorization for Axum using JWTs and optional OAuth2.
 - Cookie and bearer authentication
+- OAuth2 Authorization Code + PKCE flow that issues first-party JWT cookies
 - Hierarchical roles, groups, and string-based permissions
 - Ready-to-use login/logout handlers
+- Optional anonymous user context and static-token mode for internal services
 - In-memory and optional database-backed repositories
+- Feature-gated audit logging and Prometheus metrics
 
 ## Install
 
@@ -36,12 +39,14 @@ Optional features:
 - Gate layer
   - Gate::cookie("issuer", codec): JWT via HTTP-only cookies (web apps)
   - Gate::bearer("issuer", codec): JWT via Authorization: Bearer header (APIs)
+  - Gate::bearer(...).with_static_token("..."): shared-secret mode (internal services)
+  - Gate::oauth2::<R, G>(): OAuth2 Authorization Code + PKCE flow builder; or use Gate::oauth2_with_jwt("issuer", codec, ttl_secs) to also mint first-party JWT cookies
   - allow_anonymous_with_optional_user(): never block; inserts optional user context
   - require_login(): allow baseline role and all supervisors (hierarchy)
 - Access policies
   - require_role(..), require_role_or_supervisor(..)
   - require_group(..)
-  - require_permission("domain:action") — deterministic hashing to PermissionId
+  - require_permission("domain:action") — deterministic hashing to PermissionId; use validate_permissions! to catch collisions at test-time
 - Login/logout
   - route_handlers::login: verifies credentials and sets the auth cookie
   - route_handlers::logout: removes the auth cookie
@@ -57,11 +62,14 @@ Optional features:
 - Keep the issuer consistent between Gate configuration and RegisteredClaims
 - Use secure cookie settings in production (HttpOnly, Secure, appropriate SameSite)
 - Rate-limit sensitive endpoints (e.g., login)
+- Enable `audit-logging` and `prometheus` features for observability; never log secrets, tokens, or cookie values
 
 ## Examples and docs
 
-Examples and complete usage are available in the crate documentation on docs.rs:
+Examples and complete usage are available in the crate documentation on docs.rs; the repository also includes curated examples (e.g., examples/oauth2-github for a full GitHub OAuth2 flow):
 https://docs.rs/axum-gate
+
+For common integration issues and practical debugging tips, see TROUBLESHOOTING.md (covers CookieGate, OAuth2 flows, and Bearer/Static token usage).
 
 ## MSRV and license
 

@@ -74,7 +74,7 @@ where
     fn store_account(
         &self,
         account: Account<R, G>,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
 
     /// Delete an account identified by its `user_id`.
     ///
@@ -82,7 +82,10 @@ where
     /// - `Ok(Some(account))` if the account existed and was removed
     /// - `Ok(None)` if no account matched `user_id`
     /// - `Err(e)` on backend error
-    fn delete_account(&self, user_id: &str) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    fn delete_account(
+        &self,
+        user_id: &str,
+    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
 
     /// Update an existing account.
     ///
@@ -94,7 +97,7 @@ where
     fn update_account(
         &self,
         account: Account<R, G>,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
 
     /// Fetch an account by its logical user identifier.
     ///
@@ -108,5 +111,5 @@ where
     fn query_account_by_user_id(
         &self,
         user_id: &str,
-    ) -> impl Future<Output = Result<Option<Account<R, G>>>>;
+    ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
 }

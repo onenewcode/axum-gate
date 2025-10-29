@@ -2,7 +2,7 @@
 pub use crate::accounts::Account;
 pub use crate::authz::AccessPolicy;
 pub use crate::codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims};
-pub use crate::cookie_template::CookieTemplateBuilder;
+pub use crate::cookie_template::CookieTemplate;
 pub use crate::credentials::Credentials;
 pub use crate::gate::Gate;
 pub use crate::groups::Group;
