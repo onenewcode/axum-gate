@@ -1,8 +1,7 @@
 name: "🐞 Bug report"
 description: "Report a bug or unexpected behavior in the axum-gate crate"
 title: "bug: <short summary>"
-labels:
-    - bug
+labels: [bug]
 
 body:
     - type: markdown
