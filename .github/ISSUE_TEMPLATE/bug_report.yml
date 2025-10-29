@@ -125,9 +125,9 @@ body:
           label: Is this a regression?
           description: Did this work in a previous version of axum-gate (or dependent libraries)?
           options:
-              - Yes
-              - No
-              - Not sure
+              - "Yes"
+              - "No"
+              - "Not sure"
       validations:
           required: false
 
