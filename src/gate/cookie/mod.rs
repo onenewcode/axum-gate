@@ -61,7 +61,7 @@
 //! ```
 //!
 //! # Security notes
-//! - Cookies are built via `CookieTemplateBuilder::recommended()` which provides sensible,
+//! - Cookies are built via `CookieTemplate::recommended()` which provides sensible,
 //!   environment-aware defaults: `HttpOnly=true`, `Secure` on release builds, strict SameSite
 //!   policies by default, and session cookies unless overridden.
 //! - If you set `SameSite=None`, `Secure=true` is required by browsers; the template validator
@@ -81,8 +81,7 @@ pub(crate) mod cookie_service;
 use self::cookie_service::CookieGateService;
 use crate::authz::{AccessHierarchy, AccessPolicy};
 use crate::codecs::Codec;
-use crate::cookie_template::{CookieTemplateBuilder, CookieTemplateBuilderError};
-use cookie::CookieBuilder;
+use crate::cookie_template::{CookieTemplate, CookieTemplateBuilderError};
 
 use std::sync::Arc;
 
@@ -103,7 +102,7 @@ use tower::Layer;
 /// - Cause: The login flow issued the cookie under one name, while the `CookieGate` middleware is
 ///   looking for a different cookie name.
 /// - Fix: Ensure the same cookie template (or at least the same name) is used for both login and gate.
-///   Use `CookieTemplateBuilder::recommended().name("your-auth-cookie")` and pass that template to:
+///   Use `CookieTemplate::recommended().name("your-auth-cookie")` and pass that template to:
 ///   - the login handler (when setting the cookie), and
 ///   - `Gate::cookie(...).with_cookie_template(template)`
 ///
@@ -130,7 +129,7 @@ where
     issuer: String,
     policy: AccessPolicy<R, G>,
     codec: Arc<C>,
-    cookie_template: CookieBuilder<'static>,
+    cookie_template: CookieTemplate,
     // Internal flag set by `allow_anonymous_with_optional_user()`.
     // When true, the layer installs `Option<Account<R,G>>` and `Option<RegisteredClaims>`
     // for every request WITHOUT performing any authentication *or* authorization checks.
@@ -150,7 +149,7 @@ where
             issuer: issuer.to_string(),
             policy: AccessPolicy::deny_all(),
             codec,
-            cookie_template: CookieTemplateBuilder::recommended().build(),
+            cookie_template: CookieTemplate::recommended(),
             install_optional_extensions: false,
         }
     }
@@ -191,15 +190,15 @@ where
     /// # use axum_gate::authz::AccessPolicy;
     /// # use axum_gate::accounts::Account;
     /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::{Role, Group, Gate, CookieTemplateBuilder};
+    /// # use axum_gate::prelude::{Role, Group, Gate, CookieTemplate};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-    /// let cookie_template = CookieTemplateBuilder::recommended().build();
+    /// let cookie_template = CookieTemplate::recommended();
     /// let gate = Gate::cookie("my-app", jwt_codec)
     ///     .with_policy(AccessPolicy::<Role, Group>::deny_all())
     ///     .with_cookie_template(cookie_template);
     /// ```
-    pub fn with_cookie_template(mut self, template: CookieBuilder<'static>) -> Self {
+    pub fn with_cookie_template(mut self, template: CookieTemplate) -> Self {
         self.cookie_template = template;
         self
     }
@@ -226,16 +225,16 @@ where
         self
     }
 
-    /// Convenience: configure the secure cookie template via a closure using the high-level `CookieTemplateBuilder`.
-    /// Starts from [`CookieTemplateBuilder::recommended()`] each time.
-    /// Invalid configurations (e.g. SameSite=None without Secure) return an error (`CookieTemplateBuilderError`) to surface misconfiguration early.
+    /// Convenience: configure the secure cookie template via a closure using the high-level `CookieTemplate`.
+    /// Starts from [`CookieTemplate::recommended()`] each time.
+    /// Invalid configurations (e.g. SameSite=None without Secure) will panic to surface misconfiguration early.
     ///
     /// # Example
     /// ```rust
     /// # use axum_gate::authz::AccessPolicy;
     /// # use axum_gate::accounts::Account;
     /// # use axum_gate::codecs::jwt::{JsonWebToken, JwtClaims};
-    /// # use axum_gate::prelude::{Role, Group, Gate};
+    /// # use axum_gate::prelude::{Role, Group, Gate, CookieTemplate};
     /// # use std::sync::Arc;
     /// # let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
     /// let gate = Gate::cookie("my-app", jwt_codec)
@@ -247,10 +246,11 @@ where
     /// ```
     pub fn configure_cookie_template<F>(mut self, f: F) -> Result<Self, CookieTemplateBuilderError>
     where
-        F: FnOnce(CookieTemplateBuilder) -> CookieTemplateBuilder,
+        F: FnOnce(CookieTemplate) -> CookieTemplate,
     {
-        let template = f(CookieTemplateBuilder::recommended());
-        self.cookie_template = template.validate_and_build()?;
+        let template = f(CookieTemplate::recommended());
+        template.validate()?;
+        self.cookie_template = template;
         Ok(self)
     }
 
@@ -389,12 +389,12 @@ mod tests {
     #[test]
     fn with_cookie_template_updates_cookie_configuration() {
         let jwt_codec = Arc::new(JsonWebToken::<JwtClaims<Account<Role, Group>>>::default());
-        let custom_template = CookieBuilder::new("custom-cookie", "");
+        let custom_template = CookieTemplate::recommended().name("custom-cookie");
 
         let _gate: CookieGate<_, Role, Group> =
             Gate::cookie("test-app", jwt_codec).with_cookie_template(custom_template);
 
-        // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
+        // Note: Cookie type doesn't expose a convenient public getter for name(), so we can't directly test this
         // The test verifies the method compiles and runs without error
     }
 
@@ -410,7 +410,7 @@ mod tests {
             })
             .unwrap();
 
-        // Note: CookieBuilder doesn't have a public name() method, so we can't directly test this
+        // Note: Cookie type doesn't expose a convenient public getter for name(), so we can't directly test this
         // The test verifies the method compiles and runs without error
     }
 

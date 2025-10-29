@@ -35,7 +35,8 @@
 //!     let claims = RegisteredClaims::new("my-app",
 //!         chrono::Utc::now().timestamp() as u64 + 3600); // 1 hour expiry
 //!
-//!     let cookie_template = cookie::CookieBuilder::new("auth-token", "")
+//!     let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended()
+//!         .name("auth-token")
 //!         .secure(true)
 //!         .http_only(true);
 //!
@@ -51,7 +52,7 @@
 //! }
 //!
 //! async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
-//!     let cookie_template = cookie::CookieBuilder::new("auth-token", "");
+//!     let cookie_template = axum_gate::cookie_template::CookieTemplate::recommended().name("auth-token");
 //!     logout(cookie_jar, cookie_template).await
 //! }
 //!

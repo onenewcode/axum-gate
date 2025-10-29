@@ -3,9 +3,9 @@ use crate::authn::{LoginResult, LoginService};
 use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
+use crate::cookie_template::CookieTemplate;
 use crate::credentials::Credentials;
 use crate::credentials::CredentialsVerifier;
-use cookie::CookieBuilder;
 
 use std::sync::Arc;
 
@@ -46,7 +46,7 @@ pub async fn login<CredVeri, AccRepo, C, R, G>(
     secret_verifier: Arc<CredVeri>,
     account_repository: Arc<AccRepo>,
     codec: Arc<C>,
-    cookie_template: CookieBuilder<'static>,
+    cookie_template: CookieTemplate,
 ) -> Result<CookieJar, StatusCode>
 where
     R: AccessHierarchy + Eq,
@@ -78,8 +78,7 @@ where
 
     match result {
         LoginResult::Success(jwt_string) => {
-            let mut cookie = cookie_template.build();
-            cookie.set_value(jwt_string);
+            let cookie = cookie_template.build_with_value(&jwt_string);
             #[cfg(feature = "audit-logging")]
             tracing::info!(user_id = %user_id, "login_success");
             Ok(cookie_jar.add(cookie))

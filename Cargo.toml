@@ -9,6 +9,7 @@ members = [
     "examples/simple-usage",
     "examples/surrealdb",
     "examples/prometheus",
+    "examples/oauth2-github",
 ]
 resolver = "3"
 
@@ -18,7 +19,9 @@ axum = "0.8"
 axum-extra = { version = "0.10", features = ["cookie"] }
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
+oauth2 = { version = "5", features = ["reqwest"] }
 prometheus = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 roaring = "0.11"
 sea-orm = { version = "1", features = ["sqlx-sqlite", "runtime-tokio"] }
 sea-query = { version = "0.32.6", default-features = false, features = ["backend-sqlite", "derive", "sea-query-derive"] }
@@ -39,12 +42,13 @@ edition = "2024"
 rust-version = "1.86"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
-description = "Role based access for axum using JWT cookies. For both, single nodes and distributed systems."
+description = "Flexible authentication and authorization for Axum with JWT cookies or bearer tokens, optional OAuth2, and role/group/permission RBAC. Suitable for single-node and distributed systems."
 homepage = "https://github.com/emirror-de/axum-gate"
 repository = "https://github.com/emirror-de/axum-gate"
 readme = "README.md"
-keywords = ["auth", "distributed", "JWT", "axum", "login"]
-categories = ["authentication", "web-programming"]
+documentation = "https://docs.rs/axum-gate"
+keywords = ["axum", "auth", "jwt", "oauth2", "rbac"]
+categories = ["authentication", "web-programming::http-server"]
 
 [features]
 # Enables the DevFast Argon2 preset in release builds if explicitly opted-in.
@@ -81,6 +85,8 @@ tokio = { version = "1", features = ["sync"] }
 tower = "0.5"
 tracing = { version = "0.1", features = ["release_max_level_info"] }
 uuid = { version = "1", features = ["serde", "v7"] }
+oauth2 = { workspace = true }
+reqwest = { workspace = true }
 
 
 [dev-dependencies]

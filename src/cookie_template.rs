@@ -1,20 +1,19 @@
 //! Secure cookie template builder for authentication cookies.
 //!
-//! This module provides [`CookieTemplateBuilder`] for creating secure authentication
+//! This module provides [`CookieTemplate`] for creating secure authentication
 //! cookies with sensible defaults that automatically adjust based on build configuration.
 //! The builder ensures proper security settings while maintaining development ergonomics.
 //!
 //! # Quick Start
 //!
 //! ```rust
-//! use axum_gate::cookie_template::CookieTemplateBuilder;
+//! use axum_gate::cookie_template::CookieTemplate;
 //! use cookie::time::Duration;
 //!
 //! // Use secure defaults
-//! let template = CookieTemplateBuilder::recommended()
+//! let template = CookieTemplate::recommended()
 //!     .name("auth-token")
-//!     .persistent(Duration::hours(24))
-//!     .build();
+//!     .persistent(Duration::hours(24));
 //! ```
 //!
 //! # Security Features
@@ -26,12 +25,9 @@
 //! - **Session cookies**: No persistence by default
 //! - **Development-friendly**: Relaxed settings in debug builds for localhost testing
 
-#![allow(clippy::module_name_repetitions)]
-
-use std::borrow::Cow;
-
 use cookie::time::Duration;
-use cookie::{CookieBuilder, SameSite};
+use cookie::{Cookie, CookieBuilder, SameSite};
+use std::borrow::Cow;
 
 /// Default cookie name used by the gate when none is specified.
 pub const DEFAULT_COOKIE_NAME: &str = "axum-gate";
@@ -44,24 +40,22 @@ pub const DEFAULT_COOKIE_NAME: &str = "axum-gate";
 ///
 /// # Security Best Practices
 ///
-/// The recommended approach is to start with [`CookieTemplateBuilder::recommended()`] and
+/// The recommended approach is to start with [`CookieTemplate::recommended()`] and
 /// customize only what you need:
 ///
 /// ```rust
-/// use axum_gate::cookie_template::CookieTemplateBuilder;
+/// use axum_gate::cookie_template::CookieTemplate;
 /// use cookie::{time::Duration, SameSite};
 ///
 /// // Secure defaults with custom name and expiration
-/// let template = CookieTemplateBuilder::recommended()
+/// let template = CookieTemplate::recommended()
 ///     .name("auth-token")
-///     .persistent(Duration::hours(24))
-///     .build();
+///     .persistent(Duration::hours(24));
 ///
 /// // For OAuth/redirect flows that need cross-site navigation
-/// let oauth_template = CookieTemplateBuilder::recommended()
+/// let oauth_template = CookieTemplate::recommended()
 ///     .name("oauth-state")
-///     .same_site(SameSite::Lax)  // Allow cross-site for redirects
-///     .build();
+///     .same_site(SameSite::Lax);  // Allow cross-site for redirects
 /// ```
 ///
 /// # Security Features
@@ -78,9 +72,10 @@ pub const DEFAULT_COOKIE_NAME: &str = "axum-gate";
 /// - `same_site(SameSite::Lax)` - Allow cross-site navigation (OAuth flows)
 /// - `domain(".example.com")` - Share cookies across subdomains
 ///
-/// Convert to `cookie::CookieBuilder` via [`CookieTemplateBuilder::build`].
+/// Convert to `cookie::Cookie` via [`CookieTemplate::builder`] then `.build()`,
+/// or use [`CookieTemplate::validate_and_build`].
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CookieTemplateBuilder {
+pub struct CookieTemplate {
     name: Cow<'static, str>,
     value: Cow<'static, str>,
     path: Cow<'static, str>,
@@ -91,7 +86,7 @@ pub struct CookieTemplateBuilder {
     max_age: Option<Duration>,
 }
 
-impl Default for CookieTemplateBuilder {
+impl Default for CookieTemplate {
     fn default() -> Self {
         // In debug (development) builds we relax a couple of flags to improve local ergonomics
         // (allow http and slightly looser cross-site navigation) while still keeping HttpOnly
@@ -115,7 +110,7 @@ impl Default for CookieTemplateBuilder {
     }
 }
 
-impl CookieTemplateBuilder {
+impl CookieTemplate {
     /// Secure recommended defaults.
     #[must_use]
     pub fn recommended() -> Self {
@@ -225,10 +220,18 @@ impl CookieTemplateBuilder {
         self.max_age(Duration::minutes(15))
     }
 
-    /// Convert into the underlying `cookie::CookieBuilder<'static>` so the
-    /// existing `Gate` API can accept it seamlessly.
+    /// Validate the template configuration. Returns `Ok(())` if fine.
+    pub fn validate(&self) -> Result<(), CookieTemplateBuilderError> {
+        if self.same_site == SameSite::None && !self.secure {
+            return Err(CookieTemplateBuilderError::InsecureNoneSameSite);
+        }
+        Ok(())
+    }
+
+    /// Convert into the underlying `cookie::CookieBuilder<'static>`.
     #[must_use]
-    pub fn build(&self) -> CookieBuilder<'static> {
+    #[inline]
+    pub fn builder(&self) -> CookieBuilder<'static> {
         let mut builder = CookieBuilder::new(self.name.clone(), self.value.clone())
             .secure(self.secure)
             .http_only(self.http_only)
@@ -246,18 +249,62 @@ impl CookieTemplateBuilder {
         builder
     }
 
-    /// Validate the template configuration. Returns `Ok(())` if fine.
-    pub fn validate(&self) -> Result<(), CookieTemplateBuilderError> {
-        if self.same_site == SameSite::None && !self.secure {
-            return Err(CookieTemplateBuilderError::InsecureNoneSameSite);
-        }
-        Ok(())
+    /// Validate then build. Returns an error if invalid.
+    pub fn validate_and_build(&self) -> Result<Cookie<'static>, CookieTemplateBuilderError> {
+        self.validate()?;
+        Ok(self.builder().build())
     }
 
-    /// Validate then build. Returns an error if invalid (`CookieTemplateBuilderError`).
-    pub fn validate_and_build(&self) -> Result<CookieBuilder<'static>, CookieTemplateBuilderError> {
-        self.validate()?;
-        Ok(self.build())
+    /// Build a cookie preserving all template attributes, having the name and value.
+    #[must_use]
+    #[inline]
+    pub fn build_with_name_value(&self, name: &str, value: &str) -> Cookie<'static> {
+        let mut builder = CookieBuilder::new(name.to_owned(), value.to_owned())
+            .secure(self.secure)
+            .http_only(self.http_only)
+            .same_site(self.same_site)
+            .path(self.path.clone());
+
+        if let Some(ref domain) = self.domain {
+            builder = builder.domain(domain.clone());
+        }
+
+        if let Some(max_age) = self.max_age {
+            builder = builder.max_age(max_age);
+        }
+
+        builder.build()
+    }
+
+    /// Build a cookie preserving attributes, overriding only the value.
+    #[must_use]
+    #[inline]
+    pub fn build_with_value(&self, value: &str) -> Cookie<'static> {
+        self.build_with_name_value(self.name.as_ref(), value)
+    }
+
+    /// Build a cookie preserving attributes, overriding only the name.
+    #[must_use]
+    #[inline]
+    pub fn build_with_name(&self, name: &str) -> Cookie<'static> {
+        self.build_with_name_value(name, self.value.as_ref())
+    }
+
+    /// Build a removal cookie preserving attributes, overriding the name.
+    #[must_use]
+    pub fn build_removal(&self) -> Cookie<'static> {
+        let mut cookie = self.builder().build();
+        cookie.make_removal();
+        cookie
+    }
+
+    /// Get a reference to the configured cookie name without allocating.
+    ///
+    /// Prefer this on hot paths (e.g., header extraction).
+    #[must_use]
+    #[inline]
+    pub fn cookie_name_ref(&self) -> &str {
+        self.name.as_ref()
     }
 }
 

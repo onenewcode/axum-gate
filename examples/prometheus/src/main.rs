@@ -18,7 +18,7 @@ use axum_gate::{
     accounts::AccountInsertService,
     authz::AccessPolicy,
     codecs::jwt::{JsonWebToken, JsonWebTokenOptions, JwtClaims, RegisteredClaims},
-    cookie_template::CookieTemplateBuilder,
+    cookie_template::CookieTemplate,
     prelude::{Account, Credentials, Gate, Group, Role},
     repositories::memory::{MemoryAccountRepository, MemorySecretRepository},
     route_handlers::{login, logout},
@@ -278,10 +278,9 @@ async fn login_handler(
         (chrono::Utc::now().timestamp() + 3600) as u64, // 1 hour expiry
     );
 
-    let cookie_template = CookieTemplateBuilder::recommended()
+    let cookie_template = CookieTemplate::recommended()
         .name("prometheus-demo")
-        .secure(false) // Dev only; enable HTTPS + Secure(true) in production
-        .build();
+        .secure(false); // Dev only; enable HTTPS + Secure(true) in production
 
     match login(
         cookie_jar,
@@ -306,9 +305,7 @@ async fn login_handler(
 }
 
 async fn logout_handler(cookie_jar: CookieJar) -> (CookieJar, Redirect) {
-    let cookie_template = CookieTemplateBuilder::recommended()
-        .name("prometheus-demo")
-        .build();
+    let cookie_template = CookieTemplate::recommended().name("prometheus-demo");
 
     let updated_jar = logout(cookie_jar, cookie_template).await;
     tracing::info!("User logged out successfully");
