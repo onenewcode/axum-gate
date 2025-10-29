@@ -33,8 +33,10 @@ use tracing::{debug, trace, warn};
 ///   responds with 401 Unauthorized.
 /// - Optional mode (`allow_anonymous_with_optional_user()` from the builder):
 ///   never blocks. It inserts only:
+///
 ///   - `Option<Account<R, G>>`
 ///   - `Option<RegisteredClaims>`
+///
 ///   They are `Some(..)` when a valid JWT cookie is present and `None` otherwise.
 ///   No concrete types are inserted in this mode. Authorization policy is not
 ///   evaluated; handlers must enforce any required checks explicitly.
