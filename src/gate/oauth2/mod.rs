@@ -77,7 +77,8 @@
 //!         })
 //!     });
 //!
-//! let auth_router = gate.routes("/auth").expect("valid oauth2 config");
+//! // routes() returns Result<Router<()>, OAuth2Error>; handle or unwrap as needed
+//! let auth_router = gate.routes("/auth").expect("valid OAuth2 config");
 //! let app = Router::<()>::new().nest("/auth", auth_router);
 //! ```
 //!
@@ -118,7 +119,9 @@ use crate::authz::AccessHierarchy;
 use crate::codecs::Codec;
 use crate::codecs::jwt::{JwtClaims, RegisteredClaims};
 use crate::cookie_template::CookieTemplate;
-use anyhow::anyhow;
+pub mod errors;
+use self::errors::{OAuth2CookieKind, OAuth2Error, Result as OAuth2Result};
+
 use axum::{
     Extension, Router,
     extract::Query,
@@ -149,13 +152,13 @@ const DEFAULT_STATE_COOKIE: &str = "oauth-state";
 const DEFAULT_PKCE_COOKIE: &str = "oauth-pkce";
 
 /// Type alias for an account encoding function.
-type AccountEncoderFn<R, G> = Arc<dyn Fn(Account<R, G>) -> anyhow::Result<String> + Send + Sync>;
+type AccountEncoderFn<R, G> = Arc<dyn Fn(Account<R, G>) -> OAuth2Result<String> + Send + Sync>;
 /// Type alias for an account mapper function.
 type AccountMapperFn<R, G> = Arc<
     dyn for<'a> Fn(
             &'a StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
         )
-            -> Pin<Box<dyn Future<Output = anyhow::Result<Account<R, G>>> + Send + 'a>>
+            -> Pin<Box<dyn Future<Output = OAuth2Result<Account<R, G>>> + Send + 'a>>
         + Send
         + Sync,
 >;
@@ -164,7 +167,7 @@ type AccountMapperFn<R, G> = Arc<
 /// This closure should persist or load the account (idempotently), and return the account
 /// that should be encoded into the first‑party JWT (typically with a stable `account_id`).
 type AccountPersistFn<R, G> = Arc<
-    dyn Fn(Account<R, G>) -> Pin<Box<dyn Future<Output = anyhow::Result<Account<R, G>>> + Send>>
+    dyn Fn(Account<R, G>) -> Pin<Box<dyn Future<Output = OAuth2Result<Account<R, G>>> + Send>>
         + Send
         + Sync,
 >;
@@ -299,12 +302,14 @@ where
     }
 
     /// Convenience to configure the state cookie template via the high-level builder.
-    pub fn configure_state_cookie_template<F>(mut self, f: F) -> anyhow::Result<Self>
+    pub fn configure_state_cookie_template<F>(mut self, f: F) -> OAuth2Result<Self>
     where
         F: FnOnce(CookieTemplate) -> CookieTemplate,
     {
         let template = f(CookieTemplate::recommended());
-        template.validate()?;
+        template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::State, e.to_string()))?;
 
         self.state_cookie_template = template;
         Ok(self)
@@ -317,12 +322,14 @@ where
     }
 
     /// Convenience to configure the PKCE cookie template via the high-level builder.
-    pub fn configure_pkce_cookie_template<F>(mut self, f: F) -> anyhow::Result<Self>
+    pub fn configure_pkce_cookie_template<F>(mut self, f: F) -> OAuth2Result<Self>
     where
         F: FnOnce(CookieTemplate) -> CookieTemplate,
     {
         let template = f(CookieTemplate::recommended());
-        template.validate()?;
+        template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::Pkce, e.to_string()))?;
 
         self.pkce_cookie_template = template;
         Ok(self)
@@ -335,12 +342,14 @@ where
     }
 
     /// Convenience to configure the auth cookie template via the high-level builder.
-    pub fn configure_cookie_template<F>(mut self, f: F) -> anyhow::Result<Self>
+    pub fn configure_cookie_template<F>(mut self, f: F) -> OAuth2Result<Self>
     where
         F: FnOnce(CookieTemplate) -> CookieTemplate,
     {
         let template = f(CookieTemplate::recommended());
-        template.validate()?;
+        template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::Auth, e.to_string()))?;
 
         self.auth_cookie_template = template;
         Ok(self)
@@ -361,7 +370,7 @@ where
         for<'a> F: Fn(
             &'a StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>,
         )
-            -> Pin<Box<dyn Future<Output = anyhow::Result<Account<R, G>>> + Send + 'a>>,
+            -> Pin<Box<dyn Future<Output = OAuth2Result<Account<R, G>>> + Send + 'a>>,
     {
         let f = Arc::new(f);
         self.mapper = Some(Arc::new(move |token_resp| (f)(token_resp)));
@@ -375,7 +384,7 @@ where
     pub fn with_account_inserter<F, Fut>(mut self, f: F) -> Self
     where
         F: Fn(Account<R, G>) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = anyhow::Result<Account<R, G>>> + Send + 'static,
+        Fut: Future<Output = OAuth2Result<Account<R, G>>> + Send + 'static,
     {
         self.account_inserter = Some(Arc::new(move |account: Account<R, G>| Box::pin(f(account))));
         self
@@ -391,13 +400,16 @@ where
         self.account_inserter = Some(Arc::new(move |account: Account<R, G>| {
             let repo = Arc::clone(&account_repository);
             Box::pin(async move {
-                if let Some(existing) = repo.query_account_by_user_id(&account.user_id).await? {
-                    Ok(existing)
-                } else {
-                    match repo.store_account(account).await? {
-                        Some(stored) => Ok(stored),
-                        None => Err(anyhow!("account repo returned None on store")),
-                    }
+                match repo.query_account_by_user_id(&account.user_id).await {
+                    Ok(Some(existing)) => Ok(existing),
+                    Ok(None) => match repo.store_account(account).await {
+                        Ok(Some(stored)) => Ok(stored),
+                        Ok(None) => Err(OAuth2Error::account_persistence(
+                            "account repo returned None on store",
+                        )),
+                        Err(e) => Err(OAuth2Error::account_persistence(e.to_string())),
+                    },
+                    Err(e) => Err(OAuth2Error::account_persistence(e.to_string())),
                 }
             })
         }));
@@ -416,9 +428,10 @@ where
             let exp = Utc::now().timestamp() as u64 + ttl_secs;
             let registered = RegisteredClaims::new(&issuer, exp);
             let claims = JwtClaims::new(account, registered);
-            let bytes = codec.encode(&claims)?;
-            let token =
-                String::from_utf8(bytes).map_err(|e| anyhow!("jwt token is not utf8: {e}"))?;
+            let bytes = codec
+                .encode(&claims)
+                .map_err(|e| OAuth2Error::jwt_encoding(e.to_string()))?;
+            let token = String::from_utf8(bytes).map_err(|_| OAuth2Error::JwtNotUtf8)?;
             Ok(token)
         }));
         self
@@ -428,29 +441,35 @@ where
     ///
     /// Example:
     /// - base_path: "/auth" → routes are "/auth/login" and "/auth/callback"
-    pub fn routes(&self, base_path: &str) -> anyhow::Result<Router<()>> {
+    pub fn routes(&self, base_path: &str) -> OAuth2Result<Router<()>> {
         // Validate presence of required config and store raw values in handler state
         let auth_url = self
             .auth_url
             .clone()
-            .ok_or_else(|| anyhow!("OAuth2Gate: missing auth_url"))?;
+            .ok_or_else(|| OAuth2Error::missing("auth_url"))?;
         let token_url = self
             .token_url
             .clone()
-            .ok_or_else(|| anyhow!("OAuth2Gate: missing token_url"))?;
+            .ok_or_else(|| OAuth2Error::missing("token_url"))?;
         let client_id = self
             .client_id
             .clone()
-            .ok_or_else(|| anyhow!("OAuth2Gate: missing client_id"))?;
+            .ok_or_else(|| OAuth2Error::missing("client_id"))?;
         let redirect_url = self
             .redirect_url
             .clone()
-            .ok_or_else(|| anyhow!("OAuth2Gate: missing redirect_url"))?;
+            .ok_or_else(|| OAuth2Error::missing("redirect_url"))?;
 
         // Validate cookie templates to prevent insecure SameSite=None + Secure=false, etc.
-        self.state_cookie_template.validate()?;
-        self.pkce_cookie_template.validate()?;
-        self.auth_cookie_template.validate()?;
+        self.state_cookie_template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::State, e.to_string()))?;
+        self.pkce_cookie_template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::Pkce, e.to_string()))?;
+        self.auth_cookie_template
+            .validate()
+            .map_err(|e| OAuth2Error::cookie_invalid(OAuth2CookieKind::Auth, e.to_string()))?;
 
         let handler_state = Arc::new(OAuth2HandlerState::<R, G> {
             auth_url,
@@ -528,21 +547,39 @@ where
     let auth_url = match AuthUrl::new(st.auth_url.clone()) {
         Ok(u) => u,
         Err(e) => {
-            error!("Invalid auth_url: {e:#}");
+            {
+                let err = self::errors::OAuth2Error::invalid_url("auth_url", e.to_string());
+                error!(
+                    "{}",
+                    crate::errors::UserFriendlyError::developer_message(&err)
+                );
+            }
             return (StatusCode::INTERNAL_SERVER_ERROR, "OAuth2 misconfigured").into_response();
         }
     };
     let token_url = match TokenUrl::new(st.token_url.clone()) {
         Ok(u) => u,
         Err(e) => {
-            error!("Invalid token_url: {e:#}");
+            {
+                let err = self::errors::OAuth2Error::invalid_url("token_url", e.to_string());
+                error!(
+                    "{}",
+                    crate::errors::UserFriendlyError::developer_message(&err)
+                );
+            }
             return (StatusCode::INTERNAL_SERVER_ERROR, "OAuth2 misconfigured").into_response();
         }
     };
     let redirect_url = match RedirectUrl::new(st.redirect_url.clone()) {
         Ok(u) => u,
         Err(e) => {
-            error!("Invalid redirect_url: {e:#}");
+            {
+                let err = self::errors::OAuth2Error::invalid_url("redirect_url", e.to_string());
+                error!(
+                    "{}",
+                    crate::errors::UserFriendlyError::developer_message(&err)
+                );
+            }
             return (StatusCode::INTERNAL_SERVER_ERROR, "OAuth2 misconfigured").into_response();
         }
     };
@@ -663,7 +700,13 @@ where
     let auth_url = match AuthUrl::new(st.auth_url.clone()) {
         Ok(u) => u,
         Err(e) => {
-            error!("Invalid auth_url: {e:#}");
+            {
+                let err = self::errors::OAuth2Error::invalid_url("auth_url", e.to_string());
+                error!(
+                    "{}",
+                    crate::errors::UserFriendlyError::developer_message(&err)
+                );
+            }
             let state_removal = st.state_cookie_template.build_removal();
             let pkce_removal = st.pkce_cookie_template.build_removal();
             let jar = jar.add(state_removal).add(pkce_removal);
@@ -677,7 +720,13 @@ where
     let token_url = match TokenUrl::new(st.token_url.clone()) {
         Ok(u) => u,
         Err(e) => {
-            error!("Invalid token_url: {e:#}");
+            {
+                let err = self::errors::OAuth2Error::invalid_url("token_url", e.to_string());
+                error!(
+                    "{}",
+                    crate::errors::UserFriendlyError::developer_message(&err)
+                );
+            }
             let state_removal = st.state_cookie_template.build_removal();
             let pkce_removal = st.pkce_cookie_template.build_removal();
             let jar = jar.add(state_removal).add(pkce_removal);
@@ -691,7 +740,13 @@ where
     let redirect_url = match RedirectUrl::new(st.redirect_url.clone()) {
         Ok(u) => u,
         Err(e) => {
-            error!("Invalid redirect_url: {e:#}");
+            {
+                let err = self::errors::OAuth2Error::invalid_url("redirect_url", e.to_string());
+                error!(
+                    "{}",
+                    crate::errors::UserFriendlyError::developer_message(&err)
+                );
+            }
             let state_removal = st.state_cookie_template.build_removal();
             let pkce_removal = st.pkce_cookie_template.build_removal();
             let jar = jar.add(state_removal).add(pkce_removal);
@@ -774,7 +829,11 @@ where
                                 }
                             }
                             Err(e) => {
-                                error!("OAuth2 session issuance failed: {e:#}");
+                                error!(
+                                    "OAuth2 session issuance failed [{}]: {}",
+                                    crate::errors::UserFriendlyError::support_code(&e),
+                                    crate::errors::UserFriendlyError::developer_message(&e),
+                                );
                                 return (
                                     jar,
                                     (StatusCode::BAD_GATEWAY, "OAuth2 session issuance failed"),
@@ -784,7 +843,11 @@ where
                         }
                     }
                     Err(e) => {
-                        error!("OAuth2 account mapping failed: {e:#}");
+                        error!(
+                            "OAuth2 account mapping failed [{}]: {}",
+                            crate::errors::UserFriendlyError::support_code(&e),
+                            crate::errors::UserFriendlyError::developer_message(&e),
+                        );
                         return (
                             jar,
                             (StatusCode::BAD_GATEWAY, "OAuth2 account mapping failed"),
@@ -798,7 +861,12 @@ where
             (jar, (StatusCode::OK, "OAuth2 callback OK")).into_response()
         }
         Err(err) => {
-            error!("OAuth2 token exchange failed: {err}");
+            let oe = self::errors::OAuth2Error::token_exchange(err.to_string());
+            error!(
+                "OAuth2 token exchange failed [{}]: {}",
+                crate::errors::UserFriendlyError::support_code(&oe),
+                crate::errors::UserFriendlyError::developer_message(&oe),
+            );
             let state_removal = st.state_cookie_template.build_removal();
             let pkce_removal = st.pkce_cookie_template.build_removal();
             let jar = jar.add(state_removal).add(pkce_removal);

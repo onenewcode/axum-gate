@@ -61,7 +61,6 @@ prometheus = ["audit-logging", "dep:prometheus"]
 
 
 [dependencies]
-anyhow = { workspace = true }
 argon2 = { version = "0.5", features = ["std"] }
 axum = { workspace = true }
 axum-extra = { workspace = true }
