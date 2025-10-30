@@ -20,7 +20,7 @@
 //! - **Multiple storage backends** - In-memory, SurrealDB, SeaORM support
 //! - **Distributed system ready** - Zero-synchronization permission system
 //! - **Pre-built handlers** - Login/logout endpoints with timing attack protection
-//! - **Optional anonymous context** - Install Option<Account> and Option<RegisteredClaims>
+//! - **Optional anonymous context** - Install `Option<Account>` and `Option<RegisteredClaims>`
 //! - **Static token mode** - Simple shared-secret bearer auth for internal services
 //! - **Audit and metrics (feature-gated)** - Structured audit logs and Prometheus metrics
 //!
@@ -31,14 +31,14 @@
 //! A convenience prelude is available via `axum_gate::prelude::*` that re-exports the most commonly used types.
 //!
 //! ### Feature Flags
-//! - `storage-surrealdb` — SurrealDB repositories
+//! - `storage-surrealdb` — SurrealDB repositories (see [BUSL-1.1 license note](https://github.com/emirror-de/axum-gate?tab=readme-ov-file#msrv-and-license))
 //! - `storage-seaorm` — SeaORM repositories
 //! - `audit-logging` — emit structured audit events
 //! - `prometheus` — export metrics for audit logging (implies `audit-logging`)
-//! - `insecure-fast-hash` — faster Argon2 preset for development only (opt-in for release)
+//! - `insecure-fast-hash` — faster Argon2 preset for development only (opt-in for release, not recommended)
 //!
 //!
-//! For common integration issues and debugging tips, [see the Troubleshooting guide](https://github.com/emirror-de/axum-gate/blob/main/TROUBLESHOOTING.md).
+//! For common integration issues and debugging tips, [see the Troubleshooting guide](https://github.com/emirror-de/axum-gate/blob/nightly/TROUBLESHOOTING.md).
 //!
 //! ## Quick Start
 //!
@@ -174,7 +174,7 @@
 //!     );
 //! ```
 //!
-//! Optional mode (never blocks; installs Option<Account> and Option<RegisteredClaims>):
+//! Optional mode (never blocks; installs `Option<Account>` and `Option<RegisteredClaims>`):
 //! ```rust
 //! # use axum_gate::prelude::*;
 //! # use std::sync::Arc;
@@ -322,19 +322,19 @@
 //! ## Security Features
 //!
 //! ### Cookie Security
-//! - **Secure defaults**: [`cookie_template::CookieTemplate::recommended`] provides secure defaults
+//! - **Secure defaults**: [`CookieTemplate::recommended`](cookie_template::CookieTemplate::recommended) provides secure defaults
 //! - **HTTPS enforcement**: `secure(true)` cookies in production
 //! - **XSS protection**: `http_only(true)` prevents script access
 //! - **CSRF mitigation**: `SameSite::Strict` for sensitive operations
 //!
 //! ### JWT Security
-//! - **Persistent keys**: Use stable signing keys in production (see [`codecs::jwt::JsonWebToken`] docs)
+//! - **Persistent keys**: Use stable signing keys in production (see [`JsonWebToken`](codecs::jwt::JsonWebToken) docs)
 //! - **Proper expiration**: Set reasonable JWT expiration times
 //! - **Key rotation**: Support for periodic key updates
 //!
 //! ### Timing Attack Protection
 //! Built-in protection against timing attacks:
-//! - Constant-time credential verification using the `subtle` crate
+//! - Constant-time credential verification using the [`subtle`] crate
 //! - Always performs password verification, even for non-existent users
 //! - Unified error responses prevent user enumeration
 //! - Applied to all storage backends
