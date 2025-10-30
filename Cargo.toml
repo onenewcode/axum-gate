@@ -77,7 +77,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 serde_with = "3"
 strum = { workspace = true }
-subtle = "2"
+subtle = ">=2.6.1"
 surrealdb = { version = "2", optional = true }
 thiserror = "2"
 tokio = { version = "1", features = ["sync"] }
