@@ -299,6 +299,44 @@ jobs:
             - name: Run cargo semver-checks
               run: cargo semver-checks check-release
 
+    public-api:
+        name: cargo-public-api
+        if: github.ref == 'refs/heads/nightly' || github.event_name == 'pull_request'
+        needs: [test-integration, test-doc]
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - name: Install Rust (nightly)
+              uses: dtolnay/rust-toolchain@nightly
+            - name: Cache cargo/target
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/bin
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: ${{ runner.os }}-cargo-
+            - name: Install cargo-public-api
+              run: cargo +nightly install cargo-public-api
+            - name: Determine baseline tag
+              shell: bash
+              run: |
+                  set -e
+                  BASE_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+                  if [ -z "$BASE_TAG" ]; then
+                    echo "No tags found, using previous commit as baseline"
+                    BASE_TAG="HEAD~1"
+                  fi
+                  echo "BASE_TAG=${BASE_TAG}" >> $GITHUB_ENV
+            - name: Run cargo public-api diff
+              run: cargo +nightly public-api diff "${{ env.BASE_TAG }}"..HEAD -p axum-gate
+
     examples:
         name: Examples matrix
         needs: [test-integration, test-doc]
