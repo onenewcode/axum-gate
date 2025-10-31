@@ -16,7 +16,7 @@ resolver = "3"
 [workspace.dependencies]
 anyhow = "1"
 axum = "0.8"
-axum-extra = { version = "0.10", features = ["cookie"] }
+axum-extra = { version = "0.12", features = ["cookie"] }
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
 oauth2 = { version = "5", features = ["reqwest"] }
