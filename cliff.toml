@@ -123,9 +123,6 @@ protect_breaking_commits = true
 # Filter commits based on patterns
 filter_commits = false
 
-# Ignore certain tags
-ignore_tags = "beta|alpha|rc"
-
 # Sort commits topologically
 topo_order = false
 
