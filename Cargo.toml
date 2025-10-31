@@ -39,7 +39,7 @@ tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 name = "axum-gate"
 version = "1.0.0-rc.0"
 edition = "2024"
-rust-version = "1.86"
+rust-version = "1.88"
 license = "MIT"
 authors = ["Lewin Probst <info@emirror.de>"]
 description = "Flexible authentication and authorization for Axum with JWT cookies or bearer tokens, optional OAuth2, and role/group/permission RBAC. Suitable for single-node and distributed systems."
