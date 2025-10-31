@@ -155,27 +155,6 @@ cargo_semver_checks:
         - merge_requests
         - nightly
 
-cargo_public_api:
-    <<: *rust_job
-    stage: security
-    script:
-        - git fetch --tags --force --prune --unshallow || true
-        - rustup toolchain install nightly --profile minimal
-        - cargo +nightly install cargo-public-api
-        - |
-            set -e
-            BASE_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-            if [ -z "$BASE_TAG" ]; then
-              echo "No tags found, using previous commit as baseline"
-              BASE_TAG="HEAD~1"
-            fi
-            echo "Comparing public API against ${BASE_TAG}"
-            cargo +nightly public-api diff "${BASE_TAG}"..HEAD -p axum-gate
-    allow_failure: true
-    only:
-        - merge_requests
-        - nightly
-
 # Example compilation and basic tests
 examples_simple_usage:
     <<: *rust_job

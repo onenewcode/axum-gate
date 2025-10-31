@@ -204,8 +204,6 @@
               cargo-watch
               cargo-expand # For macro debugging
               cargo-machete # For unused dependency detection
-              cargo-public-api # For semver checks
-              rustup # Required by cargo-public-api
 
               # Database tools for examples
               sqlite
