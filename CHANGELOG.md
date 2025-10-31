@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.0] - 2025-10-31
+### 📝 Other Changes
+- Updated Cargo.lock [[373c604]]
+
+- Bumped to v1.0.0 [[51fada8]]
+
+- Increased MSRV to 1.88 to be able to upgrade home dependency [[ab60a36]]
+
+- Update axum-extra to 0.12 [[8a496ca]]
+
+- Updated Cargo.lock [[1c14a51]]
+
+- Revert "feat: Added semver checks to CI" This reverts commit 1a7e94f1272abe6f45f58fd9b185d139f01bc246. [[9c495d2]]
+
+- Added semver checks to CI [[1a7e94f]]
+
+- Removed .rules and added to .gitignore as this file does not add value to the crate [[149e9a3]]
+
+- Crate level documentation improvements [[7a6a525]]
+
+- Now using subtle >= 2.6.1 as 2.6.0 is yanked [[d1d41d5]]
+
+- OAuth2Gate no longer uses anyhow::Result [[3d1e7b2]]
+
+- Merged nightly branch [[e949763]]
+
+- Merged nightly branch [[03d8c1e]]
+
+- Update GitHub Sponsors username in FUNDING.yml [[ef68d49]]
+
+- Added license notice for surrealdb [[7e6c733]]
+
+- Added "Apache-2.0 WITH LLVM-exception" to deny.toml [[9d8a930]]
+
+- GitHub Bug issue template [[69610bd]]
+
+- Trying to fix those github issue templates [[7ea12c5]]
+
+- Bug issue template [[7a0885f]]
+
+- Updated issue templates [[bc61d87]]
+
+- Added missing jwt_codec variable in OAuth2 doc-test [[8111879]]
+
+- Applied clippy hints [[9f2f625]]
+
+- Merge branch 'feat/oauth2' into 'nightly' Feat/oauth2 See merge request lprobst/axum-gate!6 [[b4da1c8]]
+
+- Feat/oauth2 [[a38df7c]]
+
+- Added issue template config [[930749e]]
+
+- Added github issue templates [[dac7e73]]
+
+- Aligned BearerGate implementation to only insert Option<_> extensions [[39d00e3]]
+
+- Added Eq trait bound to Gate::cookie for clarity during build time [[9ee26ec]]
+
+- Updated cookie_template documentation [[5786ca0]]
+
+- :allow_anonymous_with_optional_user now only inserts Option<_> extensions [[c14ca3d]]
+
+- Updated bearer gate implementation [[abf03fd]]
+
+- Added all-features = true to docs.rs build [[f45bd84]]
+
+- Updated .rules [[33e4f66]]
+
+- Updated .rules [[dafda2d]]
+
+- BearerGate doc tests [[0266b23]]
+
+- Merge branch 'docs/cookie-gate' into 'nightly' docs: Updated documentation for CookieGate See merge request lprobst/axum-gate!7 [[0f8cce2]]
+
+- Updated documentation for CookieGate [[6a14edd]]
+
+- Removed unused dependencies [[809fa37]]
+
+- Added cargo-machete to flake.nix [[40dd708]]
+
+- Added Troubleshooting section to CookieGate [[d52168e]]
+
+- Disabled coverage report in gitlab ci [[2050a82]]
+
+
+
 ## [1.0.0-rc.0] - 2025-10-25
 ### 🏗 Refactoring
 - **💥 BREAKING CHANGE:** Introduced hashing module [[0b5cb49]]
@@ -26,6 +112,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 📝 Other Changes
+- Updated CHANGELOG.md [[65e1c75]]
+
 - Updated Cargo.lock [[568cbd5]]
 
 - Re-arranged use statements in permission-registry example [[643656d]]
