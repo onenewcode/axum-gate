@@ -37,7 +37,7 @@ tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
 
 [package]
 name = "axum-gate"
-version = "1.0.0-rc.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.88"
 license = "MIT"

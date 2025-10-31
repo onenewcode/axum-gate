@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0-rc.0.
+This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0.
 
 ---
 
@@ -8,8 +8,8 @@ This document outlines the security practices, built-in protections, and deploym
 
 | Version | Supported |
 | ------- | --------- |
-| 1.0.0-rc.0 | ✅ |
-| < 1.0.0-rc.0 | ❌ |
+| 1.0.0 | ✅ |
+| < 1.0.0 | ❌ |
 
 Only the latest stable release and the most recent release candidate receive security updates.
 
@@ -228,7 +228,7 @@ async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 
 ## 10. Observability & Monitoring
 
-### Current State (v1.0.0-rc.0)
+### Current State (v1.0.0)
 - **Structured Logging**: Comprehensive tracing integration with contextual metadata for all authentication operations
 - **Prometheus Metrics**: Built-in counters and histograms (authorization decisions, JWT validation latency, account operations)
 - **Audit Logging**: Emits structured tracing events when `audit-logging` is enabled; integrate with your tracing subscriber/sink
@@ -368,7 +368,7 @@ match auth_result {
 
 ## 15. Feature Flags and Security
 
-### Available Feature Flags (v1.0.0-rc.0)
+### Available Feature Flags (v1.0.0)
 | Feature | Security Impact | Recommendation |
 |---------|-----------------|----------------|
 | `insecure-fast-hash` | ⚠️ Weakens password hashing | **NEVER** enable in production |
@@ -382,13 +382,13 @@ match auth_result {
 // Production-safe feature configuration
 [dependencies]
 axum-gate = {
-    version = "1.0.0-rc.0",
+    version = "1.0.0",
     features = ["storage-surrealdb", "audit-logging", "prometheus"]
 }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-axum-gate = { version = "1.0.0-rc.0", features = ["storage-surrealdb"] }
+axum-gate = { version = "1.0.0", features = ["storage-surrealdb"] }
 ```
 
 ---

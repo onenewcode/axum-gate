@@ -24,7 +24,7 @@ This crate re-exports jsonwebtoken, cookie, uuid, axum_extra (and optionally pro
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
-axum-gate = { version = "1.0.0-rc.0" }
+axum-gate = { version = "1" }
 ```
 
 Optional features:
