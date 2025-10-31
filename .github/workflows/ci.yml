@@ -153,13 +153,13 @@ jobs:
               run: cargo test --workspace --all-features --doc
 
     msrv:
-        name: MSRV check (1.86)
+        name: MSRV check (1.88)
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
               uses: actions/checkout@v4
-            - name: Install Rust (1.86)
-              uses: dtolnay/rust-toolchain@1.86.0
+            - name: Install Rust (1.88)
+              uses: dtolnay/rust-toolchain@1.88.0
             - name: Cache cargo/target
               uses: actions/cache@v4
               with:
