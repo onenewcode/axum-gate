@@ -6,7 +6,7 @@ publish = false
 
 [dependencies]
 axum-gate = { path = "../../" }
-axum = "0.8"
+axum = { workspace = true }
 oauth2 = { workspace = true }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
