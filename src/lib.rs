@@ -330,7 +330,7 @@
 //! ### JWT Security
 //! - **Persistent keys**: Use stable signing keys in production (see [`JsonWebToken`](codecs::jwt::JsonWebToken) docs)
 //! - **Proper expiration**: Set reasonable JWT expiration times
-//! - **Key rotation**: Support for periodic key updates
+//! - **Key rotation**: Manual key replacement only; rotation invalidates existing tokens
 //!
 //! ### Timing Attack Protection
 //! Built-in protection against timing attacks:
