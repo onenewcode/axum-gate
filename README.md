@@ -73,7 +73,7 @@ For common integration issues and practical debugging tips, see TROUBLESHOOTING.
 
 ## MSRV and license
 
-- MSRV: 1.86
+- MSRV: 1.88
 - License: MIT
 - SurrealDB (BUSL-1.1) notice:
   - Enabling the optional feature `storage-surrealdb` pulls in SurrealDB, which is licensed under the Business Source License 1.1 (not OSI-approved).
