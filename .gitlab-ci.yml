@@ -48,13 +48,6 @@ clippy_check:
     allow_failure: false
 
 # Test stage jobs - Core tests
-test_no_features:
-    <<: *rust_job
-    stage: test
-    script:
-        - cargo test --workspace --no-default-features
-    allow_failure: false
-
 test_default_features:
     <<: *rust_job
     stage: test
@@ -66,7 +59,7 @@ test_aws_lc_rs:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features aws_lc_rs
+        - cargo test --no-default-features --features aws_lc_rs,storage-surrealdb,storage-seaorm
     allow_failure: false
 
 # Individual feature tests
@@ -74,21 +67,21 @@ test_insecure_fast_hash:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features insecure-fast-hash
+        - cargo test --workspace --features insecure-fast-hash
     allow_failure: false
 
 test_storage_surrealdb:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features storage-surrealdb
+        - cargo test --workspace --features storage-surrealdb
     allow_failure: false
 
 test_storage_seaorm:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features storage-seaorm
+        - cargo test --workspace --features storage-seaorm
     allow_failure: false
 
 # Feature combination tests
@@ -96,21 +89,21 @@ test_all_storage_features:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features storage-surrealdb,storage-seaorm
+        - cargo test --workspace --features storage-surrealdb,storage-seaorm
     allow_failure: false
 
 test_fast_hash_with_surrealdb:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features insecure-fast-hash,storage-surrealdb
+        - cargo test --workspace --features insecure-fast-hash,storage-surrealdb
     allow_failure: false
 
 test_fast_hash_with_seaorm:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --no-default-features --features insecure-fast-hash,storage-seaorm
+        - cargo test --workspace --features insecure-fast-hash,storage-seaorm
     allow_failure: false
 
 # Integration and doc tests

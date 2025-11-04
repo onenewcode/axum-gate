@@ -68,24 +68,22 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - name: no_features
-                      cmd: cargo test --workspace --no-default-features
                     - name: default_features
                       cmd: cargo test --workspace
                     - name: aws_lc_rs
-                      cmd: cargo test --workspace --no-default-features --features aws_lc_rs
+                      cmd: cargo test --workspace --no-default-features --features aws_lc_rs,storage-surrealdb,storage-seaorm
                     - name: insecure_fast_hash
-                      cmd: cargo test --workspace --no-default-features --features insecure-fast-hash
+                      cmd: cargo test --workspace --features insecure-fast-hash
                     - name: storage_surrealdb
-                      cmd: cargo test --workspace --no-default-features --features storage-surrealdb
+                      cmd: cargo test --workspace --features storage-surrealdb
                     - name: storage_seaorm
-                      cmd: cargo test --workspace --no-default-features --features storage-seaorm
+                      cmd: cargo test --workspace --features storage-seaorm
                     - name: all_storage_features
-                      cmd: cargo test --workspace --no-default-features --features storage-surrealdb,storage-seaorm
+                      cmd: cargo test --workspace --features storage-surrealdb,storage-seaorm
                     - name: fast_hash_with_surrealdb
-                      cmd: cargo test --workspace --no-default-features --features insecure-fast-hash,storage-surrealdb
+                      cmd: cargo test --workspace --features insecure-fast-hash,storage-surrealdb
                     - name: fast_hash_with_seaorm
-                      cmd: cargo test --workspace --no-default-features --features insecure-fast-hash,storage-seaorm
+                      cmd: cargo test --workspace --features insecure-fast-hash,storage-seaorm
         steps:
             - name: Checkout
               uses: actions/checkout@v4
