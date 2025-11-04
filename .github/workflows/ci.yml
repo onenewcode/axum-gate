@@ -58,7 +58,7 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo clippy
-              run: cargo clippy --workspace --all-targets -- -D warnings && cargo clippy --all-targets --no-default-features --features aws_lc_rs -- -D warnings
+              run: cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings && cargo clippy --all-targets --no-default-features --features aws_lc_rs,storage-surrealdb,storage-seaorm -- -D warnings
 
     test-core:
         name: Core test matrix

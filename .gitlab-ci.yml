@@ -43,8 +43,8 @@ clippy_check:
     <<: *rust_job
     stage: check
     script:
-        - cargo clippy --workspace --all-targets -- -D warnings
-        - cargo clippy --all-targets --no-default-features --features aws_lc_rs -- -D warnings
+        - cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings
+        - cargo clippy --all-targets --no-default-features --features aws_lc_rs,storage-surrealdb,storage-seaorm -- -D warnings
     allow_failure: false
 
 # Test stage jobs - Core tests
