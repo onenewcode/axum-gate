@@ -38,7 +38,7 @@ jobs:
               run: cargo fmt --all -- --check
 
     clippy:
-        name: Clippy (all targets, all features)
+        name: Clippy (all targets; rust_crypto and aws_lc_rs)
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
@@ -58,7 +58,7 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo clippy
-              run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+              run: cargo clippy --workspace --all-targets -- -D warnings && cargo clippy --workspace --all-targets --no-default-features --features aws_lc_rs -- -D warnings
 
     test-core:
         name: Core test matrix
@@ -72,8 +72,8 @@ jobs:
                       cmd: cargo test --workspace --no-default-features
                     - name: default_features
                       cmd: cargo test --workspace
-                    - name: all_features
-                      cmd: cargo test --workspace --all-features
+                    - name: aws_lc_rs
+                      cmd: cargo test --workspace --no-default-features --features aws_lc_rs
                     - name: insecure_fast_hash
                       cmd: cargo test --workspace --no-default-features --features insecure-fast-hash
                     - name: storage_surrealdb
@@ -109,7 +109,7 @@ jobs:
               run: ${{ matrix.cmd }}
 
     test-integration:
-        name: Integration tests (all features)
+        name: Integration tests
         needs: [test-core]
         runs-on: ubuntu-latest
         steps:
@@ -128,10 +128,10 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo test --test '*'
-              run: cargo test --workspace --all-features --test '*'
+              run: cargo test --workspace --test '*'
 
     test-doc:
-        name: Doc tests (all features)
+        name: Doc tests
         needs: [test-core]
         runs-on: ubuntu-latest
         steps:
@@ -150,7 +150,7 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo test --doc
-              run: cargo test --workspace --all-features --doc
+              run: cargo test --workspace --doc
 
     msrv:
         name: MSRV check (1.88)
@@ -175,9 +175,9 @@ jobs:
                   rustc --version
                   cargo --version
             - name: cargo check (all features)
-              run: cargo check --workspace --all-features
+              run: cargo check --workspace
             - name: cargo test (all features)
-              run: cargo test --workspace --all-features
+              run: cargo test --workspace
 
     stable-build:
         name: Stable build/test (allow failure)
@@ -199,9 +199,9 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo check (all features)
-              run: cargo check --workspace --all-features
+              run: cargo check --workspace
             - name: cargo test (all features)
-              run: cargo test --workspace --all-features
+              run: cargo test --workspace
 
     benches:
         name: Benches (allowed to fail)
@@ -224,7 +224,7 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo test --benches
-              run: cargo test --workspace --all-features --benches
+              run: cargo test --workspace --benches
 
     audit:
         name: cargo-audit
@@ -342,7 +342,7 @@ jobs:
               shell: bash
               run: |
                   if [ "${{ matrix.all_features }}" = "true" ]; then
-                    cargo test -p "${{ matrix.pkg }}" --all-features
+                    cargo test -p "${{ matrix.pkg }}"
                   else
                     cargo test -p "${{ matrix.pkg }}"
                   fi
@@ -369,7 +369,7 @@ jobs:
             - name: Install tarpaulin
               run: cargo install cargo-tarpaulin
             - name: Run tarpaulin (markdown)
-              run: cargo tarpaulin --workspace --all-features --out Markdown
+              run: cargo tarpaulin --workspace --out Markdown
             - name: Upload tarpaulin-report.md
               uses: actions/upload-artifact@v4
               with:

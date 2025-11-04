@@ -43,7 +43,8 @@ clippy_check:
     <<: *rust_job
     stage: check
     script:
-        - cargo clippy --workspace --all-targets --all-features -- -D warnings
+        - cargo clippy --workspace --all-targets -- -D warnings
+        - cargo clippy --workspace --all-targets --no-default-features --features aws_lc_rs -- -D warnings
     allow_failure: false
 
 # Test stage jobs - Core tests
@@ -61,11 +62,11 @@ test_default_features:
         - cargo test --workspace
     allow_failure: false
 
-test_all_features:
+test_aws_lc_rs:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --all-features
+        - cargo test --workspace --no-default-features --features aws_lc_rs
     allow_failure: false
 
 # Individual feature tests
@@ -117,14 +118,14 @@ test_integration:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --all-features --test '*'
+        - cargo test --workspace --test '*'
     allow_failure: false
 
 test_doc:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --all-features --doc
+        - cargo test --workspace --doc
     allow_failure: false
 
 # Security stage jobs
@@ -161,7 +162,7 @@ examples_simple_usage:
     stage: examples
     script:
         - cargo check -p simple-usage-example
-        - cargo test -p simple-usage-example --all-features
+        - cargo test -p simple-usage-example
     allow_failure: false
 
 examples_custom_roles:
@@ -169,7 +170,7 @@ examples_custom_roles:
     stage: examples
     script:
         - cargo check -p custom-roles-example
-        - cargo test -p custom-roles-example --all-features
+        - cargo test -p custom-roles-example
     allow_failure: false
 
 examples_distributed:
@@ -177,7 +178,7 @@ examples_distributed:
     stage: examples
     script:
         - cargo check -p distributed
-        - cargo test -p distributed --all-features
+        - cargo test -p distributed
     allow_failure: false
 
 examples_permission_validation:
@@ -185,7 +186,7 @@ examples_permission_validation:
     stage: examples
     script:
         - cargo check -p permission-validation-example
-        - cargo test -p permission-validation-example --all-features
+        - cargo test -p permission-validation-example
     allow_failure: false
 
 examples_rate_limiting:
@@ -193,7 +194,7 @@ examples_rate_limiting:
     stage: examples
     script:
         - cargo check -p rate-limiting-example
-        - cargo test -p rate-limiting-example --all-features
+        - cargo test -p rate-limiting-example
     allow_failure: false
 
 examples_sea_orm:
@@ -218,8 +219,8 @@ test_msrv:
     stage: test
     script:
         - rustc --version
-        - cargo check --workspace --all-features
-        - cargo test --workspace --all-features
+        - cargo check --workspace
+        - cargo test --workspace
     allow_failure: false
 
 test_stable:
@@ -227,8 +228,8 @@ test_stable:
     stage: test
     script:
         - rustc --version
-        - cargo check --workspace --all-features
-        - cargo test --workspace --all-features
+        - cargo check --workspace
+        - cargo test --workspace
     allow_failure: true
 
 # Performance and benchmark tests (if any)
@@ -236,7 +237,7 @@ bench_tests:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --all-features --benches
+        - cargo test --workspace --benches
     allow_failure: true
     only:
         - nightly
@@ -248,7 +249,7 @@ bench_tests:
 #     stage: test
 #     script:
 #         - cargo install cargo-tarpaulin
-#         - cargo tarpaulin --workspace --all-features --out Markdown
+#         - cargo tarpaulin --workspace --out Markdown
 #     coverage: '/(\d+\.\d+)% coverage/'
 #     artifacts:
 #         paths:
