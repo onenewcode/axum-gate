@@ -1,6 +1,6 @@
 # Security Policy
 
-This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.0.
+This document outlines the security practices, built-in protections, and deployment guidance for `axum-gate` v1.0.1.
 
 ---
 
@@ -8,8 +8,8 @@ This document outlines the security practices, built-in protections, and deploym
 
 | Version | Supported |
 | ------- | --------- |
-| 1.0.0 | ✅ |
-| < 1.0.0 | ❌ |
+| 1.0.1 | ✅ |
+| < 1.0.1 | ❌ |
 
 Only the latest stable release and the most recent release candidate receive security updates.
 
@@ -56,19 +56,19 @@ The crate provides three security presets:
 
 ### Cryptographic Backend
 
-By default, this crate uses the `rust_crypto` backend for JWT cryptographic operations. 
+By default, this crate uses the `rust_crypto` backend for JWT cryptographic operations.
 This is a pure Rust implementation that doesn't require external dependencies.
 
-Alternatively, you can choose the `aws_lc_rs` feature to use AWS Libcrypto, which may offer 
+Alternatively, you can choose the `aws_lc_rs` feature to use AWS Libcrypto, which may offer
 better performance on some platforms:
 
 ```toml
 axum-gate = { version = "1", default-features = false, features = ["aws_lc_rs"] }
 ```
 
-Note that the `rust_crypto` backend depends on the `rsa` crate which was affected by vulnerability 
-[RUSTSEC-2023-0071](https://rustsec.org/advisories/RUSTSEC-2023-0071.html) (Marvin Attack). This is a timing attack that could 
-potentially allow key recovery. Users who want to avoid this vulnerability can opt to use the 
+Note that the `rust_crypto` backend depends on the `rsa` crate which was affected by vulnerability
+[RUSTSEC-2023-0071](https://rustsec.org/advisories/RUSTSEC-2023-0071.html) (Marvin Attack). This is a timing attack that could
+potentially allow key recovery. Users who want to avoid this vulnerability can opt to use the
 `aws_lc_rs` backend instead.
 
 ### Key Management
@@ -77,7 +77,7 @@ potentially allow key recovery. Users who want to avoid this vulnerability can o
   - Use stable, high-entropy secret (≥32 bytes recommended)
   - Load from environment variables or secret management systems
   - Store outside source control
-  - Rotate periodically (manual process in v1.0.0)
+  - Rotate periodically (currently a manual process)
 
 **Example Production Setup**:
 ```rust
@@ -245,7 +245,7 @@ async fn logout_handler(cookie_jar: CookieJar) -> CookieJar {
 
 ## 10. Observability & Monitoring
 
-### Current State (v1.0.0)
+### Current State (v1.0.1)
 - **Structured Logging**: Comprehensive tracing integration with contextual metadata for all authentication operations
 - **Prometheus Metrics**: Built-in counters and histograms (authorization decisions, JWT validation latency, account operations)
 - **Audit Logging**: Emits structured tracing events when `audit-logging` is enabled; integrate with your tracing subscriber/sink
@@ -385,7 +385,7 @@ match auth_result {
 
 ## 15. Feature Flags and Security
 
-### Available Feature Flags (v1.0.0)
+### Available Feature Flags (v1.0.1)
 | Feature | Security Impact | Recommendation |
 |---------|-----------------|----------------|
 | `insecure-fast-hash` | ⚠️ Weakens password hashing | **NEVER** enable in production |
@@ -399,13 +399,13 @@ match auth_result {
 // Production-safe feature configuration
 [dependencies]
 axum-gate = {
-    version = "1.0.0",
+    version = "1.0.1",
     features = ["storage-surrealdb", "audit-logging", "prometheus"]
 }
 
 // Development configuration (faster hashing automatically enabled in debug builds)
 [dev-dependencies]
-axum-gate = { version = "1.0.0", features = ["storage-surrealdb"] }
+axum-gate = { version = "1.0.1", features = ["storage-surrealdb"] }
 ```
 
 ---
@@ -491,6 +491,6 @@ cargo clippy -- -D warnings
 
 ---
 
-**Stay Secure**: `axum-gate` v1.0.0 provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
+**Stay Secure**: `axum-gate` v1.0.1 provides a robust security foundation with production-ready features. Defense-in-depth requires combining it with proper infrastructure hardening, monitoring, and operational security practices.
 
 For the latest security updates and best practices, monitor the [GitHub repository](https://github.com/emirror-de/axum-gate) and [security advisories](https://github.com/emirror-de/axum-gate/security/advisories).

@@ -84,7 +84,7 @@ To use the AWS Libcrypto backend for potentially better performance:
 axum-gate = { version = "1", default-features = false, features = ["aws_lc_rs"] }
 ```
 
-Note: The `aws_lc_rs` backend may require additional build tools depending on your platform. 
+Note: The `aws_lc_rs` backend may require additional build tools depending on your platform.
 See the [aws-lc-rs build documentation](https://github.com/aws/aws-lc-rs/blob/main/aws-lc-rs/README.md#build) for details.
 
 

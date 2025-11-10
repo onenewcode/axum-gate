@@ -11,7 +11,7 @@
 //! - Keep spans/events coarse and avoid leaking internal state.
 //!
 //! Enable via Cargo features (in the depending crate):
-//! - `axum-gate = { version = "...", features = ["audit-logging"] }`
+//! - `axum-gate = { version = "1.0.1", features = ["audit-logging"] }`
 //!
 //! Environment and subscriber configuration are left to the application.
 
