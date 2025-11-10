@@ -7,8 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-10-31
+## [1.0.1] - 2025-11-10
+### 🐞 Bug Fixes
+- Update_account and update_secret panic in seaorm (#8) * fix: update_account and update_secret panic in seaorm * fix: add unique constraints to account_id in Account and Credentials models * fix: qurey the primary key from database,then update secret or account --------- Co-authored-by: Yale <yale.yu@kuka.com> [[dc39e3d]]
+
+
+
 ### 📝 Other Changes
+- Updated to v1.0.1 [[172d82c]]
+
+- Docs.rs now excluding aws_lc_rs feature during build [[5dda698]]
+
+- Updated Cargo.lock [[72fbecc]]
+
+- Added basic update secret and account to sea-orm example [[3aafc61]]
+
+- Update feature arguments in CI workflow [[e5dae94]]
+
+- Updated CI semver checks to pass with selected features [[7a27c62]]
+
+- Removed unnecessary comment form Cargo.toml [[21576f0]]
+
+- Trying to fix CI [[2c32e12]]
+
+- Tests in CI [[13bfa2c]]
+
+- Added missing features for clippy to pass integration tests [[ca16a08]]
+
+- Clippy call in CI should not check the whole workspace when using aws_lc_rs feature [[93edee0]]
+
+- Updated pipeline to run for default and aws_lc_rs encryption [[0fe3b4d]]
+
+- Merge commit [[48884c8]]
+
+- OAuth2 github example now uses axum from workspace [[67c4097]]
+
+- Support rust_crypto encryption algorithms (#5) [[ee5bc7c]]
+
+- OAuth2 github example now uses axum from workspace [[58f51da]]
+
+- Updated MSRV to 1.88 [[3d7111c]]
+
+- Updated misleading documentation about key rotation [[6327909]]
+
+- Updated MSRV CI workflows [[ebbb895]]
+
+
+
+## [1.0.0] - 2025-10-31
+### 🐞 Bug Fixes
+- Fix and simplify doctests; correct imports and remove problematic permission validation section [[10706e1]]
+
+
+
+### 📄 Documentation
+- Add missing documentation for prometheus_metrics module - Add comprehensive module-level documentation with usage examples - Document all enums (JwtInvalidKind, AccountDeleteOutcome, SecretRestored, AccountInsertOutcome) and their variants - Document Metrics struct and all its fields - Document metrics() function with return value explanations - Resolves all missing documentation errors (22 items) in audit.rs - Maintains compliance with #![deny(missing_docs)] lint [[cb4037c]]
+
+
+
+### 📝 Other Changes
+- Updated CHANGELOG.md [[b7ff32a]]
+
+- Git cliff no longer ignores pre-release tags [[531304b]]
+
 - Updated Cargo.lock [[373c604]]
 
 - Bumped to v1.0.0 [[51fada8]]
@@ -91,27 +152,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Disabled coverage report in gitlab ci [[2050a82]]
 
-
-
-## [1.0.0-rc.0] - 2025-10-25
-### 🏗 Refactoring
-- **💥 BREAKING CHANGE:** Introduced hashing module [[0b5cb49]]
-
-- **💥 BREAKING CHANGE:** Renamed BasicGroup to Group [[7416517]]
-
-
-
-### 🐞 Bug Fixes
-- Fix and simplify doctests; correct imports and remove problematic permission validation section [[10706e1]]
-
-
-
-### 📄 Documentation
-- Add missing documentation for prometheus_metrics module - Add comprehensive module-level documentation with usage examples - Document all enums (JwtInvalidKind, AccountDeleteOutcome, SecretRestored, AccountInsertOutcome) and their variants - Document Metrics struct and all its fields - Document metrics() function with return value explanations - Resolves all missing documentation errors (22 items) in audit.rs - Maintains compliance with #![deny(missing_docs)] lint [[cb4037c]]
-
-
-
-### 📝 Other Changes
 - Updated CHANGELOG.md [[65e1c75]]
 
 - Updated Cargo.lock [[568cbd5]]
@@ -714,6 +754,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added convenient builder option functions for JsonWebTokenOptions [[7143adb]]
 
+
+
+### 🚲 Miscellaneous
+- **💥 BREAKING CHANGE:** Removed DecodingKey and EncodingKey from prelude [[bf35415]]
+
+
+
+### 🛳 Features
+- **💥 BREAKING CHANGE:** Added deny unwrap, expect and unsafe code [[71de97c]]
+
+- Add tracing-based audit logging gated behind feature - Introduce audit module with spans/events (request, authz, JWT issues, account lifecycle) - Instrument gate, login/logout handlers, and account services - Remove unused audit functions and simplify module-level cfg gating - No secrets logged; structured fields only; feature-off has zero overhead *(audit)*  [[3a87d25]]
+
+- Comprehensive security testing, code quality improvements, and documentation updates * Initial plan * Add comprehensive security tests and fix clippy warnings - Fixed all 10 clippy warnings for improved code quality - Added 44 new security-focused tests covering: * JWT manipulation and validation edge cases * Password hashing security and malformed input handling * Authorization bypass attempts and role escalation * Input validation against SQL injection and malformed data * Cookie security attributes and manipulation prevention * Storage layer isolation and concurrent access safety * Unicode/special character handling throughout system * Serialization security for sensitive data structures - Added timing attack awareness test (marked as ignore for CI stability) - Enhanced test coverage for edge cases and error conditions - All existing tests continue to pass Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Add comprehensive security documentation and fix README example - Added SECURITY.md with detailed security considerations and best practices - Fixed README.md example to use consistent field names (user_id vs account_id) - Documented password security, JWT security, cookie security, and authorization security - Added guidance on timing attack considerations and security best practices - Included testing instructions for security test suites - All documentation examples validated and working Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Address review comments: fix imports, remove unused code, use AccountDeleteService Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> --------- Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com> Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> [[7bc5e6e]]
+
+
+
+## [1.0.0-rc.0] - 2025-06-18
+### 🏗 Refactoring
+- **💥 BREAKING CHANGE:** Introduced hashing module [[0b5cb49]]
+
+- **💥 BREAKING CHANGE:** Renamed BasicGroup to Group [[7416517]]
+
+
+
+### 📝 Other Changes
 - Updated CHANGELOG.md [[4ad0216]]
 
 - Version bump to v1.0.0-rc.0 [[584ef22]]
@@ -925,8 +990,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 🚲 Miscellaneous
-- **💥 BREAKING CHANGE:** Removed DecodingKey and EncodingKey from prelude [[bf35415]]
-
 - **💥 BREAKING CHANGE:** Renamed update_permission_set to extend_permission_set [[17dac0f]]
 
 - **💥 BREAKING CHANGE:** Some JWT properties are now mandatory [[acae31b]]
@@ -942,12 +1005,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ### 🛳 Features
-- **💥 BREAKING CHANGE:** Added deny unwrap, expect and unsafe code [[71de97c]]
-
-- Add tracing-based audit logging gated behind feature - Introduce audit module with spans/events (request, authz, JWT issues, account lifecycle) - Instrument gate, login/logout handlers, and account services - Remove unused audit functions and simplify module-level cfg gating - No secrets logged; structured fields only; feature-off has zero overhead *(audit)*  [[3a87d25]]
-
-- Comprehensive security testing, code quality improvements, and documentation updates * Initial plan * Add comprehensive security tests and fix clippy warnings - Fixed all 10 clippy warnings for improved code quality - Added 44 new security-focused tests covering: * JWT manipulation and validation edge cases * Password hashing security and malformed input handling * Authorization bypass attempts and role escalation * Input validation against SQL injection and malformed data * Cookie security attributes and manipulation prevention * Storage layer isolation and concurrent access safety * Unicode/special character handling throughout system * Serialization security for sensitive data structures - Added timing attack awareness test (marked as ignore for CI stability) - Enhanced test coverage for edge cases and error conditions - All existing tests continue to pass Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Add comprehensive security documentation and fix README example - Added SECURITY.md with detailed security considerations and best practices - Fixed README.md example to use consistent field names (user_id vs account_id) - Documented password security, JWT security, cookie security, and authorization security - Added guidance on timing attack considerations and security best practices - Included testing instructions for security test suites - All documentation examples validated and working Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> * Address review comments: fix imports, remove unused code, use AccountDeleteService Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> --------- Co-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com> Co-authored-by: emirror-de <30552361+emirror-de@users.noreply.github.com> [[7bc5e6e]]
-
 - **💥 BREAKING CHANGE:** Initial support for surrealdb [[f807944]]
 
 
