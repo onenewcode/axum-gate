@@ -65,7 +65,10 @@ use uuid::Uuid;
 ///
 /// Avoid adding a read/list-all API to this trait; derive any necessary audit logging
 /// at a different layer to minimize accidental exposure of hashed credentials.
-pub trait SecretRepository {
+pub trait SecretRepository
+where
+    Self: Send + Sync,
+{
     /// Store a newly created secret.
     ///
     /// Returns:

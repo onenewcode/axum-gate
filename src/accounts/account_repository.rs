@@ -63,6 +63,7 @@ use std::future::Future;
 /// all backends to implement optional features.
 pub trait AccountRepository<R, G>
 where
+    Self: Send + Sync,
     R: AccessHierarchy + Eq,
     G: Eq + Clone,
 {
