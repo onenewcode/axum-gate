@@ -51,8 +51,6 @@ keywords = ["axum", "auth", "jwt", "oauth2", "rbac"]
 categories = ["authentication", "web-programming::http-server"]
 
 [features]
-# Enables the DevFast Argon2 preset in release builds if explicitly opted-in.
-# In debug builds the preset is available automatically via cfg(debug_assertions).
 default = ["jsonwebtoken/rust_crypto"]
 insecure-fast-hash = []
 storage-surrealdb = ["surrealdb"]
@@ -60,8 +58,6 @@ storage-seaorm = ["sea-orm/uuid"]
 audit-logging = []
 prometheus = ["audit-logging", "dep:prometheus"]
 aws_lc_rs = ["jsonwebtoken/aws_lc_rs"]
-
-
 
 [dependencies]
 argon2 = { version = "0.5", features = ["std"] }
@@ -89,7 +85,6 @@ tracing = { version = "0.1", features = ["release_max_level_info"] }
 uuid = { version = "1", features = ["serde", "v7"] }
 oauth2 = { workspace = true }
 reqwest = { workspace = true }
-
 
 [dev-dependencies]
 surrealdb = { workspace = true }
