@@ -95,4 +95,4 @@ uuid = "1"
 debug = false
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["insecure-fast-hash", "storage-surrealdb", "storage-seaorm", "audit-logging", "prometheus"]
