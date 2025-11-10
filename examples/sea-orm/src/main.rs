@@ -6,7 +6,12 @@ use axum_gate::repositories::sea_orm::SeaOrmRepository;
 use std::sync::Arc;
 
 use axum::extract::Json;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use axum::routing::{Router, get, post};
+use axum_gate::accounts::AccountRepository;
+use axum_gate::hashing::argon2::Argon2Hasher;
+use axum_gate::secrets::{Secret, SecretRepository};
 use chrono::{TimeDelta, Utc};
 use sea_orm::{ConnectionTrait, DbBackend, DbConn, Schema};
 use sea_query::table::TableCreateStatement;
@@ -28,6 +33,19 @@ async fn setup_database_schema(db: &DbConn) {
     db.execute(db.get_database_backend().build(&stmt))
         .await
         .expect("Could not create account table");
+}
+
+#[derive(serde::Deserialize)]
+struct PasswordUpdate {
+    user_id: String,
+    new_password: String,
+}
+
+#[derive(serde::Deserialize)]
+struct AccountUpdate {
+    user_id: String,
+    roles: Vec<Role>,
+    groups: Vec<String>,
 }
 
 #[tokio::main]
@@ -124,6 +142,48 @@ async fn main() {
         .route(
             "/logout",
             get(move |cookie_jar| axum_gate::route_handlers::logout(cookie_jar, cookie_template)),
+        )
+        .route(
+            "/password",
+            post({
+                let account_repository = Arc::clone(&account_repository);
+                let secrets_repository = Arc::clone(&secrets_repository);
+                move |Json(body): Json<PasswordUpdate>| async move {
+                    let Some(account): std::option::Option<
+                        axum_gate::accounts::Account<Role, Group>,
+                    > = account_repository
+                        .query_account_by_user_id(&body.user_id)
+                        .await
+                        .unwrap()
+                    else {
+                        return (StatusCode::NOT_FOUND, "account not found").into_response();
+                    };
+                    let hasher = Argon2Hasher::new_recommended().unwrap();
+                    let secret =
+                        Secret::new(&account.account_id, &body.new_password, hasher).unwrap();
+                    secrets_repository.update_secret(secret).await.unwrap();
+                    (StatusCode::OK, "password updated").into_response()
+                }
+            }),
+        )
+        .route(
+            "/account",
+            post({
+                let account_repository = Arc::clone(&account_repository);
+                move |Json(body): Json<AccountUpdate>| async move {
+                    let Some(mut account) = account_repository
+                        .query_account_by_user_id(&body.user_id)
+                        .await
+                        .unwrap()
+                    else {
+                        return (StatusCode::NOT_FOUND, "account not found").into_response();
+                    };
+                    account.roles = body.roles;
+                    account.groups = body.groups.into_iter().map(|g| Group::new(&g)).collect();
+                    let _ = account_repository.update_account(account).await.unwrap();
+                    (StatusCode::OK, "account updated").into_response()
+                }
+            }),
         );
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
