@@ -138,12 +138,78 @@ cargo_deny:
         - cargo deny check
     allow_failure: false
 
-cargo_semver_checks:
+cargo_semver_checks_default:
     <<: *rust_job
     stage: security
     script:
         - cargo install cargo-semver-checks
-        - cargo semver-checks check-release
+        - cargo semver-checks check-release --default-features
+    allow_failure: false
+    only:
+        - merge_requests
+        - nightly
+
+cargo_semver_checks_aws_lc_rs:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release --only-explicit-features --features aws_lc_rs
+    allow_failure: false
+    only:
+        - merge_requests
+        - nightly
+
+cargo_semver_checks_insecure_fast_hash:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release --only-explicit-features --features insecure-fast-hash
+    allow_failure: false
+    only:
+        - merge_requests
+        - nightly
+
+cargo_semver_checks_storage_surrealdb:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release --only-explicit-features --features storage-surrealdb
+    allow_failure: false
+    only:
+        - merge_requests
+        - nightly
+
+cargo_semver_checks_storage_seaorm:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release --only-explicit-features --features storage-seaorm
+    allow_failure: false
+    only:
+        - merge_requests
+        - nightly
+
+cargo_semver_checks_audit_logging:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release --only-explicit-features --features audit-logging
+    allow_failure: false
+    only:
+        - merge_requests
+        - nightly
+
+cargo_semver_checks_prometheus:
+    <<: *rust_job
+    stage: security
+    script:
+        - cargo install cargo-semver-checks
+        - cargo semver-checks check-release --only-explicit-features --features prometheus
     allow_failure: false
     only:
         - merge_requests
