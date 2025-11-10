@@ -27,10 +27,10 @@ body = """
     ### {{ group }}
     {% for commit in commits %}\
         {% if commit.breaking %}\
-    - **💥 BREAKING CHANGE:** {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}]
+    - **💥 BREAKING CHANGE:** {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} {{ commit.id | truncate(length=7, end="") }}
 
         {% else %}\
-    - {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}]
+    - {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} {{ commit.id | truncate(length=7, end="") }}
 
         {% endif %}\
     {% endfor %}
@@ -135,8 +135,6 @@ link_parsers = [
     { pattern = "#(\\d+)", href = "https://github.com/emirror-de/axum-gate/issues/$1", text = "#$1"},
     # GitHub pull requests
     { pattern = "PR#(\\d+)", href = "https://github.com/emirror-de/axum-gate/pull/$1", text = "PR#$1"},
-    # Direct commit references
-    { pattern = "\\b([0-9a-f]{7,40})\\b", href = "https://github.com/emirror-de/axum-gate/commit/$1", text = "$1"},
 ]
 
 # Additional commit preprocessing
