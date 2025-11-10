@@ -27,10 +27,10 @@ body = """
     ### {{ group }}
     {% for commit in commits %}\
         {% if commit.breaking %}\
-    - **💥 BREAKING CHANGE:** {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [[{{ commit.id | truncate(length=7, end="") }}]]
+    - **💥 BREAKING CHANGE:** {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}]
 
         {% else %}\
-    - {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [[{{ commit.id | truncate(length=7, end="") }}]]
+    - {{ commit.message | upper_first }}{% if commit.scope %} *({{ commit.scope }})* {% endif %} [{{ commit.id | truncate(length=7, end="") }}]
 
         {% endif %}\
     {% endfor %}
