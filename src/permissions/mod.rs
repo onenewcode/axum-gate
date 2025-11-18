@@ -130,29 +130,41 @@
 //! let policy: AccessPolicy<Role, Group> =
 //!     AccessPolicy::require_permission(&AppPermission::Api(Api::Read));
 //! ```
-//
-pub use self::application_validator::ApplicationValidator;
+
+#[cfg(feature = "server")]
+mod server_impl {
+    pub use super::application_validator::ApplicationValidator;
+    pub use super::collision_checker::PermissionCollisionChecker;
+    pub use super::errors::PermissionsError;
+    pub use super::permission_collision::PermissionCollision;
+    pub use super::validation_report::ValidationReport;
+}
+
+#[cfg(feature = "server")]
+pub use server_impl::*;
+
 pub use self::as_permission_name::AsPermissionName;
-pub use self::collision_checker::PermissionCollisionChecker;
-pub use self::permission_collision::PermissionCollision;
 pub use self::permission_id::PermissionId;
-pub use self::validation_report::ValidationReport;
-
-use std::fmt;
-
 use roaring::RoaringTreemap;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
+#[cfg(feature = "server")]
 mod application_validator;
 mod as_permission_name;
+#[cfg(feature = "server")]
 mod collision_checker;
+#[cfg(feature = "server")]
 pub mod errors;
+#[cfg(feature = "server")]
 pub mod mapping;
+#[cfg(feature = "server")]
 mod permission_collision;
 mod permission_id;
+#[cfg(feature = "server")]
 pub mod validate_permissions;
+#[cfg(feature = "server")]
 mod validation_report;
-pub use errors::PermissionsError;
 
 /// A collection of permissions with efficient storage and fast operations.
 ///

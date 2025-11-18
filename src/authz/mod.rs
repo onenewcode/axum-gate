@@ -57,14 +57,25 @@
 //! let hierarchical_policy = AccessPolicy::<Role, Group>::require_role_or_supervisor(Role::User);
 //! ```
 
-mod access_hierarchy;
-mod access_policy;
-mod access_scope;
-mod authorization_service;
+#[cfg(feature = "server")]
+mod server_impl {
+    pub use super::access_policy::AccessPolicy;
+    pub use super::access_scope::AccessScope;
+    pub use super::authorization_service::AuthorizationService;
+    pub use super::errors::AuthzError;
+}
+
+#[cfg(feature = "server")]
+pub use server_impl::*;
 
 pub use access_hierarchy::AccessHierarchy;
-pub use access_policy::AccessPolicy;
-pub use access_scope::AccessScope;
-pub use authorization_service::AuthorizationService;
+
+mod access_hierarchy;
+#[cfg(feature = "server")]
+mod access_policy;
+#[cfg(feature = "server")]
+mod access_scope;
+#[cfg(feature = "server")]
+mod authorization_service;
+#[cfg(feature = "server")]
 pub mod errors;
-pub use errors::AuthzError;

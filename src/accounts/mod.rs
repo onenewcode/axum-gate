@@ -27,22 +27,32 @@
 //! # });
 //! ```
 
-mod account_delete;
-mod account_insert;
-mod account_repository;
+#[cfg(feature = "server")]
+mod server_impl {
+    pub use super::account_delete::AccountDeleteService;
+    pub use super::account_insert::AccountInsertService;
+    pub use super::account_repository::AccountRepository;
+    pub use super::errors::{AccountOperation, AccountsError};
+    #[cfg(feature = "storage-seaorm")]
+    pub use crate::comma_separated_value::CommaSeparatedValue;
+}
+
+#[cfg(feature = "server")]
+pub use server_impl::*;
 
 use crate::authz::AccessHierarchy;
-#[cfg(feature = "storage-seaorm")]
-use crate::comma_separated_value::CommaSeparatedValue;
 use crate::permissions::{PermissionId, Permissions};
-pub use account_delete::AccountDeleteService;
-pub use account_insert::AccountInsertService;
-pub use account_repository::AccountRepository;
-pub mod errors;
-pub use errors::{AccountOperation, AccountsError};
-
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+#[cfg(feature = "server")]
+mod account_delete;
+#[cfg(feature = "server")]
+mod account_insert;
+#[cfg(feature = "server")]
+mod account_repository;
+#[cfg(feature = "server")]
+pub mod errors;
 
 /// An account contains authorization information about a user.
 ///
@@ -84,7 +94,7 @@ use uuid::Uuid;
 /// // Revoke permissions
 /// account.revoke_permission("write:api");
 /// ```
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Account<R, G>
 where
     R: AccessHierarchy + Eq,

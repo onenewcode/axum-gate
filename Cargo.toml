@@ -38,7 +38,7 @@ strum = { version = "0.27", features = ["derive"] }
 subtle = ">=2.6.1"
 surrealdb = { version = "2", features = ["kv-mem"] }
 thiserror = "2"
-tokio = { version = "1", default-features = true }
+tokio = { version = "1", default-features = false }
 tower = { version = "0.5", features = ["limit", "util", "timeout", "buffer", "load-shed"] }
 tower-http = { version = "0.6", features = ["trace"] }
 tracing = "0.1"
@@ -61,7 +61,24 @@ keywords = ["axum", "auth", "jwt", "oauth2", "rbac"]
 categories = ["authentication", "web-programming::http-server"]
 
 [features]
-default = ["jsonwebtoken/rust_crypto"]
+default = ["server", "jsonwebtoken/rust_crypto"]
+server = [
+    "dep:argon2",
+    "dep:axum",
+    "dep:axum-extra",
+    "dep:chrono",
+    "dep:cookie",
+    "dep:http",
+    "dep:rand",
+    "dep:serde_with",
+    "dep:subtle",
+    "dep:thiserror",
+    "dep:tokio",
+    "dep:tower",
+    "dep:tracing",
+    "dep:oauth2",
+    "dep:reqwest",
+]
 insecure-fast-hash = []
 storage-surrealdb = ["surrealdb"]
 storage-seaorm = ["sea-orm/uuid"]
@@ -70,31 +87,31 @@ prometheus = ["audit-logging", "dep:prometheus"]
 aws_lc_rs = ["jsonwebtoken/aws_lc_rs"]
 
 [dependencies]
-argon2 = { workspace = true, features = ["std"] }
-axum = { workspace = true }
-axum-extra = { workspace = true }
-chrono = { workspace = true }
+argon2 = { workspace = true, features = ["std"], optional = true }
+axum = { workspace = true, optional = true }
+axum-extra = { workspace = true, optional = true }
+chrono = { workspace = true, optional = true }
 const-crypto = { workspace = true }
-cookie = { workspace = true }
-http = { workspace = true }
-jsonwebtoken = { workspace = true }
+cookie = { workspace = true, optional = true }
+http = { workspace = true, optional = true }
+jsonwebtoken = { workspace = true, optional = true }
 prometheus = { workspace = true, optional = true }
-rand = { workspace = true }
+rand = { workspace = true, optional = true }
 roaring = { workspace = true, features = ["serde"] }
 sea-orm = { workspace = true, optional = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
-serde_with = { workspace = true }
+serde_json = { workspace = true, optional = true }
+serde_with = { workspace = true, optional = true }
 strum = { workspace = true }
-subtle = { workspace = true }
+subtle = { workspace = true, optional = true }
 surrealdb = { workspace = true, optional = true }
-thiserror = { workspace = true }
-tokio = { workspace = true, features = ["sync"] }
-tower = { workspace = true }
-tracing = { workspace = true, features = ["release_max_level_info"] }
-uuid = { workspace = true, features = ["serde", "v7"] }
-oauth2 = { workspace = true }
-reqwest = { workspace = true }
+thiserror = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+tracing = { workspace = true, features = ["release_max_level_info"], optional = true }
+uuid = { workspace = true, features = ["serde", "v7", "js"] }
+oauth2 = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
 
 [dev-dependencies]
 surrealdb = { workspace = true }

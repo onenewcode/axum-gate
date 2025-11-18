@@ -83,13 +83,11 @@
 //! ```
 
 use crate::authz::AccessHierarchy;
-#[cfg(feature = "storage-seaorm")]
+#[cfg(all(feature = "server", feature = "storage-seaorm"))]
 use crate::comma_separated_value::CommaSeparatedValue;
-
-#[cfg(feature = "storage-seaorm")]
-use std::str::FromStr;
-
 use serde::{Deserialize, Serialize};
+#[cfg(all(feature = "server", feature = "storage-seaorm"))]
+use std::str::FromStr;
 
 /// Pre-defined roles with hierarchical access control.
 ///
@@ -155,7 +153,7 @@ pub enum Role {
 
 impl AccessHierarchy for Role {}
 
-#[cfg(feature = "storage-seaorm")]
+#[cfg(all(feature = "server", feature = "storage-seaorm"))]
 impl CommaSeparatedValue for Vec<Role> {
     fn from_csv(value: &str) -> Result<Self, String> {
         let mut role_str = value.split(',').collect::<Vec<&str>>();

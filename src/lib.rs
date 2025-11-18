@@ -352,32 +352,44 @@
 //! - **Deterministic hashing**: No coordination needed between distributed nodes
 //! - **Efficient storage**: Bitmap-based permission storage with fast lookups
 
+#[cfg(feature = "server")]
 pub use axum_extra;
+#[cfg(feature = "server")]
 pub use cookie;
+#[cfg(feature = "server")]
 pub use jsonwebtoken;
-#[cfg(feature = "prometheus")]
+#[cfg(all(feature = "server", feature = "prometheus"))]
 pub use prometheus;
 pub use uuid;
-
 pub mod accounts;
-#[cfg(feature = "audit-logging")]
+#[cfg(feature = "server")]
 pub mod audit;
+#[cfg(feature = "server")]
 pub mod authn;
 pub mod authz;
+#[cfg(feature = "server")]
 pub mod codecs;
-#[cfg(feature = "storage-seaorm")]
+#[cfg(all(feature = "server", feature = "storage-seaorm"))]
 pub mod comma_separated_value;
+#[cfg(feature = "server")]
 pub mod cookie_template;
+#[cfg(feature = "server")]
 pub mod credentials;
+#[cfg(feature = "server")]
+pub mod errors;
+#[cfg(feature = "server")]
 pub mod gate;
 pub mod groups;
+#[cfg(feature = "server")]
 pub mod hashing;
 pub mod permissions;
+pub mod prelude;
+#[cfg(feature = "server")]
 pub mod repositories;
 pub mod roles;
+#[cfg(feature = "server")]
 pub mod route_handlers;
+#[cfg(feature = "server")]
 pub mod secrets;
+#[cfg(feature = "server")]
 pub mod verification_result;
-
-pub mod errors;
-pub mod prelude;
