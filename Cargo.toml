@@ -70,6 +70,7 @@ server = [
     "dep:cookie",
     "dep:http",
     "dep:rand",
+    "dep:serde_json",
     "dep:serde_with",
     "dep:subtle",
     "dep:thiserror",
