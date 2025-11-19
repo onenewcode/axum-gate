@@ -524,6 +524,7 @@ impl Permissions {
     }
 
     /// Internal method for testing access.
+    #[cfg(feature = "server")]
     pub(crate) fn bitmap_mut(&mut self) -> &mut roaring::RoaringTreemap {
         &mut self.bitmap
     }
