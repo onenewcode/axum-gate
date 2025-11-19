@@ -74,7 +74,7 @@ server = [
     "dep:serde_with",
     "dep:subtle",
     "dep:thiserror",
-    "dep:tokio",
+    "tokio/rt-multi-thread",
     "dep:tower",
     "dep:tracing",
     "dep:oauth2",
