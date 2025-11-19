@@ -58,7 +58,7 @@ jobs:
                   key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: ${{ runner.os }}-cargo-
             - name: cargo clippy
-              run: cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings && cargo clippy --all-targets --no-default-features --features aws_lc_rs,storage-surrealdb,storage-seaorm -- -D warnings
+              run: cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings && cargo clippy --all-targets --no-default-features --features server,aws_lc_rs,storage-surrealdb,storage-seaorm -- -D warnings
 
     test-core:
         name: Core test matrix
@@ -71,7 +71,7 @@ jobs:
                     - name: default_features
                       cmd: cargo test --workspace
                     - name: aws_lc_rs
-                      cmd: cargo test --no-default-features --features aws_lc_rs,storage-surrealdb,storage-seaorm
+                      cmd: cargo test --no-default-features --features server,aws_lc_rs,storage-surrealdb,storage-seaorm
                     - name: insecure_fast_hash
                       cmd: cargo test --workspace --features insecure-fast-hash
                     - name: storage_surrealdb
