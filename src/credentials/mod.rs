@@ -50,9 +50,11 @@
 //! }
 //! ```
 
+#[cfg(feature = "server")]
 pub use self::credentials_verifier::CredentialsVerifier;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "server")]
 mod credentials_verifier;
 
 /// Authentication credentials containing a user identifier and plaintext secret.

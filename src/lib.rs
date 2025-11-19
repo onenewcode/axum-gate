@@ -380,7 +380,6 @@ pub mod codecs;
 pub mod comma_separated_value;
 #[cfg(feature = "server")]
 pub mod cookie_template;
-#[cfg(feature = "server")]
 pub mod credentials;
 #[cfg(feature = "server")]
 pub mod errors;
