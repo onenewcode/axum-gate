@@ -351,6 +351,13 @@
 //! - **Runtime validation**: [`permissions::PermissionCollisionChecker`] for dynamic permissions
 //! - **Deterministic hashing**: No coordination needed between distributed nodes
 //! - **Efficient storage**: Bitmap-based permission storage with fast lookups
+//!
+//! Note for client and WASM usage:
+//! If you're building client-side or WebAssembly (wasm) applications and only need the crate's data models (types) without server-only dependencies, you can depend on this crate with default features disabled. For example:
+//!
+//! axum-gate = { version = "1", default-features = false }
+//!
+//! This allows using the models and core types in constrained runtimes (like wasm) while avoiding optional server features that require a full server environment.
 
 #[cfg(feature = "server")]
 pub use axum_extra;
