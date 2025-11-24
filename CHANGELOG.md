@@ -7,9 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.1] - 2025-11-10
+## [1.0.2] - 2025-11-24
 ### 📝 Other Changes
-- Hardcoded changelog commit id links [7bbbff9](https://github.com/emirror-de/axum-gate/commit/7bbbff958d002784036c70cc3560ed1b56021737)
+- Added missing feature to CI [f2c6d87](https://github.com/emirror-de/axum-gate/commit/f2c6d8725b017ff0c24a99425da3862478764241)
+
+- Added release checks for CI [25bd543](https://github.com/emirror-de/axum-gate/commit/25bd543724645dadf39010f1d976ae9d2702c3c8)
+
+- Fixed release compilation by adding missing attributes [bb5572c](https://github.com/emirror-de/axum-gate/commit/bb5572c5f7510ea56878c796e4298a0ab97f89d7)
+
+- Credentials are now available when default-features = false [0087a6f](https://github.com/emirror-de/axum-gate/commit/0087a6f902aed731c4390ad87b7eb327a7f357b8)
+
+- Removed warning of unused function when default-features = false [fe46d24](https://github.com/emirror-de/axum-gate/commit/fe46d241f4043bea75b746656bcc89b49d9a1164)
+
+- Added rt-multi-thread feature to tokio on server feature [111c683](https://github.com/emirror-de/axum-gate/commit/111c68346162e93379dfb0e77f6b67b800d7fbac)
+
+- Added serde_json to server feature [709d85d](https://github.com/emirror-de/axum-gate/commit/709d85d6ca116babe2e554b6ecc21fd47f5ef3af)
+
+- Added short paragraph about WASM/client usage to crate documentation [1a735b4](https://github.com/emirror-de/axum-gate/commit/1a735b4aba0933b82b9af4f6d87b304426d7e1d9)
+
+- Added missing server feature to CI [8b44ea1](https://github.com/emirror-de/axum-gate/commit/8b44ea18c93e8ecae9be2fa0680a1ee6f3534f93)
+
+- Enabled usage in wasm32-unknown-unknown target for client side usage [d5cccc1](https://github.com/emirror-de/axum-gate/commit/d5cccc1eb40d8f316c84e644de666b983ff0b2d6)
+
+- Now using workspace dependencies in axum-gate [6eb1a0a](https://github.com/emirror-de/axum-gate/commit/6eb1a0a06e01c37200774a074aec5aab367587cf)
+
+- Futures from repository traits are now Send + Sync as well [b291c22](https://github.com/emirror-de/axum-gate/commit/b291c22f86ec02b4ebcfcd26d4ee17678cfaa61d)
+
+- AccountRepository and SecretRepository now has Self: Send + Sync bounds [d4bfb01](https://github.com/emirror-de/axum-gate/commit/d4bfb013467294919c654c9afc9c6535d1cde433)
+
+- Hardcoded changelog commit id links [e5bfb09](https://github.com/emirror-de/axum-gate/commit/e5bfb092569ef27f2a6f6427a80acf4d7ab22c9c)
 
 - Updated cliff.toml and CHANGELOG.md [dc80252](https://github.com/emirror-de/axum-gate/commit/dc80252a5e975a1c8be68e36eb1c6a6c52dc464d)
 
