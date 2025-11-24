@@ -922,6 +922,7 @@ mod tests {
     use super::OAuth2Gate;
     use crate::cookie_template::CookieTemplate;
     use crate::prelude::{Group, Role};
+    #[cfg(debug_assertions)]
     use cookie::SameSite;
 
     #[test]
@@ -932,6 +933,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn cookie_template_insecure_none_is_rejected() {
         // SameSite=None must require Secure=true; validate() should reject this in debug defaults.
         let t = CookieTemplate::recommended().same_site(SameSite::None);
@@ -939,6 +941,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(debug_assertions)]
     fn routes_validation_rejects_invalid_cookie_templates() {
         // Auth cookie using SameSite=None without Secure must be rejected when building routes.
         let gate = OAuth2Gate::<Role, Group>::new()

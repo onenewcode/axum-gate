@@ -169,9 +169,8 @@ impl CookieTemplate {
     /// deployment. You must call this intentionally; no environment detection
     /// is performed here.
     #[must_use]
+    #[cfg(debug_assertions)]
     pub fn insecure_dev_only(mut self) -> Self {
-        #[cfg(not(debug_assertions))]
-        panic!("insecure_dev_only() must not be used in release builds");
         self.secure = false;
         self
     }

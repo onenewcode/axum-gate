@@ -64,6 +64,7 @@ impl Argon2Config {
     /// Fast configuration for development and testing.
     ///
     /// Uses minimal resources: 1 MiB memory, 1 iteration, and 1 thread.
+    #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
     pub fn dev_fast() -> Self {
         Self {
             memory_kib: 4 * 1024,
@@ -101,8 +102,8 @@ pub enum Argon2Preset {
     HighSecurity,
     /// Interactive preset balanced for user-facing applications (32 MiB memory, 2 iterations).
     Interactive,
-    #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
     /// Fast preset for development and testing (4 MiB memory, 1 iteration).
+    #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
     DevFast,
 }
 
@@ -112,6 +113,7 @@ impl Argon2Preset {
         match self {
             Self::HighSecurity => Argon2Config::high_security(),
             Self::Interactive => Argon2Config::interactive(),
+            #[cfg(any(feature = "insecure-fast-hash", debug_assertions))]
             Self::DevFast => Argon2Config::dev_fast(),
         }
     }

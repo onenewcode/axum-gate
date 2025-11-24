@@ -49,6 +49,7 @@ fn median(mut v: Vec<Duration>) -> Duration {
 // SurrealDB Timing Test
 //
 #[tokio::test]
+#[cfg(feature = "storage-surrealdb")]
 async fn surrealdb_timing_symmetry() {
     use axum_gate::repositories::surrealdb::{DatabaseScope, SurrealDbRepository};
     use surrealdb::Surreal;
@@ -170,6 +171,7 @@ async fn surrealdb_timing_symmetry() {
 //
 #[tokio::test]
 #[allow(clippy::unwrap_used)]
+#[cfg(feature = "storage-seaorm")]
 async fn seaorm_timing_symmetry() {
     use axum_gate::repositories::sea_orm::SeaOrmRepository;
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
