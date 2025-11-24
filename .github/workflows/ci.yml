@@ -284,7 +284,7 @@ jobs:
                     - name: default
                       args: "--default-features"
                     - name: aws_lc_rs
-                      args: "--only-explicit-features --features aws_lc_rs"
+                      args: "--only-explicit-features --features aws_lc_rs,server"
                     - name: insecure-fast-hash
                       args: "--only-explicit-features --features default,insecure-fast-hash"
                     - name: storage-surrealdb
