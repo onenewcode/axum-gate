@@ -21,6 +21,7 @@ stages:
     - test
     - security
     - examples
+    - release
 
 # Base job configuration
 .rust_job: &rust_job
@@ -316,3 +317,19 @@ bench_tests:
 #     allow_failure: true
 #     only:
 #         - nightly
+
+# Release stage: run build and tests in release profile for tag-triggered pipelines
+release_verification:
+    <<: *rust_job
+    stage: release
+    script:
+        # Ensure toolchain info is available
+        - rustc --version
+        - cargo --version
+        # Build all crates in release mode to validate release profile
+        - cargo build --workspace --release
+        # Run tests in release profile
+        - cargo test --workspace --release
+    allow_failure: false
+    only:
+        - tags
