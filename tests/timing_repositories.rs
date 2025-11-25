@@ -171,10 +171,13 @@ async fn surrealdb_timing_symmetry() {
 //
 #[tokio::test]
 #[allow(clippy::unwrap_used)]
-#[cfg(feature = "storage-seaorm")]
+#[cfg(any(feature = "storage-seaorm", feature = "storage-seaorm-v2"))]
 async fn seaorm_timing_symmetry() {
     use axum_gate::repositories::sea_orm::SeaOrmRepository;
+    #[cfg(feature = "storage-seaorm")]
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Schema};
+    #[cfg(feature = "storage-seaorm-v2")]
+    use sea_orm_v2::{ConnectionTrait, Database, DatabaseBackend, Schema};
 
     const ITERATIONS: usize = 5;
 
@@ -195,19 +198,35 @@ async fn seaorm_timing_symmetry() {
     let account_stmt = builder.create_table_from_entity(seaorm_account::Entity);
     let credentials_stmt = builder.create_table_from_entity(seaorm_credentials::Entity);
 
-    if let Err(e) = db
-        .execute(db.get_database_backend().build(&account_stmt))
-        .await
+    // Execute table creation statements with version-specific handling
+    #[cfg(feature = "storage-seaorm")]
     {
-        eprintln!("Skipping SeaORM timing test (create accounts table failed): {e}");
-        return;
+        if let Err(e) = db
+            .execute(db.get_database_backend().build(&account_stmt))
+            .await
+        {
+            eprintln!("Skipping SeaORM timing test (create accounts table failed): {e}");
+            return;
+        }
+        if let Err(e) = db
+            .execute(db.get_database_backend().build(&credentials_stmt))
+            .await
+        {
+            eprintln!("Skipping SeaORM timing test (create credentials table failed): {e}");
+            return;
+        }
     }
-    if let Err(e) = db
-        .execute(db.get_database_backend().build(&credentials_stmt))
-        .await
+
+    #[cfg(feature = "storage-seaorm-v2")]
     {
-        eprintln!("Skipping SeaORM timing test (create credentials table failed): {e}");
-        return;
+        if let Err(e) = db.execute(&account_stmt).await {
+            eprintln!("Skipping SeaORM v2 timing test (create accounts table failed): {e}");
+            return;
+        }
+        if let Err(e) = db.execute(&credentials_stmt).await {
+            eprintln!("Skipping SeaORM v2 timing test (create credentials table failed): {e}");
+            return;
+        }
     }
 
     let repo = SeaOrmRepository::new(&db).unwrap();

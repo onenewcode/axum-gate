@@ -54,7 +54,7 @@
 
 pub mod errors;
 pub mod memory;
-#[cfg(feature = "storage-seaorm")]
+#[cfg(any(feature = "storage-seaorm", feature = "storage-seaorm-v2"))]
 pub mod sea_orm;
 #[cfg(feature = "storage-surrealdb")]
 pub mod surrealdb;
@@ -63,7 +63,11 @@ pub use errors::{
 };
 
 /// Table names used by the storage backends.
-#[cfg(any(feature = "storage-surrealdb", feature = "storage-seaorm"))]
+#[cfg(any(
+    feature = "storage-surrealdb",
+    feature = "storage-seaorm",
+    feature = "storage-seaorm-v2"
+))]
 #[derive(strum::Display, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[strum(serialize_all = "snake_case")]
 pub enum TableName {

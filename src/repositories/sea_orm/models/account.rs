@@ -9,8 +9,11 @@ use crate::accounts::Account;
 use crate::authz::AccessHierarchy;
 use crate::comma_separated_value::CommaSeparatedValue;
 
-use sea_orm::ActiveValue;
-use sea_orm::entity::prelude::*;
+#[cfg(feature = "storage-seaorm")]
+use sea_orm::{ActiveValue, entity::prelude::*};
+
+#[cfg(feature = "storage-seaorm-v2")]
+use sea_orm_v2::{self as sea_orm, ActiveValue, entity::prelude::*};
 
 /// SeaORM entity for an account.
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]

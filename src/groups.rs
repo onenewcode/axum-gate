@@ -93,7 +93,10 @@
 //! ];
 //! ```
 
-#[cfg(all(feature = "server", feature = "storage-seaorm"))]
+#[cfg(all(
+    feature = "server",
+    any(feature = "storage-seaorm", feature = "storage-seaorm-v2")
+))]
 use crate::comma_separated_value::CommaSeparatedValue;
 
 use serde::{Deserialize, Serialize};
@@ -150,7 +153,10 @@ impl Group {
     }
 }
 
-#[cfg(all(feature = "server", feature = "storage-seaorm"))]
+#[cfg(all(
+    feature = "server",
+    any(feature = "storage-seaorm", feature = "storage-seaorm-v2")
+))]
 impl CommaSeparatedValue for Vec<Group> {
     fn from_csv(value: &str) -> Result<Self, String> {
         Ok(value

@@ -5,12 +5,12 @@ edition = "2024"
 publish = false
 
 [dependencies]
-axum-gate = { path = "../../" }
 axum = { workspace = true }
+axum-gate = { path = "../../" }
+dotenvy = "0.15"
 oauth2 = { workspace = true }
+reqwest = { workspace = true }
+serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["std", "env-filter"] }
-serde = { version = "1", features = ["derive"] }
-dotenvy = "0.15"
-reqwest = { workspace = true }
