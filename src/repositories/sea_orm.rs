@@ -27,8 +27,14 @@ use crate::repositories::{DatabaseError, DatabaseOperation};
 use crate::secrets::Secret;
 use crate::secrets::SecretRepository;
 use crate::verification_result::VerificationResult;
-
+#[cfg(feature = "storage-seaorm")]
 use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    entity::{ActiveModelTrait, ActiveValue},
+};
+
+#[cfg(feature = "storage-seaorm-v2")]
+use sea_orm_v2::{
     ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
     entity::{ActiveModelTrait, ActiveValue},
 };

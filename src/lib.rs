@@ -376,7 +376,10 @@ pub mod authn;
 pub mod authz;
 #[cfg(feature = "server")]
 pub mod codecs;
-#[cfg(all(feature = "server", feature = "storage-seaorm"))]
+#[cfg(all(
+    feature = "server",
+    any(feature = "storage-seaorm", feature = "storage-seaorm-v2")
+))]
 pub mod comma_separated_value;
 #[cfg(feature = "server")]
 pub mod cookie_template;

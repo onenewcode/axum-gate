@@ -5,7 +5,11 @@
 //! for custom migrations or direct queries.
 use crate::secrets::Secret;
 
+#[cfg(feature = "storage-seaorm")]
 use sea_orm::{ActiveValue, entity::prelude::*};
+
+#[cfg(feature = "storage-seaorm-v2")]
+use sea_orm_v2::{self as sea_orm, ActiveValue, entity::prelude::*};
 
 /// Credentials persistence entity (stores Argon2 hash).
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
