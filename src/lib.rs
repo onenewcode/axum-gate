@@ -31,13 +31,15 @@
 //! A convenience prelude is available via `axum_gate::prelude::*` that re-exports the most commonly used types.
 //!
 //! ### Feature Flags
-//! - `storage-surrealdb` — SurrealDB repositories (see [BUSL-1.1 license note](https://github.com/emirror-de/axum-gate?tab=readme-ov-file#msrv-and-license))
-//! - `storage-seaorm` — SeaORM repositories
+//! - `storage-surrealdb` — SurrealDB repositories (see [BUSL-1.1 license note](https://github.com/emirror-de/axum-gate?tab=readme-ov-file#msrv-and-license))!
+//! - `storage-seaorm` — SeaORM repositories (original `sea-orm` crate; mutually exclusive with `storage-seaorm-v2`)
+//! - `storage-seaorm-v2` — SeaORM v2 repositories
 //! - `audit-logging` — emit structured audit events
 //! - `prometheus` — export metrics for audit logging (implies `audit-logging`)
 //! - `insecure-fast-hash` — faster Argon2 preset for development only (opt-in for release, not recommended)
 //! - `aws_lc_rs`: Uses AWS Libcrypto for JWT cryptographic operations
 //!
+//! Note: `storage-seaorm` and `storage-seaorm-v2` are mutually exclusive. Enable only one of these features per build to avoid compilation/feature conflicts.
 //!
 //! For common integration issues and debugging tips, [see the Troubleshooting guide](https://github.com/emirror-de/axum-gate/blob/nightly/TROUBLESHOOTING.md).
 //!
