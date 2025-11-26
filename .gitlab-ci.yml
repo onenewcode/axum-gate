@@ -47,7 +47,7 @@ clippy_check:
         # Run clippy for configurations that use storage-seaorm (never combined with v2)
         - cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings
         # Run clippy for configurations that use storage-seaorm-v2 (separate run to avoid enabling both features)
-        - cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm-v2 -- -D warnings
+        - cargo clippy --all-targets --features storage-surrealdb,storage-seaorm-v2 -- -D warnings
         # No-default-features variants for aws_lc_rs with seaorm (separate)
         - cargo clippy --all-targets --no-default-features --features server,aws_lc_rs,storage-surrealdb,storage-seaorm -- -D warnings
         - cargo clippy --all-targets --no-default-features --features server,aws_lc_rs,storage-surrealdb,storage-seaorm-v2 -- -D warnings
@@ -119,7 +119,7 @@ test_all_storage_features_seaorm_v2:
     <<: *rust_job
     stage: test
     script:
-        - cargo test --workspace --features storage-surrealdb,storage-seaorm-v2
+        - cargo test --features storage-surrealdb,storage-seaorm-v2
     allow_failure: false
 
 test_fast_hash_with_surrealdb:
