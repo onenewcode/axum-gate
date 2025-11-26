@@ -62,7 +62,7 @@ jobs:
                   # Run clippy for combinations that include storage-seaorm
                   cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm -- -D warnings
                   # Run clippy for combinations that include storage-seaorm-v2 (mutually exclusive from storage-seaorm)
-                  cargo clippy --workspace --all-targets --features storage-surrealdb,storage-seaorm-v2 -- -D warnings
+                  cargo clippy --all-targets --features storage-surrealdb,storage-seaorm-v2 -- -D warnings
                   # Run clippy for no-default-features variants (seaorm)
                   cargo clippy --all-targets --no-default-features --features server,aws_lc_rs,storage-surrealdb,storage-seaorm -- -D warnings
                   # Run clippy for no-default-features variants (seaorm-v2)
@@ -91,17 +91,17 @@ jobs:
                     - name: storage_seaorm
                       cmd: cargo test --workspace --features storage-seaorm
                     - name: storage_seaorm_v2
-                      cmd: cargo test --workspace --features storage-seaorm-v2
+                      cmd: cargo test --features storage-seaorm-v2
                     - name: all_storage_features
                       cmd: cargo test --workspace --features storage-surrealdb,storage-seaorm
                     - name: all_storage_features_v2
-                      cmd: cargo test --workspace --features storage-surrealdb,storage-seaorm-v2
+                      cmd: cargo test --features storage-surrealdb,storage-seaorm-v2
                     - name: fast_hash_with_surrealdb
                       cmd: cargo test --workspace --features insecure-fast-hash,storage-surrealdb
                     - name: fast_hash_with_seaorm
                       cmd: cargo test --workspace --features insecure-fast-hash,storage-seaorm
                     - name: fast_hash_with_seaorm_v2
-                      cmd: cargo test --workspace --features insecure-fast-hash,storage-seaorm-v2
+                      cmd: cargo test --features insecure-fast-hash,storage-seaorm-v2
         steps:
             - name: Checkout
               uses: actions/checkout@v4
