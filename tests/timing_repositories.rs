@@ -25,14 +25,13 @@
 //! wrong-password paths.
 //!
 //! Run with: `cargo test -- --nocapture` to see raw timing output.
-use std::time::{Duration, Instant};
-
 use axum_gate::accounts::{Account, AccountRepository};
 use axum_gate::credentials::{Credentials, CredentialsVerifier};
 use axum_gate::hashing::argon2::Argon2Hasher;
 use axum_gate::prelude::{Group, Role};
 use axum_gate::secrets::{Secret, SecretRepository};
 use axum_gate::verification_result::VerificationResult;
+use std::time::{Duration, Instant};
 
 /// Returns a fresh random (UUID v7 backed) email identifier to avoid collisions in shared DBs.
 fn random_user_id() -> String {
