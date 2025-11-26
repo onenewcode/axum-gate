@@ -78,8 +78,6 @@ jobs:
                 include:
                     - name: default_features
                       cmd: cargo test --workspace
-                    - name: aws_lc_rs
-                      cmd: cargo test --no-default-features --features server,aws_lc_rs
                     - name: aws_lc_rs_with_seaorm
                       cmd: cargo test --no-default-features --features server,aws_lc_rs,storage-seaorm
                     - name: aws_lc_rs_with_seaorm_v2
