@@ -18,6 +18,7 @@ use std::future::Future;
 /// | `delete_account`      | `Some(Account)` = deleted & returned               | `None` = no account with that user id     | Backend / IO failure                             |
 /// | `update_account`      | `Some(Account)` = updated                          | `None` = no existing account to update    | Backend / IO / optimistic concurrency failure    |
 /// | `query_account_by_user_id` | `Some(Account)` = found                      | `None` = not found                        | Backend / IO failure                             |
+/// | `query_all_accounts`  | `Vec<Account>` containing zero or more accounts    | N/A                                       | Backend / IO failure                             |
 ///
 /// Backends SHOULD:
 /// - Treat `user_id` as a logical unique key
@@ -113,4 +114,15 @@ where
         &self,
         user_id: &str,
     ) -> impl Future<Output = Result<Option<Account<R, G>>>> + Send;
+
+    /// Query all accounts in the repository.
+    ///
+    /// Returns:
+    /// - `Ok(vec)` containing zero or more accounts on success
+    /// - `Err(e)` on backend failure
+    ///
+    /// Note: backends SHOULD document ordering semantics (if any). For large datasets,
+    /// implementors MAY provide a separate paginated trait to avoid forcing all backends
+    /// to materialize the entire dataset in memory.
+    fn query_all_accounts(&self) -> impl Future<Output = Result<Vec<Account<R, G>>>> + Send;
 }

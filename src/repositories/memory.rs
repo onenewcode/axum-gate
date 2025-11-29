@@ -178,6 +178,12 @@ where
     async fn update_account(&self, account: Account<R, G>) -> Result<Option<Account<R, G>>> {
         self.store_account(account).await
     }
+
+    async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
+        let read = self.accounts.read().await;
+        // Collect cloned account values into a Vec
+        Ok(read.values().cloned().collect())
+    }
 }
 /// In-memory repository for storing and managing user authentication secrets.
 ///

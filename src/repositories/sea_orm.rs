@@ -252,6 +252,36 @@ where
             ))
         })?))
     }
+
+    async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
+        // Fetch all account models from the database and convert into domain `Account` instances.
+        let models = seaorm_account::Entity::find()
+            .all(&self.db)
+            .await
+            .map_err(|e| {
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query all accounts: {}", e),
+                    Some(TableName::AxumGateAccounts.to_string()),
+                    None,
+                ))
+            })?;
+
+        let mut out = Vec::with_capacity(models.len());
+        for m in models {
+            let dom = Account::try_from(m).map_err(|e| {
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to convert account model: {}", e),
+                    Some(TableName::AxumGateAccounts.to_string()),
+                    None,
+                ))
+            })?;
+            out.push(dom);
+        }
+
+        Ok(out)
+    }
 }
 
 impl SecretRepository for SeaOrmRepository {

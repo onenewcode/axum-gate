@@ -177,6 +177,23 @@ where
         let db_account: Option<Account<R, G>> = self.db.update(&record_id).content(account).await?;
         Ok(db_account)
     }
+
+    async fn query_all_accounts(&self) -> Result<Vec<Account<R, G>>> {
+        self.use_ns_db().await?;
+        let db_accounts: Vec<Account<R, G>> = self
+            .db
+            .select(self.scope_settings.accounts.clone())
+            .await
+            .map_err(|e| {
+                Error::Database(DatabaseError::with_context(
+                    DatabaseOperation::Query,
+                    format!("Failed to query all accounts: {}", e),
+                    Some(self.scope_settings.accounts.clone()),
+                    None,
+                ))
+            })?;
+        Ok(db_accounts)
+    }
 }
 
 impl<S> SecretRepository for SurrealDbRepository<S>
