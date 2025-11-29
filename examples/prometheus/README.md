@@ -125,6 +125,6 @@ In production:
 This example requires the `prometheus` feature:
 
 ```toml
-axum-gate = { version = "1.0.2", features = ["prometheus"] }
+axum-gate = { version = "2.0.0-dev", features = ["prometheus"] }
 prometheus = "0.13"
 ```
