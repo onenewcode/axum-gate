@@ -80,6 +80,12 @@ where
         }
         Ok(res)
     }
+
+    async fn query_all_accounts(&self) -> axum_gate::errors::Result<Vec<Account<R, G>>> {
+        let res = self.inner.query_all_accounts().await?;
+        info!(count = res.len(), "OAuth2: queried all accounts");
+        Ok(res)
+    }
 }
 
 #[tokio::main]
